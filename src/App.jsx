@@ -1,15 +1,11 @@
+/* eslint-disable */
 import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
+import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { getDatabase, ref, set, update, remove, onValue, push } from 'firebase/database';
 
-// Firestore (Untuk Canvas / Ujian)
-import { getFirestore, doc as fireDoc, setDoc as fireSet, updateDoc as fireUpdate, deleteDoc as fireDelete, onSnapshot as fireSnapshot, collection as fireCollection } from 'firebase/firestore';
-
-// Realtime Database (Untuk versi Vercel sebenar - Tanpa Billing)
-import { getDatabase, ref as rtdbRef, set as rtdbSet, update as rtdbUpdate, remove as rtdbRemove, onValue as rtdbOnValue, push as rtdbPush } from 'firebase/database';
-
-// 1. Firebase Initialization
-let firebaseConfig = {
+// 1. Firebase Initialization (Murni menyambung ke Realtime DB anda SAHAJA)
+const firebaseConfig = {
   apiKey: "AIzaSyBRbfRCs0Eqn5SWB34Ip2VDzA8k4G9JmvM",
   authDomain: "sjk-delima.firebaseapp.com",
   databaseURL: "https://sjk-delima-default-rtdb.asia-southeast1.firebasedatabase.app",
@@ -19,50 +15,26 @@ let firebaseConfig = {
   appId: "1:616642054550:web:5485b3fac5e2e6620635b7"
 };
 
-if (typeof __firebase_config !== 'undefined') {
-  firebaseConfig = JSON.parse(__firebase_config);
-}
-
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const dbFirestore = getFirestore(app);
 const dbRealtime = getDatabase(app);
 
-const isCanvas = typeof __firebase_config !== 'undefined';
-const safeAppId = typeof __app_id !== 'undefined' ? String(__app_id).replace(/\//g, '-') : 'default-app-id';
-
-// --- Data Access Layer (Menyokong Firestore & Realtime DB serentak) ---
+// --- Data Access Layer (Eksklusif untuk Realtime DB) ---
 const saveDoc = async (collectionName, id, data) => {
-  if (isCanvas) {
-    if (id) {
-      await fireUpdate(fireDoc(dbFirestore, 'artifacts', safeAppId, 'public', 'data', collectionName, id), data);
-    } else {
-      await fireSet(fireDoc(fireCollection(dbFirestore, 'artifacts', safeAppId, 'public', 'data', collectionName)), data);
-    }
+  if (id) {
+    await update(ref(dbRealtime, `${collectionName}/${id}`), data);
   } else {
-    if (id) {
-      await rtdbUpdate(rtdbRef(dbRealtime, `${collectionName}/${id}`), data);
-    } else {
-      const newRef = rtdbPush(rtdbRef(dbRealtime, collectionName));
-      await rtdbSet(newRef, { ...data, id: newRef.key });
-    }
+    const newRef = push(ref(dbRealtime, collectionName));
+    await set(newRef, { ...data, id: newRef.key });
   }
 };
 
 const updateDocData = async (collectionName, id, data) => {
-  if (isCanvas) {
-    await fireUpdate(fireDoc(dbFirestore, 'artifacts', safeAppId, 'public', 'data', collectionName, id), data);
-  } else {
-    await rtdbUpdate(rtdbRef(dbRealtime, `${collectionName}/${id}`), data);
-  }
+  await update(ref(dbRealtime, `${collectionName}/${id}`), data);
 };
 
 const deleteDocument = async (collectionName, id) => {
-  if (isCanvas) {
-    await fireDelete(fireDoc(dbFirestore, 'artifacts', safeAppId, 'public', 'data', collectionName, id));
-  } else {
-    await rtdbRemove(rtdbRef(dbRealtime, `${collectionName}/${id}`));
-  }
+  await remove(ref(dbRealtime, `${collectionName}/${id}`));
 };
 
 // --- Reusable Components ---
@@ -231,14 +203,11 @@ export default function App() {
     const initAuth = async () => {
       try {
         setDebugLog('Mengesahkan identiti... / 正在验证身份...');
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
-        }
+        // Memaksa pengesahan awan peribadi (Personal DB Auth)
+        await signInAnonymously(auth);
       } catch (err) {
         console.error("Auth error:", err);
-        setAuthError("Sistem gagal disahkan. Sila pastikan ciri 'Anonymous' didayakan. / 身份验证失败，请确保 Firebase 开启了 Anonymous 登录功能。");
+        setAuthError("Sistem gagal disahkan. Sila pastikan ciri 'Anonymous' didayakan di Firebase anda. / 身份验证失败，请确保 Firebase 开启了 Anonymous 登录功能。");
         setLoading(false); 
       }
     };
@@ -254,46 +223,26 @@ export default function App() {
   useEffect(() => {
     if (!user) return;
     
-    let unsubStudents;
-    let unsubAnnouncements;
+    const unsubStudents = onValue(ref(dbRealtime, 'students'), (snapshot) => {
+      const data = snapshot.val();
+      const list = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
+      setStudents(list);
+      setLoading(false);
+    }, (error) => {
+      console.error("RTDB Error:", error);
+      setAuthError("Pangkalan data dikunci. Sila semak Realtime Database Rules. / 数据库权限被拒绝，请检查 Firebase Realtime Database 规则是否已设为 true。");
+      setLoading(false);
+    });
 
-    if (isCanvas) {
-       unsubStudents = fireSnapshot(fireCollection(dbFirestore, 'artifacts', safeAppId, 'public', 'data', 'students'), (snapshot) => {
-         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-         setStudents(data);
-         setLoading(false);
-       }, (error) => {
-         console.error(error);
-         setAuthError("Ralat pangkalan data (Firestore). / 数据库错误，请检查规则。");
-         setLoading(false);
-       });
-       
-       unsubAnnouncements = fireSnapshot(fireCollection(dbFirestore, 'artifacts', safeAppId, 'public', 'data', 'announcements'), (snapshot) => {
-         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-         setAnnouncements(data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
-       });
-    } else {
-       unsubStudents = rtdbOnValue(rtdbRef(dbRealtime, 'students'), (snapshot) => {
-         const data = snapshot.val();
-         const list = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
-         setStudents(list);
-         setLoading(false);
-       }, (error) => {
-         console.error("RTDB Error:", error);
-         setAuthError("Pangkalan data dikunci. Sila semak Realtime Database Rules. / 数据库权限被拒绝，请检查 Firebase Realtime Database 规则。");
-         setLoading(false);
-       });
-
-       unsubAnnouncements = rtdbOnValue(rtdbRef(dbRealtime, 'announcements'), (snapshot) => {
-         const data = snapshot.val();
-         const list = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
-         setAnnouncements(list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
-       });
-    }
+    const unsubAnnouncements = onValue(ref(dbRealtime, 'announcements'), (snapshot) => {
+      const data = snapshot.val();
+      const list = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
+      setAnnouncements(list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+    });
     
     return () => {
-        if (unsubStudents) unsubStudents();
-        if (unsubAnnouncements) unsubAnnouncements();
+        unsubStudents();
+        unsubAnnouncements();
     };
   }, [user]);
 
