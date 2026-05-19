@@ -235,6 +235,9 @@ export default function App() {
 
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
+  
+  // State untuk status muat naik gambar
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const showToast = (msg) => {
     setToast(msg);
@@ -397,30 +400,20 @@ export default function App() {
   const handleAdminSaveAnnouncement = async (e) => {
     e.preventDefault();
     if (!editingAnnouncement.title) return showToast('Sila masukkan Tajuk / 请输入标题');
-    
-    // Auto-convert Google Drive links to Direct Image Links
-    let finalImageUrl = editingAnnouncement.imageUrl || '';
-    if (finalImageUrl.includes('drive.google.com/file/d/')) {
-      const match = finalImageUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
-      if (match && match[1]) {
-         finalImageUrl = `https://drive.google.com/uc?export=view&id=${match[1]}`;
-      }
-    }
-    const dataToSave = { ...editingAnnouncement, imageUrl: finalImageUrl };
 
     try {
       if (editingAnnouncement.id) { 
-        await updateDocData('announcements', editingAnnouncement.id, dataToSave); 
-        addSystemLog('Admin', 'Kemaskini Hebahan', `Tajuk: ${dataToSave.title}`);
-        showToast('Hebahan dikemaskini'); 
+        await updateDocData('announcements', editingAnnouncement.id, editingAnnouncement); 
+        addSystemLog('Admin', 'Kemaskini Hebahan', `Tajuk: ${editingAnnouncement.title}`);
+        showToast('Hebahan dikemaskini / 通告已更新'); 
       } 
       else { 
-        await saveDoc('announcements', null, dataToSave); 
-        addSystemLog('Admin', 'Tambah Hebahan Baru', `Tajuk: ${dataToSave.title}`);
-        showToast('Hebahan ditambah'); 
+        await saveDoc('announcements', null, editingAnnouncement); 
+        addSystemLog('Admin', 'Tambah Hebahan Baru', `Tajuk: ${editingAnnouncement.title}`);
+        showToast('Hebahan ditambah / 通告发布成功'); 
       }
       setEditingAnnouncement(null);
-    } catch (err) { showToast('Ralat sistem'); }
+    } catch (err) { showToast('Ralat sistem / 系统错误'); }
   };
 
   const handleDelete = async () => {
@@ -517,6 +510,57 @@ export default function App() {
           addSystemLog('Guru', 'Salin Maklumat WhatsApp', `Menyalin mesej WA untuk ${student.name}`);
           showToast('Mesej berjaya disalin ke papan keratan ✨ / 信息已复制到剪贴板，可直接发送');
       } catch (err) { showToast('Ralat / 生成失败'); } 
+  };
+
+  // Fungsi untuk memproses dan menukar gambar kepada format tulen (Base64) tanpa menggunakan Storage luaran
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+       showToast('Sila pilih fail gambar (JPG/PNG) / 请选择图片文件');
+       return;
+    }
+
+    setUploadingImage(true);
+    showToast('Sedang memproses gambar... / 正在处理图片...');
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        // Mengecilkan saiz gambar jika terlalu besar untuk menjimatkan ruang pangkalan data
+        const MAX_SIZE = 800;
+        if (width > height) {
+          if (width > MAX_SIZE) {
+            height *= MAX_SIZE / width;
+            width = MAX_SIZE;
+          }
+        } else {
+          if (height > MAX_SIZE) {
+            width *= MAX_SIZE / height;
+            height = MAX_SIZE;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Compress kepada JPEG (kualiti 70%)
+        const base64String = canvas.toDataURL('image/jpeg', 0.7);
+
+        setEditingAnnouncement(prev => ({ ...prev, imageUrl: base64String }));
+        setUploadingImage(false);
+        showToast('Gambar sedia dimuat naik / 图片已准备就绪');
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
   };
 
   const renderPublicView = () => (
@@ -886,10 +930,26 @@ export default function App() {
           </div>
           <form onSubmit={handleAdminSaveAnnouncement} className="p-8 space-y-6 bg-emerald-50/30">
              <FormField label="Tajuk / 标题 *" value={editingAnnouncement.title || ''} onChange={(v) => setEditingAnnouncement({...editingAnnouncement, title: v})} required />
-             <FormField label="URL Gambar / 照片链接 (Pilihan) 🔗" type="url" placeholder="Cth: https://.../gambar.jpg" value={editingAnnouncement.imageUrl || ''} onChange={(v) => setEditingAnnouncement({...editingAnnouncement, imageUrl: v})} />
-             <div className="bg-emerald-100 p-4 rounded-xl text-emerald-800 text-sm font-medium border border-emerald-200">
-               💡 Tips: Muat naik gambar ke Facebook atau Google Drive, kemudian klik kanan "Copy Image Address" (Salin Pautan Gambar) dan tampal di sini.
+             
+             {/* Fungsi muat naik gambar terus tanpa Google Drive */}
+             <div className="flex flex-col">
+                <label className="text-emerald-800 font-medium mb-2 text-lg">Gambar / 照片上传 (Pilihan)</label>
+                {editingAnnouncement.imageUrl && (
+                   <div className="relative mb-4 inline-block w-fit">
+                     <img src={editingAnnouncement.imageUrl} alt="Preview" className="h-40 rounded-xl border border-emerald-200 object-cover shadow-sm" />
+                     <button type="button" onClick={() => setEditingAnnouncement({...editingAnnouncement, imageUrl: ''})} className="absolute -top-3 -right-3 bg-rose-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold shadow-md hover:bg-rose-600 transition-all text-sm">✕</button>
+                   </div>
+                )}
+                <input 
+                  type="file" 
+                  accept="image/png, image/jpeg, image/jpg"
+                  onChange={handleImageUpload} 
+                  disabled={uploadingImage}
+                  className="bg-white border border-emerald-100 text-emerald-950 rounded-2xl px-5 py-4 focus:outline-none focus:ring-4 focus:ring-emerald-400/30 transition-all shadow-sm w-full file:mr-4 file:py-2 file:px-6 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-emerald-500 file:text-white hover:file:bg-emerald-600 cursor-pointer disabled:opacity-50" 
+                />
+                {uploadingImage && <span className="text-sm text-emerald-600 mt-2 font-medium animate-pulse">Memproses gambar... / 正在处理图片请稍候...</span>}
              </div>
+
              <div className="flex flex-col">
                 <label className="text-emerald-800 font-medium mb-2 text-lg">Kandungan / 内容详情</label>
                 <textarea rows="5" value={editingAnnouncement.content || ''} onChange={e => setEditingAnnouncement({...editingAnnouncement, content: e.target.value})} className="bg-white border border-emerald-100 text-emerald-950 rounded-2xl px-5 py-4 text-xl focus:outline-none focus:ring-4 focus:ring-emerald-400/30 focus:border-emerald-500 transition-all shadow-sm w-full" />
@@ -897,7 +957,7 @@ export default function App() {
              <FormField label="URL Pautan Tambahan (Pilihan)" type="url" value={editingAnnouncement.linkUrl || ''} onChange={(v) => setEditingAnnouncement({...editingAnnouncement, linkUrl: v})} />
              <div className="pt-6 flex justify-end gap-4">
                 <button type="button" onClick={() => setEditingAnnouncement(null)} className="px-8 py-4 text-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-2xl font-bold">Batal</button>
-                <button type="submit" className="px-10 py-4 text-xl font-bold bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl shadow-lg shadow-emerald-500/30">Simpan & Siarkan 发布</button>
+                <button type="submit" disabled={uploadingImage} className="px-10 py-4 text-xl font-bold bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl shadow-lg shadow-emerald-500/30 disabled:opacity-50">Simpan & Siarkan 发布</button>
              </div>
           </form>
         </div>
