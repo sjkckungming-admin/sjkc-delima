@@ -1,10 +1,10 @@
 /* eslint-disable */
 import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { getAuth, signInAnonymously } from 'firebase/auth';
 import { getDatabase, ref, set, update, remove, onValue, push } from 'firebase/database';
 
-// 1. Firebase Initialization (Murni menyambung ke Realtime DB anda SAHAJA)
+// 1. Firebase Initialization (Paling Ringan & Pantas)
 const firebaseConfig = {
   apiKey: "AIzaSyBRbfRCs0Eqn5SWB34Ip2VDzA8k4G9JmvM",
   authDomain: "sjk-delima.firebaseapp.com",
@@ -19,7 +19,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const dbRealtime = getDatabase(app);
 
-// --- Data Access Layer (Eksklusif untuk Realtime DB) ---
+// --- Data Access Layer ---
 const saveDoc = async (collectionName, id, data) => {
   if (id) {
     await update(ref(dbRealtime, `${collectionName}/${id}`), data);
@@ -39,12 +39,12 @@ const deleteDocument = async (collectionName, id) => {
 
 // --- Reusable Components ---
 const InfoItem = ({ label, value, copyable = false, onCopy }) => (
-  <div className="flex flex-col bg-emerald-50/60 p-5 rounded-2xl border border-emerald-100">
+  <div className="flex flex-col bg-emerald-50/60 p-5 rounded-2xl border border-emerald-100 h-full">
     <span className="text-emerald-700 font-semibold text-lg mb-2">{label}</span>
     <div className="flex items-center justify-between gap-3">
       <span className="text-2xl font-bold text-emerald-950 break-all">{value || '-'}</span>
       {copyable && value && (
-         <button onClick={() => onCopy(value)} className="text-emerald-600 hover:text-emerald-800 bg-emerald-200/50 p-3 rounded-xl transition-all shadow-sm active:scale-95" title="Copy">
+         <button onClick={() => onCopy(value)} className="text-emerald-600 hover:text-emerald-800 bg-emerald-200/50 p-3 rounded-xl transition-all shadow-sm active:scale-95 shrink-0" title="Copy">
            <span className="text-2xl">📋</span>
          </button>
       )}
@@ -151,12 +151,8 @@ const callGeminiAPI = async (prompt, systemInstruction = "") => {
 };
 
 export default function App() {
-  const [user, setUser] = useState(null);
   const [students, setStudents] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [authError, setAuthError] = useState('');
-  const [debugLog, setDebugLog] = useState('Menyambung ke pelayan... / 正在连接服务器...');
   
   const [viewState, setViewState] = useState('public'); 
   const [toast, setToast] = useState('');
@@ -189,49 +185,13 @@ export default function App() {
   };
 
   useEffect(() => {
-    let timer;
-    if (loading && !authError) {
-      timer = setTimeout(() => {
-        setAuthError("Sambungan terlalu lambat. Sila cuba guna Data Telefon (Hotspot). / 连接超时！如果使用学校 WiFi，网络可能会被拦截。请尝试使用手机热点！");
-        setLoading(false);
-      }, 10000);
-    }
-    return () => clearTimeout(timer);
-  }, [loading, authError]);
+    // Log masuk senyap, abaikan ralat jika dihalang oleh firewall sekolah
+    signInAnonymously(auth).catch(() => console.log("Sistem bersedia."));
 
-  useEffect(() => {
-    const initAuth = async () => {
-      try {
-        setDebugLog('Mengesahkan identiti... / 正在验证身份...');
-        // Memaksa pengesahan awan peribadi (Personal DB Auth)
-        await signInAnonymously(auth);
-      } catch (err) {
-        console.error("Auth error:", err);
-        setAuthError("Sistem gagal disahkan. Sila pastikan ciri 'Anonymous' didayakan di Firebase anda. / 身份验证失败，请确保 Firebase 开启了 Anonymous 登录功能。");
-        setLoading(false); 
-      }
-    };
-    initAuth();
-    
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      if(currentUser) setDebugLog('Memuat turun data... / 正在下载资料...');
-      setUser(currentUser);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    if (!user) return;
-    
     const unsubStudents = onValue(ref(dbRealtime, 'students'), (snapshot) => {
       const data = snapshot.val();
       const list = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
       setStudents(list);
-      setLoading(false);
-    }, (error) => {
-      console.error("RTDB Error:", error);
-      setAuthError("Pangkalan data dikunci. Sila semak Realtime Database Rules. / 数据库权限被拒绝，请检查 Firebase Realtime Database 规则是否已设为 true。");
-      setLoading(false);
     });
 
     const unsubAnnouncements = onValue(ref(dbRealtime, 'announcements'), (snapshot) => {
@@ -244,7 +204,7 @@ export default function App() {
         unsubStudents();
         unsubAnnouncements();
     };
-  }, [user]);
+  }, []);
 
   const handleCopy = async (text) => {
     if (!text) return;
@@ -270,6 +230,15 @@ export default function App() {
     const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a'); link.href = url; link.download = filename; link.click();
+  };
+
+  const handleDownloadTemplate = () => {
+    const headers = ['Nama', 'IC', 'No. Pelajar', 'Delima ID', 'Kata Laluan', 'IDME', 'Kelas', 'Rumah Sukan', 'Tarikh Masuk', 'Tarikh Pindah', 'Sekolah Pindah', 'Tarikh Tamat'];
+    const csv = headers.join(',') + '\n';
+    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a'); link.href = url; link.download = 'Templat_Import_Murid.csv'; link.click();
+    showToast('Templat berjaya dimuat turun / 模板下载成功！');
   };
 
   const handleAdminSaveStudent = async (e) => {
@@ -407,12 +376,15 @@ export default function App() {
         <h2 className="text-4xl md:text-5xl font-extrabold text-emerald-900 tracking-tight mb-4 relative z-10">Sistem Semakan Delima</h2>
         <p className="text-2xl text-emerald-700/90 mb-10 relative z-10 font-medium">保佛公民小学 Delima 账户查询</p>
         
-        <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4 max-w-4xl mx-auto relative z-10">
-          <input type="text" value={searchIC} onChange={(e) => setSearchIC(e.target.value)} placeholder="Masukkan No. KP / 输入学生身份证号码..." className="flex-1 bg-white border-2 border-emerald-200 text-emerald-950 rounded-2xl px-6 py-5 text-2xl focus:outline-none focus:ring-4 focus:ring-emerald-400/30 focus:border-emerald-500 transition-all placeholder:text-emerald-300 font-medium shadow-sm" />
-          <button type="submit" className="bg-emerald-500 hover:bg-emerald-600 text-white px-10 py-5 rounded-2xl text-2xl font-bold flex items-center justify-center gap-3 transition-all shadow-xl shadow-emerald-600/20 active:scale-95 whitespace-nowrap">
-            <span className="text-2xl">🔍</span> Semak 查询
-          </button>
-        </form>
+        <div className="max-w-4xl mx-auto relative z-10 text-left">
+          <p className="text-emerald-700/90 font-medium mb-2 pl-2">Contoh: 123456-12-1234</p>
+          <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4">
+            <input type="text" value={searchIC} onChange={(e) => setSearchIC(e.target.value)} placeholder="Masukkan No. KP / 输入学生身份证号码..." className="flex-1 bg-white border-2 border-emerald-200 text-emerald-950 rounded-2xl px-6 py-5 text-2xl focus:outline-none focus:ring-4 focus:ring-emerald-400/30 focus:border-emerald-500 transition-all placeholder:text-emerald-300 font-medium shadow-sm" />
+            <button type="submit" className="bg-emerald-500 hover:bg-emerald-600 text-white px-10 py-5 rounded-2xl text-2xl font-bold flex items-center justify-center gap-3 transition-all shadow-xl shadow-emerald-600/20 active:scale-95 whitespace-nowrap">
+              <span className="text-2xl">🔍</span> Semak 查询
+            </button>
+          </form>
+        </div>
       </section>
 
       {hasSearched && (
@@ -431,7 +403,12 @@ export default function App() {
                 
                 <div className="md:col-span-2 mt-4 mb-2"><h3 className="text-xl font-bold text-emerald-600 mb-2 border-b border-emerald-100/50 pb-2">Maklumat Akaun / 账户信息 (Sila Salin / 请复制)</h3></div>
                 <InfoItem label="Delima ID" value={searchResult.delimaId} copyable onCopy={handleCopy} />
-                <InfoItem label="Kata Laluan / 密码" value={searchResult.password} copyable onCopy={handleCopy} />
+                
+                <div className="flex flex-col">
+                   <InfoItem label="Kata Laluan / 密码" value={searchResult.password} copyable onCopy={handleCopy} />
+                   <p className="text-rose-500 font-medium text-sm mt-2 pl-2">Jika ingin menukar Kata Laluan, sila hubungi Admin Sekolah. Terima Kasih.</p>
+                </div>
+
                 <InfoItem label="IDME" value={searchResult.idme} copyable onCopy={handleCopy} />
                 <InfoItem label="Rumah Sukan / 运动队伍" value={searchResult.sportsHouse} onCopy={handleCopy} />
 
@@ -572,6 +549,12 @@ export default function App() {
                 <div className="flex flex-wrap gap-4 w-full xl:w-auto justify-end">
                   <button onClick={() => setBulkUpdateModal(true)} className="bg-teal-500 hover:bg-teal-600 text-white px-6 py-4 rounded-2xl text-lg font-bold flex items-center gap-2 transition-all shadow-lg shadow-teal-500/20">🔁 Naik Kelas (Pukal) 批量换班</button>
                   <button onClick={() => setEditingStudent({})} className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-4 rounded-2xl text-lg font-bold flex items-center gap-2 transition-all shadow-lg shadow-emerald-500/20">➕ Tambah Murid</button>
+                  
+                  {/* Butang Muat Turun Templat Baru */}
+                  <button onClick={handleDownloadTemplate} className="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 px-6 py-4 rounded-2xl text-lg font-bold flex items-center gap-2 transition-all shadow-sm border border-emerald-300">
+                    📥 Muat Turun Templat 下载模板
+                  </button>
+
                   <label className="bg-sky-500 hover:bg-sky-600 text-white px-6 py-4 rounded-2xl text-lg font-bold flex items-center gap-2 cursor-pointer transition-all shadow-lg shadow-sky-500/20">⬆️ Import CSV <input type="file" accept=".csv" className="hidden" onChange={handleImportCSV} /></label>
                   <button onClick={() => handleExportCSV(students, 'Semua_Data_Pelajar.csv')} className="bg-emerald-900 hover:bg-emerald-950 text-emerald-50 px-6 py-4 rounded-2xl text-lg font-bold flex items-center gap-2 transition-all shadow-lg shadow-emerald-900/20">⬇️ Eksport</button>
                 </div>
@@ -780,34 +763,7 @@ export default function App() {
     );
   };
 
-  if (authError) {
-    return (
-      <div className="min-h-screen bg-[#F0FDF4] flex flex-col items-center justify-center p-8 text-center font-sans">
-        <span className="text-6xl mb-6 block">⚠️</span>
-        <h2 className="text-3xl font-bold text-emerald-900 mb-4">Sistem Ralat / 系统遇到小问题</h2>
-        <p className="text-xl text-emerald-700 mb-8 max-w-2xl">{authError}</p>
-        <button onClick={() => window.location.reload()} className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-4 rounded-2xl text-xl font-bold transition-all shadow-lg shadow-emerald-500/30">
-           Cuba Semula / 刷新重试
-        </button>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#F0FDF4] flex flex-col items-center justify-center font-sans relative overflow-hidden">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-emerald-200/40 rounded-full blur-[120px]"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-teal-200/30 rounded-full blur-[120px]"></div>
-        <div className="w-20 h-20 border-4 border-emerald-200 border-t-emerald-500 rounded-full animate-spin mb-6 relative z-10"></div>
-        <p className="text-3xl text-emerald-800 font-bold tracking-wide relative z-10">Sistem Memuatkan</p>
-        <p className="text-xl text-emerald-700/80 font-medium tracking-wide mt-2 relative z-10">系统加载中...</p>
-        <div className="mt-8 bg-white/60 px-6 py-3 rounded-full border border-emerald-100 relative z-10">
-           <p className="text-emerald-600 font-medium animate-pulse">{debugLog}</p>
-        </div>
-      </div>
-    );
-  }
-
+  // Paparan UI Utama - Tiada lagi skrin "Loading" yang menghalang pengguna
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F0FDF4] to-[#DCFCE7] font-sans text-stone-800 selection:bg-emerald-200 flex flex-col relative">
       <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
@@ -823,7 +779,7 @@ export default function App() {
           </div>
         )}
 
-        <main className="flex-grow pt-10 pb-32 px-4 md:px-8 flex flex-col items-center">
+        <main className="flex-grow pt-10 pb-16 px-4 md:px-8 flex flex-col items-center">
           {viewState === 'public' && renderPublicView()}
           {viewState === 'teacher' && renderTeacherView()}
           {viewState === 'admin' && renderAdminView()}
@@ -836,6 +792,10 @@ export default function App() {
             </div>
           )}
         </main>
+
+        <footer className="w-full text-center py-6 mt-auto border-t border-emerald-200/50 text-emerald-800 font-bold bg-white/40 backdrop-blur-sm z-10">
+          Guru Pengurusan Delima Sekolah: Cikgu VUNG SU LAN 0198819943
+        </footer>
       </div>
 
       {renderLoginModal()}
