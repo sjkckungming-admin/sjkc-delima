@@ -2,13 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 
-// Firestore (Untuk Canvas / Ujian)
+// Firestore
 import { getFirestore, doc as fireDoc, setDoc as fireSet, updateDoc as fireUpdate, deleteDoc as fireDelete, onSnapshot as fireSnapshot, collection as fireCollection } from 'firebase/firestore';
 
-// Realtime Database (Untuk versi Vercel sebenar - Tanpa Billing)
+// Realtime Database
 import { getDatabase, ref as rtdbRef, set as rtdbSet, update as rtdbUpdate, remove as rtdbRemove, onValue as rtdbOnValue, push as rtdbPush } from 'firebase/database';
 
-// 1. Firebase Initialization
 let firebaseConfig = {
   apiKey: "AIzaSyBRbfRCs0Eqn5SWB34Ip2VDzA8k4G9JmvM",
   authDomain: "sjk-delima.firebaseapp.com",
@@ -31,12 +30,10 @@ const dbRealtime = getDatabase(app);
 const isCanvas = typeof __firebase_config !== 'undefined';
 const safeAppId = typeof __app_id !== 'undefined' ? String(__app_id).replace(/\//g, '-') : 'default-app-id';
 
-// Helper: Dapatkan tarikh dan masa semasa (Waktu Malaysia)
 const getCurrentTimestamp = () => {
   return new Date().toLocaleString('en-GB', { timeZone: 'Asia/Kuala_Lumpur' });
 };
 
-// --- System Logging ---
 const addSystemLog = async (role, action, detail) => {
   const logData = {
     role,
@@ -57,7 +54,6 @@ const addSystemLog = async (role, action, detail) => {
   }
 };
 
-// --- Data Access Layer (Menyokong Firestore & Realtime DB serentak) ---
 const saveDoc = async (collectionName, id, data) => {
   const dataWithTime = { ...data, lastUpdated: getCurrentTimestamp() };
   if (isCanvas) {
@@ -93,14 +89,13 @@ const deleteDocument = async (collectionName, id) => {
   }
 };
 
-// --- Reusable Components ---
 const InfoItem = ({ label, value, copyable = false, onCopy, highlight = false }) => (
-  <div className={`flex flex-col p-5 rounded-2xl border h-full ${highlight ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50/60 border-emerald-100'}`}>
-    <span className={`${highlight ? 'text-amber-700' : 'text-emerald-700'} font-semibold text-lg mb-2`}>{label}</span>
+  <div className={`flex flex-col p-5 rounded-2xl border h-full ${highlight ? 'bg-purple-50 border-purple-200' : 'bg-violet-50/60 border-violet-100'}`}>
+    <span className={`${highlight ? 'text-purple-700' : 'text-violet-700'} font-semibold text-lg mb-2`}>{label}</span>
     <div className="flex items-center justify-between gap-3">
-      <span className={`text-2xl font-bold break-all ${highlight ? 'text-amber-950' : 'text-emerald-950'}`}>{value || '-'}</span>
+      <span className={`text-2xl font-bold break-all ${highlight ? 'text-purple-950' : 'text-violet-950'}`}>{value || '-'}</span>
       {copyable && value && (
-         <button onClick={() => onCopy(value)} className={`${highlight ? 'text-amber-600 hover:text-amber-800 bg-amber-200/50' : 'text-emerald-600 hover:text-emerald-800 bg-emerald-200/50'} p-3 rounded-xl transition-all shadow-sm active:scale-95 shrink-0`} title="Copy">
+         <button onClick={() => onCopy(value)} className={`${highlight ? 'text-purple-600 hover:text-purple-800 bg-purple-200/50' : 'text-violet-600 hover:text-violet-800 bg-violet-200/50'} p-3 rounded-xl transition-all shadow-sm active:scale-95 shrink-0`} title="Copy">
            <span className="text-2xl">📋</span>
          </button>
       )}
@@ -109,7 +104,7 @@ const InfoItem = ({ label, value, copyable = false, onCopy, highlight = false })
 );
 
 const GlobalHeader = () => (
-  <header className="bg-white/90 backdrop-blur-md shadow-[0_4px_20px_rgb(16,185,129,0.08)] py-4 px-6 md:px-12 flex justify-center sticky top-0 z-40 border-b border-emerald-100">
+  <header className="bg-white/90 backdrop-blur-md shadow-[0_4px_20px_rgb(147,51,234,0.08)] py-4 px-6 md:px-12 flex justify-center sticky top-0 z-40 border-b border-violet-100">
     <div className="flex flex-col items-center gap-1 md:gap-2 w-full max-w-6xl">
        <img 
           src="/delima.jpg" 
@@ -121,33 +116,33 @@ const GlobalHeader = () => (
           alt="Delima Logo" 
           className="h-16 md:h-24 w-auto object-contain mb-1"
        />
-       <h1 className="text-xl md:text-3xl font-extrabold text-emerald-800 tracking-widest text-center mt-1">SJKC KUNG MING, BEAUFORT, SABAH.</h1>
+       <h1 className="text-xl md:text-3xl font-extrabold text-violet-900 tracking-widest text-center mt-1">SJKC KUNG MING, BEAUFORT, SABAH.</h1>
     </div>
   </header>
 );
 
 const FormField = ({ label, type = "text", value, onChange, placeholder = "", required = false }) => (
   <div className="flex flex-col">
-    <label className="text-emerald-800 font-medium mb-2 text-lg">{label}</label>
+    <label className="text-violet-800 font-medium mb-2 text-lg">{label}</label>
     <input 
       type={type} 
       value={value} 
       onChange={e => onChange(e.target.value)} 
       placeholder={placeholder}
       required={required}
-      className="bg-emerald-50/30 border border-emerald-100 text-emerald-950 rounded-2xl px-5 py-4 text-xl focus:outline-none focus:ring-4 focus:ring-emerald-400/30 focus:border-emerald-500 transition-all shadow-sm placeholder:text-emerald-300"
+      className="bg-violet-50/30 border border-violet-100 text-violet-950 rounded-2xl px-5 py-4 text-xl focus:outline-none focus:ring-4 focus:ring-purple-400/30 focus:border-purple-500 transition-all shadow-sm placeholder:text-violet-300"
     />
   </div>
 );
 
 const SelectField = ({ label, value, onChange, options, required = false }) => (
   <div className="flex flex-col">
-    <label className="text-emerald-800 font-medium mb-2 text-lg">{label}</label>
+    <label className="text-violet-800 font-medium mb-2 text-lg">{label}</label>
     <select 
       value={value} 
       onChange={e => onChange(e.target.value)} 
       required={required}
-      className="bg-emerald-50/30 border border-emerald-100 text-emerald-950 rounded-2xl px-5 py-4 text-xl focus:outline-none focus:ring-4 focus:ring-emerald-400/30 focus:border-emerald-500 transition-all shadow-sm"
+      className="bg-violet-50/30 border border-violet-100 text-violet-950 rounded-2xl px-5 py-4 text-xl focus:outline-none focus:ring-4 focus:ring-purple-400/30 focus:border-purple-500 transition-all shadow-sm"
     >
       <option value="">-- Sila Pilih / 请选择 --</option>
       {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
@@ -236,7 +231,6 @@ export default function App() {
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
   
-  // State untuk status muat naik gambar
   const [uploadingImage, setUploadingImage] = useState(false);
 
   const showToast = (msg) => {
@@ -350,7 +344,6 @@ export default function App() {
     const normalizedSearch = searchIC.replace(/-/g, '').trim();
     const found = students.find(s => s.ic && s.ic.replace(/-/g, '').trim() === normalizedSearch);
     
-    // Log sistem
     addSystemLog('Awam/IbuBapa', 'Carian Maklumat', `Mencari No.KP/MyKid: ${searchIC} (${found ? 'Dijumpai' : 'Tiada Rekod'})`);
 
     setSearchResult(found || null);
@@ -512,7 +505,6 @@ export default function App() {
       } catch (err) { showToast('Ralat / 生成失败'); } 
   };
 
-  // Fungsi untuk memproses dan menukar gambar kepada format tulen (Base64) tanpa menggunakan Storage luaran
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -533,7 +525,6 @@ export default function App() {
         let width = img.width;
         let height = img.height;
 
-        // Mengecilkan saiz gambar jika terlalu besar untuk menjimatkan ruang pangkalan data
         const MAX_SIZE = 800;
         if (width > height) {
           if (width > MAX_SIZE) {
@@ -551,7 +542,6 @@ export default function App() {
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
 
-        // Compress kepada JPEG (kualiti 70%)
         const base64String = canvas.toDataURL('image/jpeg', 0.7);
 
         setEditingAnnouncement(prev => ({ ...prev, imageUrl: base64String }));
@@ -565,14 +555,14 @@ export default function App() {
 
   const renderPublicView = () => (
     <div className="max-w-6xl mx-auto w-full space-y-12 animate-in fade-in zoom-in duration-500">
-      <section className="bg-white/80 backdrop-blur-sm rounded-[2.5rem] p-8 md:p-12 shadow-[0_8px_30px_rgb(16,185,129,0.06)] border border-emerald-100 text-center relative overflow-hidden">
-        <div className="absolute -top-24 -right-24 bg-emerald-100/60 w-64 h-64 rounded-full blur-3xl opacity-60"></div>
-        <div className="absolute -bottom-24 -left-24 bg-teal-100/50 w-64 h-64 rounded-full blur-3xl opacity-60"></div>
-        <h2 className="text-4xl md:text-5xl font-extrabold text-emerald-900 tracking-tight mb-4 relative z-10">Sistem Semakan Delima</h2>
-        <p className="text-2xl text-emerald-700/90 mb-10 relative z-10 font-medium">保佛公民小学 Delima 账户查询</p>
+      <section className="bg-white/80 backdrop-blur-sm rounded-[2.5rem] p-8 md:p-12 shadow-[0_8px_30px_rgb(147,51,234,0.06)] border border-violet-100 text-center relative overflow-hidden">
+        <div className="absolute -top-24 -right-24 bg-violet-100/60 w-64 h-64 rounded-full blur-3xl opacity-60"></div>
+        <div className="absolute -bottom-24 -left-24 bg-purple-100/50 w-64 h-64 rounded-full blur-3xl opacity-60"></div>
+        <h2 className="text-4xl md:text-5xl font-extrabold text-violet-950 tracking-tight mb-4 relative z-10">Sistem Semakan Delima</h2>
+        <p className="text-2xl text-violet-700/90 mb-10 relative z-10 font-medium">保佛公民小学 Delima 账户查询</p>
         
         <div className="max-w-4xl mx-auto text-left relative z-10">
-          <label className="block text-emerald-800 font-bold mb-3 pl-2 text-xl md:text-2xl">
+          <label className="block text-violet-900 font-bold mb-3 pl-2 text-xl md:text-2xl">
             Masukkan No. My Kid / 输入学生身份证号码:
           </label>
           <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4">
@@ -581,9 +571,9 @@ export default function App() {
               value={searchIC} 
               onChange={(e) => setSearchIC(e.target.value)} 
               placeholder="Contoh: xxxxxx-xx-xxxx" 
-              className="flex-1 bg-white border-2 border-emerald-200 text-emerald-950 rounded-2xl px-6 py-5 text-xl md:text-2xl focus:outline-none focus:ring-4 focus:ring-emerald-400/30 focus:border-emerald-500 transition-all placeholder:text-emerald-300 font-medium shadow-sm" 
+              className="flex-1 bg-white border-2 border-violet-200 text-violet-950 rounded-2xl px-6 py-5 text-xl md:text-2xl focus:outline-none focus:ring-4 focus:ring-purple-400/30 focus:border-purple-500 transition-all placeholder:text-violet-300 font-medium shadow-sm" 
             />
-            <button type="submit" className="bg-emerald-500 hover:bg-emerald-600 text-white px-10 py-5 rounded-2xl text-xl md:text-2xl font-bold flex items-center justify-center gap-3 transition-all shadow-xl shadow-emerald-600/20 active:scale-95 whitespace-nowrap">
+            <button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white px-10 py-5 rounded-2xl text-xl md:text-2xl font-bold flex items-center justify-center gap-3 transition-all shadow-xl shadow-purple-600/20 active:scale-95 whitespace-nowrap">
               <span className="text-2xl">🔍</span> Semak 查询
             </button>
           </form>
@@ -593,14 +583,14 @@ export default function App() {
       {hasSearched && (
         <section className="animate-in slide-in-from-bottom-8 duration-500">
           {searchResult ? (
-            <div className="bg-white rounded-[2.5rem] p-8 md:p-12 shadow-[0_20px_50px_rgb(16,185,129,0.08)] border border-emerald-200 relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-8 text-emerald-500"><span className="text-8xl opacity-20">✅</span></div>
-              <h2 className="text-3xl font-bold text-emerald-900 mb-8 pb-6 border-b border-emerald-100 flex items-center gap-4">
-                <span className="bg-emerald-100 text-emerald-700 px-4 py-2 rounded-xl text-lg font-bold tracking-wider shadow-sm border border-emerald-200/50">REKOD DIJUMPAI</span> Maklumat Pelajar
+            <div className="bg-white rounded-[2.5rem] p-8 md:p-12 shadow-[0_20px_50px_rgb(147,51,234,0.08)] border border-violet-200 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-8 text-violet-500"><span className="text-8xl opacity-20">✅</span></div>
+              <h2 className="text-3xl font-bold text-violet-950 mb-8 pb-6 border-b border-violet-100 flex items-center gap-4">
+                <span className="bg-violet-100 text-violet-800 px-4 py-2 rounded-xl text-lg font-bold tracking-wider shadow-sm border border-violet-200/50">REKOD DIJUMPAI</span> Maklumat Pelajar
               </h2>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
-                <div className="md:col-span-2 mt-2 mb-2"><h3 className="text-xl font-bold text-emerald-600 mb-2 border-b border-emerald-100/50 pb-2">Maklumat Peribadi / 个人资料</h3></div>
+                <div className="md:col-span-2 mt-2 mb-2"><h3 className="text-xl font-bold text-violet-700 mb-2 border-b border-violet-100/50 pb-2">Maklumat Peribadi / 个人资料</h3></div>
                 <InfoItem label="Nama Murid / 姓名" value={searchResult.name} onCopy={handleCopy} />
                 <InfoItem label="Nama Cina / 中文姓名" value={searchResult.chineseName} onCopy={handleCopy} />
                 <InfoItem label="No My Kid (IC) / 身份证" value={searchResult.ic} onCopy={handleCopy} />
@@ -608,29 +598,29 @@ export default function App() {
                 <InfoItem label="Tarikh Lahir / 出生日期" value={searchResult.birthDate} />
                 <InfoItem label="Sijil Lahir / 报生纸编号" value={searchResult.birthCert} onCopy={handleCopy} />
                 
-                <div className="md:col-span-2 mt-4 mb-2"><h3 className="text-xl font-bold text-emerald-600 mb-2 border-b border-emerald-100/50 pb-2">Maklumat Sekolah / 学校资料</h3></div>
+                <div className="md:col-span-2 mt-4 mb-2"><h3 className="text-xl font-bold text-violet-700 mb-2 border-b border-violet-100/50 pb-2">Maklumat Sekolah / 学校资料</h3></div>
                 <InfoItem label="Kelas / 班级" value={searchResult.class} />
                 <InfoItem label="No Rujukan / 学号" value={searchResult.studentId} onCopy={handleCopy} />
                 <InfoItem label="No Ruj IDME" value={searchResult.idme} onCopy={handleCopy} />
                 <InfoItem label="Rumah Sukan / 运动队伍" value={searchResult.sportsHouse} />
 
-                <div className="md:col-span-2 mt-4 mb-2"><h3 className="text-xl font-bold text-emerald-600 mb-2 border-b border-emerald-100/50 pb-2">Maklumat Akaun DELIMA / DELIMA 账户信息</h3></div>
+                <div className="md:col-span-2 mt-4 mb-2"><h3 className="text-xl font-bold text-violet-700 mb-2 border-b border-violet-100/50 pb-2">Maklumat Akaun DELIMA / DELIMA 账户信息</h3></div>
                 <InfoItem label="MOE Delima Email" value={searchResult.delimaId} copyable onCopy={handleCopy} highlight />
                 <div className="flex flex-col h-full">
                    <InfoItem label="Password / 密码" value={searchResult.password} copyable onCopy={handleCopy} highlight />
-                   <p className="text-rose-600 font-bold text-sm mt-3 pl-2">🚨 Jika ingin menukar Kata Laluan, sila hubungi Admin Sekolah. Terima Kasih.</p>
+                   <p className="text-pink-600 font-bold text-sm mt-3 pl-2">🚨 Jika ingin menukar Kata Laluan, sila hubungi Admin Sekolah. Terima Kasih.</p>
                 </div>
                 
-                <div className="md:col-span-2 mt-6 text-right border-t border-emerald-100/50 pt-4">
-                   <span className="text-emerald-700 font-semibold bg-emerald-50 px-4 py-2 rounded-full text-sm border border-emerald-100">Tarikh Kemaskini / 数据最后更新于: {searchResult.lastUpdated || '-'}</span>
+                <div className="md:col-span-2 mt-6 text-right border-t border-violet-100/50 pt-4">
+                   <span className="text-violet-700 font-semibold bg-violet-50 px-4 py-2 rounded-full text-sm border border-violet-100">Tarikh Kemaskini / 数据最后更新于: {searchResult.lastUpdated || '-'}</span>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="bg-rose-50 rounded-[2rem] p-10 text-center border border-rose-100 shadow-sm">
+            <div className="bg-pink-50 rounded-[2rem] p-10 text-center border border-pink-100 shadow-sm">
               <span className="text-6xl mb-4 block">⚠️</span>
-              <h3 className="text-2xl font-bold text-rose-900 mb-2">Tiada Rekod Dijumpai / 找不到记录</h3>
-              <p className="text-xl text-rose-700">Sila pastikan No. KP / No My Kid dimasukkan dengan betul. / 请确保您输入的身份证号码绝对正确。</p>
+              <h3 className="text-2xl font-bold text-pink-900 mb-2">Tiada Rekod Dijumpai / 找不到记录</h3>
+              <p className="text-xl text-pink-700">Sila pastikan No. KP / No My Kid dimasukkan dengan betul. / 请确保您输入的身份证号码绝对正确。</p>
             </div>
           )}
         </section>
@@ -638,23 +628,23 @@ export default function App() {
 
       <section className="pt-8">
         <div className="flex items-center gap-4 mb-8">
-          <div className="bg-emerald-100 p-3 rounded-2xl"><span className="text-3xl">📢</span></div>
-          <h2 className="text-3xl font-bold text-emerald-900">Hebahan & Aktiviti Terkini <span className="block text-xl text-emerald-600/80 font-medium mt-1">最新活动与应用介绍</span></h2>
+          <div className="bg-violet-100 p-3 rounded-2xl"><span className="text-3xl">📢</span></div>
+          <h2 className="text-3xl font-bold text-violet-950">Hebahan & Aktiviti Terkini <span className="block text-xl text-violet-700/80 font-medium mt-1">最新活动与应用介绍</span></h2>
         </div>
         {announcements.length === 0 ? (
-           <div className="bg-white/60 border border-emerald-100 rounded-3xl p-12 text-center text-emerald-600/70 text-xl font-medium">Tiada hebahan buat masa ini / 暂无最新通告</div>
+           <div className="bg-white/60 border border-violet-100 rounded-3xl p-12 text-center text-violet-600/70 text-xl font-medium">Tiada hebahan buat masa ini / 暂无最新通告</div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {announcements.map(ann => (
-              <div key={ann.id} className="bg-white rounded-3xl p-8 shadow-sm border border-emerald-100 hover:shadow-md hover:border-emerald-300 transition-all flex flex-col h-full group">
+              <div key={ann.id} className="bg-white rounded-3xl p-8 shadow-sm border border-violet-100 hover:shadow-md hover:border-violet-300 transition-all flex flex-col h-full group">
                 {ann.imageUrl && (
-                  <img src={ann.imageUrl} alt={ann.title} className="w-full h-48 object-cover rounded-xl mb-6 border border-emerald-100 shadow-sm" />
+                  <img src={ann.imageUrl} alt={ann.title} className="w-full h-48 object-cover rounded-xl mb-6 border border-violet-100 shadow-sm" />
                 )}
-                <h3 className="text-2xl font-bold text-emerald-900 mb-4 group-hover:text-emerald-600 transition-colors">{ann.title}</h3>
-                <p className="text-lg text-emerald-950/80 mb-8 whitespace-pre-wrap flex-grow leading-relaxed">{ann.content}</p>
-                <span className="text-sm text-emerald-600 mb-4 font-medium">Dikemaskini: {ann.lastUpdated || '-'}</span>
+                <h3 className="text-2xl font-bold text-violet-950 mb-4 group-hover:text-purple-600 transition-colors">{ann.title}</h3>
+                <p className="text-lg text-violet-950/80 mb-8 whitespace-pre-wrap flex-grow leading-relaxed">{ann.content}</p>
+                <span className="text-sm text-purple-600 mb-4 font-medium">Dikemaskini: {ann.lastUpdated || '-'}</span>
                 {ann.linkUrl && (
-                  <a href={ann.linkUrl} target="_blank" rel="noopener noreferrer" className="bg-emerald-50 hover:bg-emerald-500 text-emerald-700 hover:text-white px-6 py-4 rounded-xl text-lg font-bold flex items-center justify-center gap-3 transition-all mt-auto w-full border border-emerald-200 hover:border-emerald-500">
+                  <a href={ann.linkUrl} target="_blank" rel="noopener noreferrer" className="bg-violet-50 hover:bg-purple-600 text-purple-700 hover:text-white px-6 py-4 rounded-xl text-lg font-bold flex items-center justify-center gap-3 transition-all mt-auto w-full border border-violet-200 hover:border-purple-600">
                     Akses Sekarang 点击进入 🔗
                   </a>
                 )}
@@ -670,57 +660,57 @@ export default function App() {
     const classStudents = students.filter(s => s.class === teacherClass);
     return (
       <div className="w-full max-w-7xl mx-auto space-y-8 animate-in fade-in duration-300">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8 bg-white p-8 rounded-[2rem] shadow-sm border border-emerald-100">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8 bg-white p-8 rounded-[2rem] shadow-sm border border-violet-100">
           <div>
-            <h2 className="text-3xl font-bold text-emerald-900 mb-2">Panel Guru 班主任控制台</h2>
-            <p className="text-xl text-emerald-700/80 font-medium">Pilih kelas untuk mengurus data murid. / 请选择班级查看并管理学生资料。</p>
+            <h2 className="text-3xl font-bold text-violet-950 mb-2">Panel Guru 班主任控制台</h2>
+            <p className="text-xl text-violet-700/80 font-medium">Pilih kelas untuk mengurus data murid. / 请选择班级查看并管理学生资料。</p>
           </div>
-          <button onClick={() => setViewState('public')} className="flex items-center gap-2 text-emerald-700 hover:text-emerald-900 text-lg font-bold bg-emerald-50 hover:bg-emerald-100 px-6 py-3 rounded-full transition-all border border-emerald-100">
+          <button onClick={() => setViewState('public')} className="flex items-center gap-2 text-violet-700 hover:text-violet-900 text-lg font-bold bg-violet-50 hover:bg-violet-100 px-6 py-3 rounded-full transition-all border border-violet-100">
             ⬅️ Kembali / 返回首页
           </button>
         </div>
-        <div className="bg-white rounded-[2rem] p-8 shadow-[0_8px_30px_rgb(16,185,129,0.04)] border border-emerald-100">
+        <div className="bg-white rounded-[2rem] p-8 shadow-[0_8px_30px_rgb(147,51,234,0.04)] border border-violet-100">
           <div className="flex flex-col md:flex-row gap-6 mb-8 items-end">
             <div className="flex-1 w-full"><SelectField label="Pilih Kelas / 选择班级:" value={teacherClass} onChange={setTeacherClass} options={classOptions} /></div>
-            <button onClick={() => handleExportCSV(classStudents, `Data_Kelas_${teacherClass}.csv`)} className="bg-teal-500 hover:bg-teal-600 text-white px-8 py-4 rounded-2xl text-xl font-bold flex items-center justify-center gap-3 transition-all h-[68px] shadow-lg shadow-teal-600/20">
+            <button onClick={() => handleExportCSV(classStudents, `Data_Kelas_${teacherClass}.csv`)} className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-4 rounded-2xl text-xl font-bold flex items-center justify-center gap-3 transition-all h-[68px] shadow-lg shadow-purple-600/20">
               ⬇️ Eksport Excel 导出
             </button>
           </div>
-          <div className="overflow-x-auto rounded-2xl border border-emerald-100">
+          <div className="overflow-x-auto rounded-2xl border border-violet-100">
             <table className="w-full text-left border-collapse min-w-[1400px]">
               <thead>
-                <tr className="bg-emerald-50 text-emerald-800 text-lg">
-                  <th className="p-5 border-b border-emerald-100 font-bold">Tindakan 操作</th>
-                  <th className="p-5 border-b border-emerald-100 font-bold">No Rujukan</th>
-                  <th className="p-5 border-b border-emerald-100 font-bold">Nama 姓名</th>
-                  <th className="p-5 border-b border-emerald-100 font-bold">Nama Cina</th>
-                  <th className="p-5 border-b border-emerald-100 font-bold">No My Kid</th>
-                  <th className="p-5 border-b border-emerald-100 font-bold">Delima ID</th>
-                  <th className="p-5 border-b border-emerald-100 font-bold">Password</th>
-                  <th className="p-5 border-b border-emerald-100 font-bold">Kemaskini (更新)</th>
+                <tr className="bg-violet-50 text-violet-900 text-lg">
+                  <th className="p-5 border-b border-violet-100 font-bold">Tindakan 操作</th>
+                  <th className="p-5 border-b border-violet-100 font-bold">No Rujukan</th>
+                  <th className="p-5 border-b border-violet-100 font-bold">Nama 姓名</th>
+                  <th className="p-5 border-b border-violet-100 font-bold">Nama Cina</th>
+                  <th className="p-5 border-b border-violet-100 font-bold">No My Kid</th>
+                  <th className="p-5 border-b border-violet-100 font-bold">Delima ID</th>
+                  <th className="p-5 border-b border-violet-100 font-bold">Password</th>
+                  <th className="p-5 border-b border-violet-100 font-bold">Kemaskini (更新)</th>
                 </tr>
               </thead>
               <tbody className="text-lg">
                 {classStudents.length === 0 ? (
-                  <tr><td colSpan="8" className="p-12 text-center text-emerald-600/60 text-xl font-medium">Tiada murid / 该班级暂无学生记录</td></tr>
+                  <tr><td colSpan="8" className="p-12 text-center text-violet-600/60 text-xl font-medium">Tiada murid / 该班级暂无学生记录</td></tr>
                 ) : (
                   classStudents.map((s) => (
-                    <tr key={s.id} className="border-b border-emerald-50/50 hover:bg-emerald-100/50 transition-colors">
+                    <tr key={s.id} className="border-b border-violet-50/50 hover:bg-violet-100/50 transition-colors">
                       <td className="p-4">
-                         <button onClick={() => setTeacherTransferStudent(s)} className="bg-orange-50 text-orange-600 hover:bg-orange-500 hover:text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors mb-2 w-full justify-center border border-orange-200 hover:border-orange-500">
+                         <button onClick={() => setTeacherTransferStudent(s)} className="bg-orange-50 text-orange-700 hover:bg-orange-500 hover:text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors mb-2 w-full justify-center border border-orange-200 hover:border-orange-500">
                             🏢 Pindah 转校
                          </button>
-                         <button onClick={() => handleGenerateMessage(s)} className="bg-emerald-100 text-emerald-700 hover:bg-emerald-500 hover:text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors w-full justify-center border border-emerald-200 hover:border-emerald-500">
+                         <button onClick={() => handleGenerateMessage(s)} className="bg-violet-100 text-violet-700 hover:bg-purple-600 hover:text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors w-full justify-center border border-violet-200 hover:border-purple-600">
                             💬 Salin Info
                          </button>
                       </td>
-                      <td className="p-5 text-emerald-800 font-medium">{s.studentId}</td>
-                      <td className="p-5 text-emerald-950 font-bold">{s.name}</td>
-                      <td className="p-5 text-emerald-900 font-bold">{s.chineseName || '-'}</td>
-                      <td className="p-5 text-emerald-800/80 font-medium">{s.ic}</td>
-                      <td className="p-5 font-mono text-emerald-800 bg-emerald-50/80 rounded-lg">{s.delimaId}</td>
-                      <td className="p-5 font-mono text-rose-600 font-bold">{s.password}</td>
-                      <td className="p-5 text-sm text-emerald-600 font-medium">{s.lastUpdated || '-'}</td>
+                      <td className="p-5 text-violet-800 font-medium">{s.studentId}</td>
+                      <td className="p-5 text-violet-950 font-bold">{s.name}</td>
+                      <td className="p-5 text-violet-900 font-bold">{s.chineseName || '-'}</td>
+                      <td className="p-5 text-violet-800/80 font-medium">{s.ic}</td>
+                      <td className="p-5 font-mono text-violet-800 bg-violet-50/80 rounded-lg">{s.delimaId}</td>
+                      <td className="p-5 font-mono text-pink-600 font-bold">{s.password}</td>
+                      <td className="p-5 text-sm text-violet-600 font-medium">{s.lastUpdated || '-'}</td>
                     </tr>
                   ))
                 )}
@@ -736,72 +726,72 @@ export default function App() {
     const filteredAdminStudents = students.filter(s => s.name?.toLowerCase().includes(adminSearch.toLowerCase()) || s.ic?.includes(adminSearch) || s.chineseName?.includes(adminSearch));
     return (
       <div className="w-full max-w-[98%] mx-auto space-y-8 animate-in fade-in duration-300">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-4 bg-emerald-900 p-8 rounded-[2rem] shadow-xl text-white">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-4 bg-purple-950 p-8 rounded-[2rem] shadow-xl text-white">
           <div>
-            <h2 className="text-3xl font-bold mb-2 text-emerald-300">Sistem Admin 管理员后台</h2>
-            <p className="text-xl text-emerald-100/80">Urus Semua Data, Hebahan & Log Sistem / 全校资料及通告总控</p>
+            <h2 className="text-3xl font-bold mb-2 text-purple-200">Sistem Admin 管理员后台</h2>
+            <p className="text-xl text-purple-100/80">Urus Semua Data, Hebahan & Log Sistem / 全校资料及通告总控</p>
           </div>
-          <button onClick={() => setViewState('public')} className="flex items-center gap-2 text-emerald-100 hover:text-white text-lg font-medium bg-emerald-800/80 px-6 py-3 rounded-full transition-all border border-emerald-700">
+          <button onClick={() => setViewState('public')} className="flex items-center gap-2 text-purple-100 hover:text-white text-lg font-medium bg-purple-900/80 px-6 py-3 rounded-full transition-all border border-purple-800">
             ⬅️ Log Keluar / 退出后台
           </button>
         </div>
-        <div className="flex gap-4 border-b border-emerald-200 px-4 flex-wrap">
-           <button onClick={() => setAdminTab('students')} className={`px-8 py-4 text-xl font-bold border-b-4 transition-colors ${adminTab === 'students' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-emerald-800/60 hover:text-emerald-800'}`}>
+        <div className="flex gap-4 border-b border-violet-200 px-4 flex-wrap">
+           <button onClick={() => setAdminTab('students')} className={`px-8 py-4 text-xl font-bold border-b-4 transition-colors ${adminTab === 'students' ? 'border-purple-600 text-purple-700' : 'border-transparent text-violet-800/60 hover:text-violet-800'}`}>
              Data Pelajar 学生管理
            </button>
-           <button onClick={() => setAdminTab('announcements')} className={`px-8 py-4 text-xl font-bold border-b-4 transition-colors ${adminTab === 'announcements' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-emerald-800/60 hover:text-emerald-800'}`}>
+           <button onClick={() => setAdminTab('announcements')} className={`px-8 py-4 text-xl font-bold border-b-4 transition-colors ${adminTab === 'announcements' ? 'border-purple-600 text-purple-700' : 'border-transparent text-violet-800/60 hover:text-violet-800'}`}>
              Hebahan & Aplikasi 首页通告设置
            </button>
-           <button onClick={() => setAdminTab('logs')} className={`px-8 py-4 text-xl font-bold border-b-4 transition-colors ${adminTab === 'logs' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-emerald-800/60 hover:text-emerald-800'}`}>
+           <button onClick={() => setAdminTab('logs')} className={`px-8 py-4 text-xl font-bold border-b-4 transition-colors ${adminTab === 'logs' ? 'border-purple-600 text-purple-700' : 'border-transparent text-violet-800/60 hover:text-violet-800'}`}>
              Log Sistem (系统日志)
            </button>
         </div>
-        <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-emerald-100">
+        <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-violet-100">
           {adminTab === 'students' && (
             <div className="animate-in fade-in">
               <div className="flex flex-col xl:flex-row gap-6 mb-8 justify-between items-center">
                 <div className="flex-1 w-full relative flex items-center">
                   <span className="absolute left-5 text-xl">🔍</span>
-                  <input type="text" placeholder="Cari Nama / Nama Cina / IC (搜索)..." value={adminSearch} onChange={e => setAdminSearch(e.target.value)} className="w-full bg-emerald-50/50 border border-emerald-200 text-emerald-950 rounded-2xl pl-14 pr-5 py-4 text-xl focus:outline-none focus:ring-4 focus:ring-emerald-400/30 focus:border-emerald-500 placeholder:text-emerald-400 transition-all" />
+                  <input type="text" placeholder="Cari Nama / Nama Cina / IC (搜索)..." value={adminSearch} onChange={e => setAdminSearch(e.target.value)} className="w-full bg-violet-50/50 border border-violet-200 text-violet-950 rounded-2xl pl-14 pr-5 py-4 text-xl focus:outline-none focus:ring-4 focus:ring-purple-400/30 focus:border-purple-500 placeholder:text-violet-400 transition-all" />
                 </div>
                 <div className="flex flex-wrap gap-4 w-full xl:w-auto justify-end">
-                  <button onClick={() => setBulkUpdateModal(true)} className="bg-teal-500 hover:bg-teal-600 text-white px-6 py-4 rounded-2xl text-lg font-bold flex items-center gap-2 transition-all shadow-lg shadow-teal-500/20">🔁 Naik Kelas (Pukal) 批量换班</button>
-                  <button onClick={() => setEditingStudent({})} className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-4 rounded-2xl text-lg font-bold flex items-center gap-2 transition-all shadow-lg shadow-emerald-500/20">➕ Tambah Murid</button>
-                  <button onClick={handleDownloadTemplate} className="bg-emerald-100 text-emerald-800 px-6 py-4 rounded-2xl font-bold border border-emerald-300">📥 Templat CSV</button>
-                  <label className="bg-sky-500 hover:bg-sky-600 text-white px-6 py-4 rounded-2xl text-lg font-bold flex items-center gap-2 cursor-pointer transition-all shadow-lg shadow-sky-500/20">⬆️ Import CSV <input type="file" accept=".csv" className="hidden" onChange={handleImportCSV} /></label>
-                  <button onClick={() => handleExportCSV(students, 'Semua_Data_Pelajar.csv')} className="bg-emerald-900 hover:bg-emerald-950 text-emerald-50 px-6 py-4 rounded-2xl text-lg font-bold flex items-center gap-2 transition-all shadow-lg shadow-emerald-900/20">⬇️ Eksport</button>
+                  <button onClick={() => setBulkUpdateModal(true)} className="bg-teal-600 hover:bg-teal-700 text-white px-6 py-4 rounded-2xl text-lg font-bold flex items-center gap-2 transition-all shadow-lg shadow-teal-500/20">🔁 Naik Kelas (Pukal) 批量换班</button>
+                  <button onClick={() => setEditingStudent({})} className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-4 rounded-2xl text-lg font-bold flex items-center gap-2 transition-all shadow-lg shadow-purple-500/20">➕ Tambah Murid</button>
+                  <button onClick={handleDownloadTemplate} className="bg-violet-100 text-violet-800 px-6 py-4 rounded-2xl font-bold border border-violet-300">📥 Templat CSV</button>
+                  <label className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-2xl text-lg font-bold flex items-center gap-2 cursor-pointer transition-all shadow-lg shadow-blue-500/20">⬆️ Import CSV <input type="file" accept=".csv" className="hidden" onChange={handleImportCSV} /></label>
+                  <button onClick={() => handleExportCSV(students, 'Semua_Data_Pelajar.csv')} className="bg-indigo-950 hover:bg-indigo-900 text-indigo-50 px-6 py-4 rounded-2xl text-lg font-bold flex items-center gap-2 transition-all shadow-lg shadow-indigo-900/20">⬇️ Eksport</button>
                 </div>
               </div>
-              <div className="overflow-x-auto rounded-2xl border border-emerald-100">
+              <div className="overflow-x-auto rounded-2xl border border-violet-100">
                 <table className="w-full text-left border-collapse min-w-[1600px]">
-                  <thead className="sticky top-0 bg-emerald-50 z-10 shadow-sm">
-                    <tr className="text-emerald-800 text-lg">
-                      <th className="p-4 border-b border-emerald-100 font-bold">Tindakan</th>
-                      <th className="p-4 border-b border-emerald-100 font-bold">No Rujukan</th>
-                      <th className="p-4 border-b border-emerald-100 font-bold">Nama</th>
-                      <th className="p-4 border-b border-emerald-100 font-bold">N. Cina</th>
-                      <th className="p-4 border-b border-emerald-100 font-bold">No My Kid (IC)</th>
-                      <th className="p-4 border-b border-emerald-100 font-bold">Kelas 班级</th>
-                      <th className="p-4 border-b border-emerald-100 font-bold">Delima ID</th>
-                      <th className="p-4 border-b border-emerald-100 font-bold">Password</th>
-                      <th className="p-4 border-b border-emerald-100 font-bold">Kemaskini (更新)</th>
+                  <thead className="sticky top-0 bg-violet-50 z-10 shadow-sm">
+                    <tr className="text-violet-800 text-lg">
+                      <th className="p-4 border-b border-violet-100 font-bold">Tindakan</th>
+                      <th className="p-4 border-b border-violet-100 font-bold">No Rujukan</th>
+                      <th className="p-4 border-b border-violet-100 font-bold">Nama</th>
+                      <th className="p-4 border-b border-violet-100 font-bold">N. Cina</th>
+                      <th className="p-4 border-b border-violet-100 font-bold">No My Kid (IC)</th>
+                      <th className="p-4 border-b border-violet-100 font-bold">Kelas 班级</th>
+                      <th className="p-4 border-b border-violet-100 font-bold">Delima ID</th>
+                      <th className="p-4 border-b border-violet-100 font-bold">Password</th>
+                      <th className="p-4 border-b border-violet-100 font-bold">Kemaskini (更新)</th>
                     </tr>
                   </thead>
                   <tbody className="text-lg">
                     {filteredAdminStudents.map(s => (
-                      <tr key={s.id} className="border-b border-emerald-50 hover:bg-emerald-50/60 transition-colors">
+                      <tr key={s.id} className="border-b border-violet-50 hover:bg-violet-50/60 transition-colors">
                         <td className="p-4 flex gap-2">
-                          <button onClick={() => setEditingStudent(s)} className="p-2 bg-sky-50 text-sky-600 rounded-lg hover:bg-sky-500 hover:text-white transition-colors border border-sky-200">✏️</button>
-                          <button onClick={() => setDeleteConfirm({type: 'students', id: s.id, name: s.name})} className="p-2 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-500 hover:text-white transition-colors border border-rose-200">🗑️</button>
+                          <button onClick={() => setEditingStudent(s)} className="p-2 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-500 hover:text-white transition-colors border border-purple-200">✏️</button>
+                          <button onClick={() => setDeleteConfirm({type: 'students', id: s.id, name: s.name})} className="p-2 bg-pink-50 text-pink-600 rounded-lg hover:bg-pink-500 hover:text-white transition-colors border border-pink-200">🗑️</button>
                         </td>
-                        <td className="p-4 text-emerald-800 font-medium">{s.studentId}</td>
-                        <td className="p-4 font-bold text-emerald-950">{s.name}</td>
-                        <td className="p-4 font-bold text-emerald-900">{s.chineseName || '-'}</td>
-                        <td className="p-4 text-emerald-800">{s.ic}</td>
-                        <td className="p-4"><span className="bg-emerald-100/80 text-emerald-900 px-3 py-1 rounded-md text-sm font-bold border border-emerald-200/50">{s.class}</span></td>
-                        <td className="p-4 font-mono text-sm text-emerald-800">{s.delimaId}</td>
-                        <td className="p-4 font-mono text-sm text-rose-600 font-medium">{s.password}</td>
-                        <td className="p-4 text-sm text-emerald-600 font-medium">{s.lastUpdated || '-'}</td>
+                        <td className="p-4 text-violet-800 font-medium">{s.studentId}</td>
+                        <td className="p-4 font-bold text-violet-950">{s.name}</td>
+                        <td className="p-4 font-bold text-violet-900">{s.chineseName || '-'}</td>
+                        <td className="p-4 text-violet-800">{s.ic}</td>
+                        <td className="p-4"><span className="bg-violet-100/80 text-violet-900 px-3 py-1 rounded-md text-sm font-bold border border-violet-200/50">{s.class}</span></td>
+                        <td className="p-4 font-mono text-sm text-violet-800">{s.delimaId}</td>
+                        <td className="p-4 font-mono text-sm text-pink-600 font-medium">{s.password}</td>
+                        <td className="p-4 text-sm text-violet-600 font-medium">{s.lastUpdated || '-'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -812,26 +802,26 @@ export default function App() {
           {adminTab === 'announcements' && (
              <div className="animate-in fade-in space-y-8">
                 <div className="flex justify-end">
-                   <button onClick={() => setEditingAnnouncement({})} className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-4 rounded-2xl text-xl font-bold flex items-center gap-3 transition-all shadow-lg shadow-emerald-500/20">
+                   <button onClick={() => setEditingAnnouncement({})} className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-4 rounded-2xl text-xl font-bold flex items-center gap-3 transition-all shadow-lg shadow-purple-500/20">
                      ➕ Tambah Hebahan / 发布新通告
                    </button>
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                    {announcements.map(ann => (
-                      <div key={ann.id} className="bg-white rounded-2xl p-6 border border-emerald-100 flex flex-col hover:border-emerald-300 hover:shadow-md transition-all group">
+                      <div key={ann.id} className="bg-white rounded-2xl p-6 border border-violet-100 flex flex-col hover:border-purple-300 hover:shadow-md transition-all group">
                          {ann.imageUrl && (
-                           <img src={ann.imageUrl} alt={ann.title} className="w-full h-40 object-cover rounded-xl mb-4 border border-emerald-100 shadow-sm" />
+                           <img src={ann.imageUrl} alt={ann.title} className="w-full h-40 object-cover rounded-xl mb-4 border border-violet-100 shadow-sm" />
                          )}
                          <div className="flex justify-between items-start mb-4">
-                           <h3 className="text-2xl font-bold text-emerald-900 group-hover:text-emerald-700 transition-colors">{ann.title}</h3>
+                           <h3 className="text-2xl font-bold text-violet-950 group-hover:text-purple-700 transition-colors">{ann.title}</h3>
                            <div className="flex gap-2">
-                             <button onClick={() => setEditingAnnouncement(ann)} className="p-3 bg-sky-50 text-sky-600 rounded-xl hover:bg-sky-500 hover:text-white transition-colors border border-sky-100">✏️</button>
-                             <button onClick={() => setDeleteConfirm({type: 'announcements', id: ann.id, name: ann.title})} className="p-3 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-500 hover:text-white transition-colors border border-rose-100">🗑️</button>
+                             <button onClick={() => setEditingAnnouncement(ann)} className="p-3 bg-purple-50 text-purple-600 rounded-xl hover:bg-purple-500 hover:text-white transition-colors border border-purple-100">✏️</button>
+                             <button onClick={() => setDeleteConfirm({type: 'announcements', id: ann.id, name: ann.title})} className="p-3 bg-pink-50 text-pink-600 rounded-xl hover:bg-pink-500 hover:text-white transition-colors border border-pink-100">🗑️</button>
                            </div>
                          </div>
-                         <p className="text-emerald-950/80 mb-6 text-lg whitespace-pre-wrap">{ann.content}</p>
-                         <p className="text-sm text-emerald-600 font-bold mb-4 mt-auto">Tarikh Kemaskini: {ann.lastUpdated || '-'}</p>
-                         {ann.linkUrl && <span className="mt-auto bg-emerald-50 text-emerald-700 px-4 py-2 rounded-lg text-sm truncate border border-emerald-200/50 font-medium">{ann.linkUrl}</span>}
+                         <p className="text-violet-950/80 mb-6 text-lg whitespace-pre-wrap">{ann.content}</p>
+                         <p className="text-sm text-purple-600 font-bold mb-4 mt-auto">Tarikh Kemaskini: {ann.lastUpdated || '-'}</p>
+                         {ann.linkUrl && <span className="mt-auto bg-violet-50 text-violet-700 px-4 py-2 rounded-lg text-sm truncate border border-violet-200/50 font-medium">{ann.linkUrl}</span>}
                       </div>
                    ))}
                 </div>
@@ -839,39 +829,39 @@ export default function App() {
           )}
           {adminTab === 'logs' && (
             <div className="animate-in fade-in space-y-6">
-               <div className="bg-amber-50 border border-amber-200 p-6 rounded-2xl">
-                 <h3 className="text-xl font-bold text-amber-900 mb-2">📜 Log Aktiviti Sistem (100 Rekod Terkini)</h3>
-                 <p className="text-amber-800">Semua carian awam, log masuk guru/admin, dan pengubahsuaian data direkodkan di sini untuk tujuan keselamatan.</p>
+               <div className="bg-purple-50 border border-purple-200 p-6 rounded-2xl">
+                 <h3 className="text-xl font-bold text-purple-950 mb-2">📜 Log Aktiviti Sistem (100 Rekod Terkini)</h3>
+                 <p className="text-purple-800">Semua carian awam, log masuk guru/admin, dan pengubahsuaian data direkodkan di sini untuk tujuan keselamatan.</p>
                </div>
-               <div className="overflow-x-auto rounded-2xl border border-emerald-100 max-h-[800px] overflow-y-auto">
+               <div className="overflow-x-auto rounded-2xl border border-violet-100 max-h-[800px] overflow-y-auto">
                 <table className="w-full text-left border-collapse min-w-[1000px]">
-                  <thead className="bg-emerald-50 text-emerald-800 text-lg sticky top-0 shadow-sm">
+                  <thead className="bg-violet-50 text-violet-800 text-lg sticky top-0 shadow-sm">
                     <tr>
-                      <th className="p-4 border-b border-emerald-100 w-64">Tarikh & Masa (Waktu)</th>
-                      <th className="p-4 border-b border-emerald-100 w-48">Peranan (Siapa)</th>
-                      <th className="p-4 border-b border-emerald-100 w-64">Tindakan (Buat Apa)</th>
-                      <th className="p-4 border-b border-emerald-100">Butiran Lanjut</th>
+                      <th className="p-4 border-b border-violet-100 w-64">Tarikh & Masa (Waktu)</th>
+                      <th className="p-4 border-b border-violet-100 w-48">Peranan (Siapa)</th>
+                      <th className="p-4 border-b border-violet-100 w-64">Tindakan (Buat Apa)</th>
+                      <th className="p-4 border-b border-violet-100">Butiran Lanjut</th>
                     </tr>
                   </thead>
                   <tbody className="text-lg bg-white">
                     {systemLogs.slice(0, 100).map(log => (
-                      <tr key={log.id} className="border-b border-emerald-50 hover:bg-emerald-50 transition-colors">
-                        <td className="p-4 font-mono text-sm text-emerald-700">{log.timestamp}</td>
+                      <tr key={log.id} className="border-b border-violet-50 hover:bg-violet-50 transition-colors">
+                        <td className="p-4 font-mono text-sm text-violet-700">{log.timestamp}</td>
                         <td className="p-4">
-                          <span className={`px-3 py-1 rounded-full text-sm font-bold ${log.role === 'Admin' ? 'bg-rose-100 text-rose-800' : log.role === 'Guru' ? 'bg-sky-100 text-sky-800' : 'bg-emerald-100 text-emerald-800'}`}>
+                          <span className={`px-3 py-1 rounded-full text-sm font-bold ${log.role === 'Admin' ? 'bg-pink-100 text-pink-800' : log.role === 'Guru' ? 'bg-purple-100 text-purple-800' : 'bg-violet-100 text-violet-800'}`}>
                             {log.role}
                           </span>
                         </td>
-                        <td className="p-4 font-bold text-emerald-950">{log.action}</td>
-                        <td className="p-4 text-emerald-800">{log.detail}</td>
+                        <td className="p-4 font-bold text-violet-950">{log.action}</td>
+                        <td className="p-4 text-violet-800">{log.detail}</td>
                       </tr>
                     ))}
                     {systemLogs.length === 0 && (
-                      <tr><td colSpan="4" className="p-10 text-center text-emerald-600/50">Tiada log direkodkan lagi.</td></tr>
+                      <tr><td colSpan="4" className="p-10 text-center text-violet-600/50">Tiada log direkodkan lagi.</td></tr>
                     )}
                   </tbody>
                 </table>
-              </div>
+               </div>
             </div>
           )}
         </div>
@@ -882,13 +872,13 @@ export default function App() {
   const renderStudentModal = () => {
     if (!editingStudent) return null;
     return (
-      <div className="fixed inset-0 bg-emerald-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in">
-        <div className="bg-white rounded-[2rem] w-full max-w-5xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col border border-emerald-100">
-          <div className="sticky top-0 bg-white border-b border-emerald-100 px-8 py-6 flex justify-between items-center z-10 rounded-t-[2rem]">
-            <h2 className="text-3xl font-bold text-emerald-900">{!editingStudent.id ? 'Tambah Murid / 添加学生' : 'Kemaskini Murid / 修改资料'}</h2>
-            <button onClick={() => setEditingStudent(null)} className="p-2 hover:bg-emerald-50 rounded-full transition-colors text-emerald-600">❌</button>
+      <div className="fixed inset-0 bg-purple-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in">
+        <div className="bg-white rounded-[2rem] w-full max-w-5xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col border border-violet-100">
+          <div className="sticky top-0 bg-white border-b border-violet-100 px-8 py-6 flex justify-between items-center z-10 rounded-t-[2rem]">
+            <h2 className="text-3xl font-bold text-violet-950">{!editingStudent.id ? 'Tambah Murid / 添加学生' : 'Kemaskini Murid / 修改资料'}</h2>
+            <button onClick={() => setEditingStudent(null)} className="p-2 hover:bg-violet-50 rounded-full transition-colors text-violet-600">❌</button>
           </div>
-          <form onSubmit={handleAdminSaveStudent} className="p-8 space-y-8 flex-1 bg-emerald-50/30">
+          <form onSubmit={handleAdminSaveStudent} className="p-8 space-y-8 flex-1 bg-violet-50/30">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <FormField label="No" value={editingStudent.no || ''} onChange={(v) => setEditingStudent({...editingStudent, no: v})} />
               <FormField label="No Ruj IDME" value={editingStudent.idme || ''} onChange={(v) => setEditingStudent({...editingStudent, idme: v})} />
@@ -904,9 +894,9 @@ export default function App() {
               <FormField label="MOE Delima Email" value={editingStudent.delimaId || ''} onChange={(v) => setEditingStudent({...editingStudent, delimaId: v})} />
               <FormField label="Password / 密码" value={editingStudent.password || ''} onChange={(v) => setEditingStudent({...editingStudent, password: v})} />
             </div>
-            <div className="pt-8 flex justify-end gap-4 sticky bottom-0 bg-white border-t border-emerald-100 mt-8 py-6 px-8 -mx-8 -mb-8 rounded-b-[2rem]">
-              <button type="button" onClick={() => setEditingStudent(null)} className="px-8 py-4 text-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-2xl font-bold transition-colors">Batal</button>
-              <button type="submit" className="px-10 py-4 text-xl font-bold bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl shadow-lg shadow-emerald-500/30 transition-colors">Simpan 保存</button>
+            <div className="pt-8 flex justify-end gap-4 sticky bottom-0 bg-white border-t border-violet-100 mt-8 py-6 px-8 -mx-8 -mb-8 rounded-b-[2rem]">
+              <button type="button" onClick={() => setEditingStudent(null)} className="px-8 py-4 text-xl bg-violet-50 hover:bg-violet-100 text-violet-800 rounded-2xl font-bold transition-colors">Batal</button>
+              <button type="submit" className="px-10 py-4 text-xl font-bold bg-purple-600 hover:bg-purple-700 text-white rounded-2xl shadow-lg shadow-purple-500/30 transition-colors">Simpan 保存</button>
             </div>
           </form>
         </div>
@@ -917,27 +907,26 @@ export default function App() {
   const renderAnnouncementModal = () => {
     if (!editingAnnouncement) return null;
     return (
-      <div className="fixed inset-0 bg-emerald-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in">
-        <div className="bg-white rounded-[2rem] w-full max-w-2xl shadow-2xl flex flex-col border border-emerald-100">
-          <div className="border-b border-emerald-100 px-8 py-6 flex justify-between items-center bg-white rounded-t-[2rem]">
-            <h2 className="text-3xl font-bold text-emerald-900">{!editingAnnouncement.id ? 'Tambah Hebahan / 新增通告' : 'Edit Hebahan / 编辑通告'}</h2>
-            <button onClick={() => setEditingAnnouncement(null)} className="p-2 hover:bg-emerald-50 rounded-full text-emerald-600">❌</button>
+      <div className="fixed inset-0 bg-purple-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in">
+        <div className="bg-white rounded-[2rem] w-full max-w-2xl shadow-2xl flex flex-col border border-violet-100">
+          <div className="border-b border-violet-100 px-8 py-6 flex justify-between items-center bg-white rounded-t-[2rem]">
+            <h2 className="text-3xl font-bold text-violet-950">{!editingAnnouncement.id ? 'Tambah Hebahan / 新增通告' : 'Edit Hebahan / 编辑通告'}</h2>
+            <button onClick={() => setEditingAnnouncement(null)} className="p-2 hover:bg-violet-50 rounded-full text-violet-600">❌</button>
           </div>
-          <div className="bg-emerald-50/80 px-8 py-5 border-b border-emerald-100 flex flex-col md:flex-row gap-4 items-center">
-             <span className="text-2xl hidden md:block">✨</span>
-             <input type="text" value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} placeholder="Idea hebahan (cth: Cuti am esok)... / 告诉 AI 通告的主题思路..." className="flex-1 bg-white border border-emerald-200 text-emerald-900 rounded-xl px-4 py-3 w-full focus:outline-none focus:ring-4 focus:ring-emerald-400/30 focus:border-emerald-500 placeholder:text-emerald-300 shadow-sm" />
-             <button type="button" onClick={handleGenerateAnnouncement} disabled={isGeneratingAI} className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all w-full md:w-auto justify-center disabled:opacity-50 whitespace-nowrap shadow-sm shadow-emerald-500/20">✨ Jana dengan AI</button>
+          <div className="bg-violet-50/80 px-8 py-5 border-b border-violet-100 flex flex-col md:flex-row gap-4 items-center">
+              <span className="text-2xl hidden md:block">✨</span>
+              <input type="text" value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} placeholder="Idea hebahan (cth: Cuti am esok)... / 告诉 AI 通告的主题思路..." className="flex-1 bg-white border border-violet-200 text-violet-900 rounded-xl px-4 py-3 w-full focus:outline-none focus:ring-4 focus:ring-purple-400/30 focus:border-purple-500 placeholder:text-violet-300 shadow-sm" />
+              <button type="button" onClick={handleGenerateAnnouncement} disabled={isGeneratingAI} className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all w-full md:w-auto justify-center disabled:opacity-50 whitespace-nowrap shadow-sm shadow-purple-500/20">✨ Jana dengan AI</button>
           </div>
-          <form onSubmit={handleAdminSaveAnnouncement} className="p-8 space-y-6 bg-emerald-50/30">
+          <form onSubmit={handleAdminSaveAnnouncement} className="p-8 space-y-6 bg-violet-50/30">
              <FormField label="Tajuk / 标题 *" value={editingAnnouncement.title || ''} onChange={(v) => setEditingAnnouncement({...editingAnnouncement, title: v})} required />
              
-             {/* Fungsi muat naik gambar terus tanpa Google Drive */}
              <div className="flex flex-col">
-                <label className="text-emerald-800 font-medium mb-2 text-lg">Gambar / 照片上传 (Pilihan)</label>
+                <label className="text-violet-800 font-medium mb-2 text-lg">Gambar / 照片上传 (Pilihan)</label>
                 {editingAnnouncement.imageUrl && (
                    <div className="relative mb-4 inline-block w-fit">
-                     <img src={editingAnnouncement.imageUrl} alt="Preview" className="h-40 rounded-xl border border-emerald-200 object-cover shadow-sm" />
-                     <button type="button" onClick={() => setEditingAnnouncement({...editingAnnouncement, imageUrl: ''})} className="absolute -top-3 -right-3 bg-rose-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold shadow-md hover:bg-rose-600 transition-all text-sm">✕</button>
+                     <img src={editingAnnouncement.imageUrl} alt="Preview" className="h-40 rounded-xl border border-violet-200 object-cover shadow-sm" />
+                     <button type="button" onClick={() => setEditingAnnouncement({...editingAnnouncement, imageUrl: ''})} className="absolute -top-3 -right-3 bg-pink-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold shadow-md hover:bg-pink-600 transition-all text-sm">✕</button>
                    </div>
                 )}
                 <input 
@@ -945,19 +934,19 @@ export default function App() {
                   accept="image/png, image/jpeg, image/jpg"
                   onChange={handleImageUpload} 
                   disabled={uploadingImage}
-                  className="bg-white border border-emerald-100 text-emerald-950 rounded-2xl px-5 py-4 focus:outline-none focus:ring-4 focus:ring-emerald-400/30 transition-all shadow-sm w-full file:mr-4 file:py-2 file:px-6 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-emerald-500 file:text-white hover:file:bg-emerald-600 cursor-pointer disabled:opacity-50" 
+                  className="bg-white border border-violet-100 text-violet-950 rounded-2xl px-5 py-4 focus:outline-none focus:ring-4 focus:ring-purple-400/30 transition-all shadow-sm w-full file:mr-4 file:py-2 file:px-6 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-purple-600 file:text-white hover:file:bg-purple-700 cursor-pointer disabled:opacity-50" 
                 />
-                {uploadingImage && <span className="text-sm text-emerald-600 mt-2 font-medium animate-pulse">Memproses gambar... / 正在处理图片请稍候...</span>}
+                {uploadingImage && <span className="text-sm text-purple-600 mt-2 font-medium animate-pulse">Memproses gambar... / 正在处理图片请稍候...</span>}
              </div>
 
              <div className="flex flex-col">
-                <label className="text-emerald-800 font-medium mb-2 text-lg">Kandungan / 内容详情</label>
-                <textarea rows="5" value={editingAnnouncement.content || ''} onChange={e => setEditingAnnouncement({...editingAnnouncement, content: e.target.value})} className="bg-white border border-emerald-100 text-emerald-950 rounded-2xl px-5 py-4 text-xl focus:outline-none focus:ring-4 focus:ring-emerald-400/30 focus:border-emerald-500 transition-all shadow-sm w-full" />
+                <label className="text-violet-800 font-medium mb-2 text-lg">Kandungan / 内容详情</label>
+                <textarea rows="5" value={editingAnnouncement.content || ''} onChange={e => setEditingAnnouncement({...editingAnnouncement, content: e.target.value})} className="bg-white border border-violet-100 text-violet-950 rounded-2xl px-5 py-4 text-xl focus:outline-none focus:ring-4 focus:ring-purple-400/30 focus:border-purple-500 transition-all shadow-sm w-full" />
              </div>
              <FormField label="URL Pautan Tambahan (Pilihan)" type="url" value={editingAnnouncement.linkUrl || ''} onChange={(v) => setEditingAnnouncement({...editingAnnouncement, linkUrl: v})} />
              <div className="pt-6 flex justify-end gap-4">
-                <button type="button" onClick={() => setEditingAnnouncement(null)} className="px-8 py-4 text-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-2xl font-bold">Batal</button>
-                <button type="submit" disabled={uploadingImage} className="px-10 py-4 text-xl font-bold bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl shadow-lg shadow-emerald-500/30 disabled:opacity-50">Simpan & Siarkan 发布</button>
+                <button type="button" onClick={() => setEditingAnnouncement(null)} className="px-8 py-4 text-xl bg-violet-50 hover:bg-violet-100 text-violet-800 rounded-2xl font-bold">Batal</button>
+                <button type="submit" disabled={uploadingImage} className="px-10 py-4 text-xl font-bold bg-purple-600 hover:bg-purple-700 text-white rounded-2xl shadow-lg shadow-purple-500/30 disabled:opacity-50">Simpan & Siarkan 发布</button>
              </div>
           </form>
         </div>
@@ -968,22 +957,22 @@ export default function App() {
   const renderTeacherTransferModal = () => {
       if(!teacherTransferStudent) return null;
       return (
-        <div className="fixed inset-0 bg-emerald-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in">
-          <div className="bg-white rounded-[2rem] w-full max-w-lg shadow-2xl p-8 border border-emerald-100">
+        <div className="fixed inset-0 bg-purple-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in">
+          <div className="bg-white rounded-[2rem] w-full max-w-lg shadow-2xl p-8 border border-violet-100">
              <div className="flex justify-between items-start mb-6">
                 <div>
-                   <h3 className="text-2xl font-bold text-emerald-900">Urus Pindah Sekolah</h3>
-                   <p className="text-emerald-700 text-lg">办理转校: {teacherTransferStudent.name}</p>
+                   <h3 className="text-2xl font-bold text-violet-950">Urus Pindah Sekolah</h3>
+                   <p className="text-violet-700 text-lg">办理转校: {teacherTransferStudent.name}</p>
                 </div>
-                <button onClick={() => setTeacherTransferStudent(null)} className="p-2 hover:bg-emerald-50 text-emerald-600 rounded-full">❌</button>
+                <button onClick={() => setTeacherTransferStudent(null)} className="p-2 hover:bg-violet-50 text-violet-600 rounded-full">❌</button>
              </div>
              <form onSubmit={handleTeacherTransferSubmit} className="space-y-6">
                  <FormField label="Sekolah Baharu / 准备转去的学校 *" value={teacherTransferStudent.transferSchool || ''} onChange={(v) => setTeacherTransferStudent({...teacherTransferStudent, transferSchool: v})} required />
                  <FormField type="date" label="Tarikh Pindah / 转校日期" value={teacherTransferStudent.transferDate || new Date().toISOString().split('T')[0]} onChange={(v) => setTeacherTransferStudent({...teacherTransferStudent, transferDate: v})} />
-                 <div className="bg-orange-50 p-4 rounded-xl border border-orange-200 text-orange-800 text-sm font-medium">
+                 <div className="bg-pink-50 p-4 rounded-xl border border-pink-200 text-pink-800 text-sm font-medium">
                      Nota: Murid ini akan dipindahkan secara automatik ke kelas "19 - Murid-murid yang sudah pindah sekolah".<br/>(学生将自动移至第19班: 转校生班)
                  </div>
-                 <button type="submit" className="w-full py-4 text-xl font-bold bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl shadow-lg shadow-emerald-500/30 transition-colors">Sahkan Pindah 确认办理</button>
+                 <button type="submit" className="w-full py-4 text-xl font-bold bg-purple-600 hover:bg-purple-700 text-white rounded-2xl shadow-lg shadow-purple-500/30 transition-colors">Sahkan Pindah 确认办理</button>
              </form>
           </div>
         </div>
@@ -993,22 +982,22 @@ export default function App() {
   const renderBulkUpdateModal = () => {
     if(!bulkUpdateModal) return null;
     return (
-        <div className="fixed inset-0 bg-emerald-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in">
-          <div className="bg-white rounded-[2rem] w-full max-w-xl shadow-2xl p-8 border border-emerald-100">
+        <div className="fixed inset-0 bg-purple-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in">
+          <div className="bg-white rounded-[2rem] w-full max-w-xl shadow-2xl p-8 border border-violet-100">
              <div className="flex justify-between items-start mb-8">
                 <div>
-                   <h3 className="text-3xl font-bold text-emerald-900">Naik Kelas Pukal 批量升级换班</h3>
-                   <p className="text-emerald-700 text-lg mt-1">Pindahkan semua murid dari satu kelas ke kelas baharu.</p>
+                   <h3 className="text-3xl font-bold text-violet-950">Naik Kelas Pukal 批量升级换班</h3>
+                   <p className="text-violet-700 text-lg mt-1">Pindahkan semua murid dari satu kelas ke kelas baharu.</p>
                 </div>
-                <button onClick={() => setBulkUpdateModal(false)} className="p-2 hover:bg-emerald-50 text-emerald-600 rounded-full">❌</button>
+                <button onClick={() => setBulkUpdateModal(false)} className="p-2 hover:bg-violet-50 text-violet-600 rounded-full">❌</button>
              </div>
              <div className="space-y-8">
                 <SelectField label="Dari Kelas Asal / 从原班级 (From) :" value={bulkFrom} onChange={setBulkFrom} options={classOptions} />
                 <div className="flex justify-center"><span className="text-4xl">🔁</span></div>
                 <SelectField label="Ke Kelas Baharu / 换至新班级 (To) :" value={bulkTo} onChange={setBulkTo} options={classOptions} />
                 <div className="flex gap-4 pt-4">
-                  <button onClick={() => setBulkUpdateModal(false)} className="flex-1 py-4 text-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-2xl font-bold transition-colors">Batal 取消</button>
-                  <button onClick={handleBulkClassUpdate} className="flex-1 py-4 text-xl bg-teal-500 hover:bg-teal-600 text-white rounded-2xl font-bold shadow-lg shadow-teal-500/30 transition-colors">Sahkan Tukar 确认批量更换</button>
+                  <button onClick={() => setBulkUpdateModal(false)} className="flex-1 py-4 text-xl bg-violet-50 hover:bg-violet-100 text-violet-800 rounded-2xl font-bold transition-colors">Batal 取消</button>
+                  <button onClick={handleBulkClassUpdate} className="flex-1 py-4 text-xl bg-teal-600 hover:bg-teal-700 text-white rounded-2xl font-bold shadow-lg shadow-teal-500/30 transition-colors">Sahkan Tukar 确认批量更换</button>
                 </div>
              </div>
           </div>
@@ -1031,15 +1020,15 @@ export default function App() {
       else { showToast('Kata laluan salah / 密码错误'); }
     };
     return (
-      <div className="fixed inset-0 bg-emerald-950/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-        <div className="bg-white rounded-[2rem] p-10 max-w-md w-full shadow-2xl relative text-center border border-emerald-100">
-           <button onClick={() => {setLoginRole(null); setLoginPin('');}} className="absolute top-6 right-6 text-emerald-400 hover:text-emerald-600">❌</button>
-           <div className="mx-auto bg-emerald-50 w-20 h-20 rounded-full flex items-center justify-center mb-6 border border-emerald-100"><span className="text-3xl">🔒</span></div>
-           <h2 className="text-3xl font-bold text-emerald-900 mb-2">Akses Terhad</h2>
-           <p className="text-emerald-700/80 text-lg mb-8">{loginRole === 'admin' ? 'Log Masuk Pentadbir / 管理员登录' : 'Log Masuk Guru / 教师登录'}</p>
+      <div className="fixed inset-0 bg-purple-950/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div className="bg-white rounded-[2rem] p-10 max-w-md w-full shadow-2xl relative text-center border border-violet-100">
+           <button onClick={() => {setLoginRole(null); setLoginPin('');}} className="absolute top-6 right-6 text-violet-400 hover:text-violet-600">❌</button>
+           <div className="mx-auto bg-violet-50 w-20 h-20 rounded-full flex items-center justify-center mb-6 border border-violet-100"><span className="text-3xl">🔒</span></div>
+           <h2 className="text-3xl font-bold text-violet-950 mb-2">Akses Terhad</h2>
+           <p className="text-violet-700/80 text-lg mb-8">{loginRole === 'admin' ? 'Log Masuk Pentadbir / 管理员登录' : 'Log Masuk Guru / 教师登录'}</p>
            <form onSubmit={handleLoginSubmit} className="space-y-6">
-             <input type="password" placeholder="Kata Laluan / 密码" value={loginPin} onChange={e => setLoginPin(e.target.value)} className="w-full bg-emerald-50/50 border border-emerald-100 text-center rounded-2xl px-6 py-4 text-2xl tracking-widest focus:ring-4 focus:ring-emerald-400/30 focus:border-emerald-500 focus:outline-none transition-all placeholder:text-emerald-300 text-emerald-950" autoFocus />
-             <button type="submit" className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-4 rounded-2xl text-xl font-bold transition shadow-lg shadow-emerald-500/20">Sahkan / 确定</button>
+             <input type="password" placeholder="Kata Laluan / 密码" value={loginPin} onChange={e => setLoginPin(e.target.value)} className="w-full bg-violet-50/50 border border-violet-100 text-center rounded-2xl px-6 py-4 text-2xl tracking-widest focus:ring-4 focus:ring-purple-400/30 focus:border-purple-500 focus:outline-none transition-all placeholder:text-violet-300 text-violet-950" autoFocus />
+             <button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-2xl text-xl font-bold transition shadow-lg shadow-purple-500/20">Sahkan / 确定</button>
            </form>
         </div>
       </div>
@@ -1048,11 +1037,11 @@ export default function App() {
 
   if (authError) {
     return (
-      <div className="min-h-screen bg-[#F0FDF4] flex flex-col items-center justify-center p-8 text-center font-sans">
+      <div className="min-h-screen bg-[#F5F3FF] flex flex-col items-center justify-center p-8 text-center font-sans">
         <span className="text-6xl mb-6 block">⚠️</span>
-        <h2 className="text-3xl font-bold text-emerald-900 mb-4">Sistem Ralat / 系统遇到小问题</h2>
-        <p className="text-xl text-emerald-700 mb-8 max-w-2xl">{authError}</p>
-        <button onClick={() => window.location.reload()} className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-4 rounded-2xl text-xl font-bold transition-all shadow-lg shadow-emerald-500/30">
+        <h2 className="text-3xl font-bold text-violet-950 mb-4">Sistem Ralat / 系统遇到小问题</h2>
+        <p className="text-xl text-violet-700 mb-8 max-w-2xl">{authError}</p>
+        <button onClick={() => window.location.reload()} className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-4 rounded-2xl text-xl font-bold transition-all shadow-lg shadow-purple-500/30">
            Cuba Semula / 刷新重试
         </button>
       </div>
@@ -1061,30 +1050,30 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F0FDF4] flex flex-col items-center justify-center font-sans relative overflow-hidden">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-emerald-200/40 rounded-full blur-[120px]"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-teal-200/30 rounded-full blur-[120px]"></div>
-        <div className="w-20 h-20 border-4 border-emerald-200 border-t-emerald-500 rounded-full animate-spin mb-6 relative z-10"></div>
-        <p className="text-3xl text-emerald-800 font-bold tracking-wide relative z-10">Sistem Memuatkan</p>
-        <p className="text-xl text-emerald-700/80 font-medium tracking-wide mt-2 relative z-10">系统加载中...</p>
-        <div className="mt-8 bg-white/60 px-6 py-3 rounded-full border border-emerald-100 relative z-10">
-           <p className="text-emerald-600 font-medium animate-pulse">{debugLog}</p>
+      <div className="min-h-screen bg-[#F5F3FF] flex flex-col items-center justify-center font-sans relative overflow-hidden">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-violet-200/40 rounded-full blur-[120px]"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-200/30 rounded-full blur-[120px]"></div>
+        <div className="w-20 h-20 border-4 border-violet-200 border-t-purple-500 rounded-full animate-spin mb-6 relative z-10"></div>
+        <p className="text-3xl text-violet-950 font-bold tracking-wide relative z-10">Sistem Memuatkan</p>
+        <p className="text-xl text-violet-700/80 font-medium tracking-wide mt-2 relative z-10">系统加载中...</p>
+        <div className="mt-8 bg-white/60 px-6 py-3 rounded-full border border-violet-100 relative z-10">
+           <p className="text-purple-600 font-medium animate-pulse">{debugLog}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F0FDF4] to-[#DCFCE7] font-sans text-stone-800 selection:bg-emerald-200 flex flex-col relative">
+    <div className="min-h-screen bg-gradient-to-br from-[#FAF5FF] to-[#EDE9FE] font-sans text-stone-800 selection:bg-purple-200 flex flex-col relative">
       <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-emerald-200/40 rounded-full blur-[120px]"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-teal-200/30 rounded-full blur-[120px]"></div>
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-violet-200/40 rounded-full blur-[120px]"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-200/30 rounded-full blur-[120px]"></div>
       </div>
 
       <div className="relative z-10 flex flex-col flex-grow">
         <GlobalHeader />
         {toast && (
-          <div className="fixed top-28 left-1/2 -translate-x-1/2 bg-emerald-900 text-white px-8 py-4 rounded-full shadow-2xl z-[100] text-lg font-bold animate-in slide-in-from-top-4 flex items-center gap-3 border border-emerald-700">
+          <div className="fixed top-28 left-1/2 -translate-x-1/2 bg-purple-900 text-white px-8 py-4 rounded-full shadow-2xl z-[100] text-lg font-bold animate-in slide-in-from-top-4 flex items-center gap-3 border border-purple-700">
             <span className="text-xl">✅</span> {toast}
           </div>
         )}
@@ -1095,10 +1084,10 @@ export default function App() {
           {viewState === 'admin' && renderAdminView()}
 
           {viewState === 'public' && (
-            <div className="mt-20 pt-10 flex gap-6 text-emerald-600/60 border-t border-emerald-200 w-full max-w-2xl justify-center">
-              <button onClick={() => setLoginRole('teacher')} className="hover:text-emerald-800 transition-colors bg-transparent px-4 py-2 font-bold tracking-wide">Akses Guru (教师入口)</button>
-              <span className="text-emerald-200 select-none">|</span>
-              <button onClick={() => setLoginRole('admin')} className="hover:text-emerald-800 transition-colors bg-transparent px-4 py-2 font-bold tracking-wide">Akses Admin (后台管理)</button>
+            <div className="mt-20 pt-10 flex gap-6 text-violet-600/60 border-t border-violet-200 w-full max-w-2xl justify-center">
+              <button onClick={() => setLoginRole('teacher')} className="hover:text-purple-800 transition-colors bg-transparent px-4 py-2 font-bold tracking-wide">Akses Guru (教师入口)</button>
+              <span className="text-violet-200 select-none">|</span>
+              <button onClick={() => setLoginRole('admin')} className="hover:text-purple-800 transition-colors bg-transparent px-4 py-2 font-bold tracking-wide">Akses Admin (后台管理)</button>
             </div>
           )}
         </main>
@@ -1111,14 +1100,14 @@ export default function App() {
       {renderBulkUpdateModal()}
       
       {deleteConfirm && (
-        <div className="fixed inset-0 bg-emerald-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl p-10 max-w-md text-center shadow-2xl border border-rose-100">
+        <div className="fixed inset-0 bg-purple-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl p-10 max-w-md text-center shadow-2xl border border-pink-100">
              <span className="text-6xl mb-6 block">⚠️</span>
-             <h3 className="text-2xl font-bold text-emerald-900 mb-4">Sahkan Padam? 确认删除？</h3>
-             <p className="text-lg text-emerald-800/80 mb-8">Anda pasti mahu memadam <strong className="text-rose-600">{deleteConfirm.name}</strong>?<br/>Data yang dipadam tidak boleh dikembalikan.</p>
+             <h3 className="text-2xl font-bold text-violet-950 mb-4">Sahkan Padam? 确认删除？</h3>
+             <p className="text-lg text-violet-800/80 mb-8">Anda pasti mahu memadam <strong className="text-pink-600">{deleteConfirm.name}</strong>?<br/>Data yang dipadam tidak boleh dikembalikan.</p>
              <div className="flex gap-4">
-               <button onClick={() => setDeleteConfirm(null)} className="flex-1 py-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xl font-bold rounded-2xl transition-colors">Batal 取消</button>
-               <button onClick={handleDelete} className="flex-1 py-4 bg-rose-500 hover:bg-rose-600 text-white text-xl font-bold rounded-2xl shadow-lg shadow-rose-500/30 transition-colors">Padam 删除</button>
+               <button onClick={() => setDeleteConfirm(null)} className="flex-1 py-4 bg-violet-50 hover:bg-violet-100 text-violet-800 text-xl font-bold rounded-2xl transition-colors">Batal 取消</button>
+               <button onClick={handleDelete} className="flex-1 py-4 bg-pink-500 hover:bg-pink-600 text-white text-xl font-bold rounded-2xl shadow-lg shadow-pink-500/30 transition-colors">Padam 删除</button>
              </div>
           </div>
         </div>
