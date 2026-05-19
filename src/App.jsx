@@ -61,13 +61,8 @@ const InfoItem = ({ label, value, copyable = false, onCopy, highlight = false })
 const GlobalHeader = () => (
   <header className="bg-white/90 backdrop-blur-md shadow-[0_4px_20px_rgb(16,185,129,0.08)] py-4 px-6 md:px-12 flex justify-center sticky top-0 z-40 border-b border-emerald-100">
     <div className="flex flex-col items-center gap-1 md:gap-2 w-full max-w-6xl">
-       {/* 直接读取您带有空格的文件名: "/delima .jpg" */}
        <img 
-          src="/delima .jpg" 
-          onError={(e) => { 
-             e.target.onerror = null; 
-             e.target.src = 'https://www.moe.gov.my/images/KPM/UKK/2020/06_Jun/Delima-Logo-01.png'; 
-          }} 
+          src="/delima.jpg" 
           alt="Delima Logo" 
           className="h-20 md:h-28 w-auto object-contain mb-1" 
        />
@@ -634,7 +629,7 @@ export default function App() {
   const renderHeader = () => (
     <header className="bg-white/90 backdrop-blur-md shadow-sm py-4 px-6 md:px-12 flex justify-center sticky top-0 z-40 border-b border-emerald-100">
       <div className="flex flex-col items-center gap-1 md:gap-2 w-full max-w-6xl">
-         <img src="https://upload.wikimedia.org/wikipedia/commons/6/60/DELIMA_Logo.png" onError={(e) => { e.target.onerror = null; e.target.src = 'https://www.moe.gov.my/images/KPM/UKK/2020/06_Jun/Delima-Logo-01.png'; }} alt="Delima" className="h-20 md:h-28 w-auto object-contain mb-1" />
+         <img src="/delima.jpg" alt="Delima" className="h-20 md:h-28 w-auto object-contain mb-1" />
          <h1 className="text-xl md:text-3xl font-extrabold text-emerald-800 tracking-widest text-center mt-1">SJKC KUNG MING, BEAUFORT, SABAH.</h1>
       </div>
     </header>
