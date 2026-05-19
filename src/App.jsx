@@ -60,18 +60,18 @@ const InfoItem = ({ label, value, copyable = false, onCopy, highlight = false })
 
 const GlobalHeader = () => (
   <header className="bg-white/90 backdrop-blur-md shadow-[0_4px_20px_rgb(16,185,129,0.08)] py-4 px-6 md:px-12 flex justify-center sticky top-0 z-40 border-b border-emerald-100">
-    <div className="flex flex-col items-center gap-2 md:gap-3 w-full max-w-6xl">
+    <div className="flex flex-col items-center gap-1 md:gap-2 w-full max-w-6xl">
+       {/* 直接读取您带有空格的文件名: "/delima .jpg" */}
        <img 
-          src="/delima.jpg" 
-          referrerPolicy="no-referrer"
-          onError={(e) => {
-              e.target.onerror = null; 
-              e.target.src = 'https://www.moe.gov.my/images/KPM/UKK/2020/06_Jun/Delima-Logo-01.png';
+          src="/delima .jpg" 
+          onError={(e) => { 
+             e.target.onerror = null; 
+             e.target.src = 'https://www.moe.gov.my/images/KPM/UKK/2020/06_Jun/Delima-Logo-01.png'; 
           }} 
           alt="Delima Logo" 
-          className="h-20 md:h-28 w-auto object-contain"
+          className="h-20 md:h-28 w-auto object-contain mb-1" 
        />
-       <h1 className="text-xl md:text-3xl font-extrabold text-emerald-800 tracking-widest text-center">SJKC KUNG MING, BEAUFORT, SABAH.</h1>
+       <h1 className="text-xl md:text-3xl font-extrabold text-emerald-800 tracking-widest text-center mt-1">SJKC KUNG MING, BEAUFORT, SABAH.</h1>
     </div>
   </header>
 );
@@ -278,13 +278,19 @@ export default function App() {
         <h2 className="text-4xl md:text-5xl font-extrabold text-emerald-900 tracking-tight mb-4">Sistem Semakan Delima</h2>
         <p className="text-2xl text-emerald-700/90 mb-10 font-medium">保佛公民小学 Delima 账户查询</p>
         
-        <div className="max-w-3xl mx-auto text-left relative z-10">
+        <div className="max-w-4xl mx-auto text-left relative z-10">
           <label className="block text-emerald-800 font-bold mb-3 pl-2 text-xl md:text-2xl">
             Masukkan No. My Kid / 输入学生身份证号码:
           </label>
-          <form onSubmit={handleSearch} className="flex flex-col gap-4">
-            <input type="text" value={searchIC} onChange={(e) => setSearchIC(e.target.value)} placeholder="Contoh: xxxxxx-xx-xxxx" className="w-full bg-white border-2 border-emerald-200 text-emerald-950 rounded-2xl px-6 py-5 text-2xl focus:outline-none focus:ring-4 focus:ring-emerald-400/30 focus:border-emerald-500 transition-all placeholder:text-emerald-300 font-medium shadow-sm" />
-            <button type="submit" className="w-full bg-emerald-500 hover:bg-emerald-600 text-white px-10 py-5 rounded-2xl text-2xl font-bold flex items-center justify-center gap-3 transition-all shadow-xl active:scale-95 whitespace-nowrap">
+          <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4">
+            <input 
+              type="text" 
+              value={searchIC} 
+              onChange={(e) => setSearchIC(e.target.value)} 
+              placeholder="Contoh: xxxxxx-xx-xxxx" 
+              className="flex-1 bg-white border-2 border-emerald-200 text-emerald-950 rounded-2xl px-6 py-5 text-xl md:text-2xl focus:outline-none focus:ring-4 focus:ring-emerald-400/30 focus:border-emerald-500 transition-all placeholder:text-emerald-300 font-medium shadow-sm" 
+            />
+            <button type="submit" className="bg-emerald-500 hover:bg-emerald-600 text-white px-10 py-5 rounded-2xl text-xl md:text-2xl font-bold flex items-center justify-center gap-3 transition-all shadow-xl active:scale-95 whitespace-nowrap">
               <span className="text-2xl">🔍</span> Semak 查询
             </button>
           </form>
@@ -367,7 +373,7 @@ export default function App() {
   const renderTeacherView = () => {
     const classStudents = students.filter(s => s.class === teacherClass);
     return (
-      <div className="w-full max-w-[98%] mx-auto space-y-8 animate-in fade-in duration-300">
+      <div className="w-full max-w-7xl mx-auto space-y-8 animate-in fade-in duration-300">
         <div className="flex justify-between items-center bg-white p-8 rounded-[2rem] shadow-sm border border-emerald-100">
           <div>
             <h2 className="text-3xl font-bold text-emerald-900 mb-2">Panel Guru 班主任控制台</h2>
@@ -628,7 +634,7 @@ export default function App() {
   const renderHeader = () => (
     <header className="bg-white/90 backdrop-blur-md shadow-sm py-4 px-6 md:px-12 flex justify-center sticky top-0 z-40 border-b border-emerald-100">
       <div className="flex flex-col items-center gap-1 md:gap-2 w-full max-w-6xl">
-         <img src="https://upload.wikimedia.org/wikipedia/commons/6/60/DELIMA_Logo.png" alt="Delima" className="h-16 md:h-24 w-auto object-contain" />
+         <img src="https://upload.wikimedia.org/wikipedia/commons/6/60/DELIMA_Logo.png" onError={(e) => { e.target.onerror = null; e.target.src = 'https://www.moe.gov.my/images/KPM/UKK/2020/06_Jun/Delima-Logo-01.png'; }} alt="Delima" className="h-20 md:h-28 w-auto object-contain mb-1" />
          <h1 className="text-xl md:text-3xl font-extrabold text-emerald-800 tracking-widest text-center mt-1">SJKC KUNG MING, BEAUFORT, SABAH.</h1>
       </div>
     </header>
