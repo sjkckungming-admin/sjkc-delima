@@ -24,6 +24,22 @@ const getCurrentTimestamp = () => {
   return new Date().toLocaleString('en-GB', { timeZone: 'Asia/Kuala_Lumpur' });
 };
 
+// --- System Logging ---
+const addSystemLog = async (role, action, detail) => {
+  try {
+    const newRef = rtdbPush(rtdbRef(dbRealtime, 'logs'));
+    await rtdbSet(newRef, {
+      role,
+      action,
+      detail,
+      timestamp: getCurrentTimestamp(),
+      createdAt: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error("Log error:", err);
+  }
+};
+
 // --- Data Access Layer ---
 const saveDoc = async (collectionName, id, data) => {
   const dataWithTime = { ...data, lastUpdated: getCurrentTimestamp() };
@@ -58,19 +74,6 @@ const InfoItem = ({ label, value, copyable = false, onCopy, highlight = false })
   </div>
 );
 
-const GlobalHeader = () => (
-  <header className="bg-white/90 backdrop-blur-md shadow-[0_4px_20px_rgb(16,185,129,0.08)] py-4 px-6 md:px-12 flex justify-center sticky top-0 z-40 border-b border-emerald-100">
-    <div className="flex flex-col items-center gap-1 md:gap-2 w-full max-w-6xl">
-       <img 
-          src="/delima.jpg" 
-          alt="Delima Logo" 
-          className="h-20 md:h-28 w-auto object-contain mb-1" 
-       />
-       <h1 className="text-xl md:text-3xl font-extrabold text-emerald-800 tracking-widest text-center mt-1">SJKC KUNG MING, BEAUFORT, SABAH.</h1>
-    </div>
-  </header>
-);
-
 const FormField = ({ label, type = "text", value, onChange, placeholder = "", required = false }) => (
   <div className="flex flex-col">
     <label className="text-emerald-800 font-medium mb-2 text-lg">{label}</label>
@@ -95,7 +98,7 @@ const SelectField = ({ label, value, onChange, options, required = false }) => (
 );
 
 const classOptions = [
-  ...[1, 2, 3, 4, 5, 6].flatMap(year => [`${year}-Hijau (青)`, `${year}-Kuning (黄)`, `${year}-Merah (红)`]),
+  ...[1, 2, 3, 4, 5, 6].flatMap(year => [`${year}M`, `${year}K`, `${year}H`]),
   "19 - Murid pindah sekolah", "20 - Murid tamat sekolah"
 ];
 const sportsHouses = ['Merah (红)', 'Biru (蓝)', 'Kuning (黄)', 'Hijau (青)'];
@@ -117,6 +120,7 @@ const parseCSV = (str) => {
 export default function App() {
   const [students, setStudents] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
+  const [systemLogs, setSystemLogs] = useState([]);
   
   const [viewState, setViewState] = useState('public'); 
   const [toast, setToast] = useState('');
@@ -128,6 +132,7 @@ export default function App() {
   const [hasSearched, setHasSearched] = useState(false);
 
   const [teacherClass, setTeacherClass] = useState(classOptions[0]);
+  const [teacherTransferStudent, setTeacherTransferStudent] = useState(null);
 
   const [adminTab, setAdminTab] = useState('students');
   const [adminSearch, setAdminSearch] = useState('');
@@ -154,8 +159,14 @@ export default function App() {
       const list = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
       setAnnouncements(list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
     });
+
+    const unsubLogs = rtdbOnValue(rtdbRef(dbRealtime, 'logs'), (snapshot) => {
+      const data = snapshot.val();
+      const list = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
+      setSystemLogs(list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+    });
     
-    return () => { unsubStudents(); unsubAnnouncements(); };
+    return () => { unsubStudents(); unsubAnnouncements(); unsubLogs(); };
   }, []);
 
   const handleCopy = async (text) => {
@@ -169,14 +180,18 @@ export default function App() {
     if (!searchIC.trim()) return;
     const normalizedSearch = searchIC.replace(/-/g, '').trim();
     const found = students.find(s => s.ic && s.ic.replace(/-/g, '').trim() === normalizedSearch);
+    
+    // Simpan ke Log Sistem
+    addSystemLog('Awam/IbuBapa', 'Carian Maklumat', `Mencari No.KP/MyKid: ${searchIC} (${found ? 'Dijumpai' : 'Tiada Rekod'})`);
+    
     setSearchResult(found || null);
     setHasSearched(true);
   };
 
-  // FORMAT CSV TEMPLAT MENGIKUT GAMBAR EXCEL CIKGU + KELAS + DELIMA
   const csvHeaders = ['NO', 'NO RUJ IDME', 'NO RUJUKAN', 'NAMA MURID', '姓名', 'L/P', 'RUMAH SUKAN', 'SIJIL LAHIR', 'TARIKH LAHIR', 'NO MY KID', 'KELAS', 'MOE DELIMA EMAIL', 'PASSWORD'];
 
   const handleExportCSV = (dataList, filename) => {
+    addSystemLog(viewState === 'admin' ? 'Admin' : 'Guru', 'Eksport Data', `Eksport data ke Excel: ${filename}`);
     const rows = dataList.map(s => [
       s.no, s.idme, s.studentId, s.name, s.chineseName, s.gender, s.sportsHouse, s.birthCert, s.birthDate, s.ic, s.class, s.delimaId, s.password
     ].map(v => `"${(v || '').toString().replace(/"/g, '""')}"`).join(','));
@@ -209,7 +224,6 @@ export default function App() {
             gender: row[5]||'', sportsHouse: row[6]||'', birthCert: row[7]||'', birthDate: row[8]||'', 
             ic: row[9]||'', class: row[10]||'', delimaId: row[11]||'', password: row[12]||''
         };
-        // Perlu ada IC dan Nama untuk sah
         if (student.ic && student.name) {
             const existing = students.find(s => s.ic === student.ic);
             try {
@@ -219,6 +233,7 @@ export default function App() {
             } catch (err) {}
         }
       }
+      addSystemLog('Admin', 'Import Data Pukal', `Mengimport fail CSV. Berjaya: ${successCount} rekod.`);
       showToast(`Berjaya: ${successCount} rekod / 成功导入 ${successCount} 条数据`);
       e.target.value = null;
     };
@@ -229,10 +244,16 @@ export default function App() {
     e.preventDefault();
     if (!editingStudent.ic || !editingStudent.name) return showToast('Sila masukkan Nama & IC / 请输入姓名和身份证');
     try {
-      if (editingStudent.id) { await updateDocData('students', editingStudent.id, editingStudent); showToast('Berjaya dikemaskini / 更新成功'); } 
+      if (editingStudent.id) { 
+        await updateDocData('students', editingStudent.id, editingStudent); 
+        addSystemLog('Admin', 'Kemaskini Pelajar', `Kemaskini maklumat: ${editingStudent.name}`);
+        showToast('Berjaya dikemaskini / 更新成功'); 
+      } 
       else {
         if (students.some(s => s.ic === editingStudent.ic)) return showToast('No. KP sudah wujud / 该身份证已存在');
-        await saveDoc('students', null, editingStudent); showToast('Berjaya ditambah / 添加成功');
+        await saveDoc('students', null, editingStudent); 
+        addSystemLog('Admin', 'Tambah Pelajar Baru', `Tambah murid baharu: ${editingStudent.name}`);
+        showToast('Berjaya ditambah / 添加成功');
       }
       setEditingStudent(null);
     } catch (err) { showToast('Ralat sistem / 系统错误'); }
@@ -242,8 +263,16 @@ export default function App() {
     e.preventDefault();
     if (!editingAnnouncement.title) return showToast('Sila masukkan Tajuk / 请输入标题');
     try {
-      if (editingAnnouncement.id) { await updateDocData('announcements', editingAnnouncement.id, editingAnnouncement); showToast('Hebahan dikemaskini'); } 
-      else { await saveDoc('announcements', null, editingAnnouncement); showToast('Hebahan ditambah'); }
+      if (editingAnnouncement.id) { 
+        await updateDocData('announcements', editingAnnouncement.id, editingAnnouncement); 
+        addSystemLog('Admin', 'Kemaskini Hebahan', `Tajuk: ${editingAnnouncement.title}`);
+        showToast('Hebahan dikemaskini'); 
+      } 
+      else { 
+        await saveDoc('announcements', null, editingAnnouncement); 
+        addSystemLog('Admin', 'Tambah Hebahan Baru', `Tajuk: ${editingAnnouncement.title}`);
+        showToast('Hebahan ditambah'); 
+      }
       setEditingAnnouncement(null);
     } catch (err) { showToast('Ralat sistem'); }
   };
@@ -251,8 +280,22 @@ export default function App() {
   const handleDelete = async () => {
     if(!deleteConfirm) return;
     await deleteDocument(deleteConfirm.type, deleteConfirm.id);
+    addSystemLog('Admin', 'Padam Data', `Memadam ${deleteConfirm.type}: ${deleteConfirm.name}`);
     showToast('Berjaya dipadam / 删除成功');
     setDeleteConfirm(null);
+  };
+
+  const handleTeacherTransferSubmit = async (e) => {
+    e.preventDefault();
+    if (!teacherTransferStudent.transferSchool) return showToast('Sila masukkan nama sekolah');
+    await updateDocData('students', teacherTransferStudent.id, {
+      class: "19 - Murid pindah sekolah",
+      transferDate: teacherTransferStudent.transferDate || new Date().toISOString().split('T')[0],
+      transferSchool: teacherTransferStudent.transferSchool
+    });
+    addSystemLog('Guru', 'Pindah Pelajar', `Guru memindahkan ${teacherTransferStudent.name} ke ${teacherTransferStudent.transferSchool}`);
+    showToast('Murid berjaya dipindahkan');
+    setTeacherTransferStudent(null);
   };
 
   const handleBulkClassUpdate = async () => {
@@ -262,8 +305,21 @@ export default function App() {
     showToast('Sedang menukar kelas... / 正在批量换班...');
     let count = 0;
     for (const s of toUpdate) { await updateDocData('students', s.id, { class: bulkTo }); count++; }
+    addSystemLog('Admin', 'Naik Kelas Pukal', `Memindahkan ${count} murid dari ${bulkFrom} ke ${bulkTo}`);
     showToast(`Berjaya menukar kelas ${count} murid / 成功为 ${count} 名学生换班`);
     setBulkUpdateModal(false);
+  };
+
+  const handleGenerateMessage = async (student) => {
+    const msg = `Salam sejahtera,\n\nBerikut adalah maklumat akaun DELIMA untuk anak anda, ${student.name}:\n\nID Delima: ${student.delimaId}\nKata Laluan (Password): ${student.password}\nIDME: ${student.idme}\n\nSila simpan maklumat ini untuk kegunaan pada masa hadapan. Terima kasih.\n\n--\n您好，\n\n以下是您孩子 ${student.name} 的 DELIMA 账户信息：\n\nDELIMA 账号: ${student.delimaId}\n密码: ${student.password}\nIDME: ${student.idme}\n\n请妥善保存此信息以备将来使用。谢谢。`;
+    
+    try {
+        await navigator.clipboard.writeText(msg);
+        addSystemLog('Guru', 'Salin Maklumat WhatsApp', `Menyalin mesej WA untuk ${student.name}`);
+        showToast('Mesej berjaya disalin ke papan keratan ✨ / 信息已复制到剪贴板，可直接发送');
+    } catch (err) { 
+        showToast('Gagal menyalin mesej / 复制失败'); 
+    } 
   };
 
   // --- VIEWS ---
@@ -349,6 +405,9 @@ export default function App() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {announcements.map(ann => (
               <div key={ann.id} className="bg-white rounded-3xl p-8 shadow-sm border border-emerald-100 flex flex-col h-full group">
+                {ann.imageUrl && (
+                  <img src={ann.imageUrl} alt={ann.title} className="w-full h-48 object-cover rounded-xl mb-6 border border-emerald-100 shadow-sm" />
+                )}
                 <h3 className="text-2xl font-bold text-emerald-900 mb-4">{ann.title}</h3>
                 <p className="text-lg text-emerald-950/80 mb-8 whitespace-pre-wrap flex-grow">{ann.content}</p>
                 <span className="text-sm text-emerald-600 mb-4 font-medium">Dikemaskini: {ann.lastUpdated || '-'}</span>
@@ -387,6 +446,7 @@ export default function App() {
             <table className="w-full text-left border-collapse min-w-[1400px]">
               <thead>
                 <tr className="bg-emerald-50 text-emerald-800 text-lg">
+                  <th className="p-5 border-b border-emerald-100">Tindakan</th>
                   <th className="p-5 border-b border-emerald-100">No Rujukan</th>
                   <th className="p-5 border-b border-emerald-100">Nama</th>
                   <th className="p-5 border-b border-emerald-100">Nama Cina</th>
@@ -398,10 +458,14 @@ export default function App() {
               </thead>
               <tbody className="text-lg">
                 {classStudents.length === 0 ? (
-                  <tr><td colSpan="7" className="p-12 text-center text-emerald-600/60 text-xl font-medium">Tiada rekod / 该班级暂无学生记录</td></tr>
+                  <tr><td colSpan="8" className="p-12 text-center text-emerald-600/60 text-xl font-medium">Tiada rekod / 该班级暂无学生记录</td></tr>
                 ) : (
                   classStudents.map((s) => (
                     <tr key={s.id} className="border-b border-emerald-50/50 hover:bg-emerald-50">
+                      <td className="p-4">
+                         <button onClick={() => setTeacherTransferStudent(s)} className="bg-orange-50 text-orange-600 hover:bg-orange-500 hover:text-white px-4 py-2 rounded-xl text-sm font-bold w-full mb-2 border border-orange-200">🏢 Pindah</button>
+                         <button onClick={() => handleGenerateMessage(s)} className="bg-emerald-100 text-emerald-700 hover:bg-emerald-500 hover:text-white px-4 py-2 rounded-xl text-sm font-bold w-full border border-emerald-200">💬 Salin Info</button>
+                      </td>
                       <td className="p-5 font-medium text-emerald-800">{s.studentId}</td>
                       <td className="p-5 font-bold text-emerald-950">{s.name}</td>
                       <td className="p-5 font-bold text-emerald-900">{s.chineseName || '-'}</td>
@@ -427,13 +491,14 @@ export default function App() {
         <div className="flex justify-between items-center bg-emerald-900 p-8 rounded-[2rem] shadow-xl text-white">
           <div>
             <h2 className="text-3xl font-bold text-emerald-300">Sistem Admin 管理员后台</h2>
-            <p className="text-xl text-emerald-100/80">Urus Semua Data & Hebahan</p>
+            <p className="text-xl text-emerald-100/80">Urus Semua Data, Hebahan & Log Sistem</p>
           </div>
           <button onClick={() => setViewState('public')} className="text-emerald-100 bg-emerald-800/80 px-6 py-3 rounded-full border border-emerald-700">⬅️ Log Keluar</button>
         </div>
-        <div className="flex gap-4 border-b border-emerald-200 px-4">
-           <button onClick={() => setAdminTab('students')} className={`px-8 py-4 text-xl font-bold border-b-4 ${adminTab === 'students' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-emerald-800/60'}`}>Data Pelajar</button>
-           <button onClick={() => setAdminTab('announcements')} className={`px-8 py-4 text-xl font-bold border-b-4 ${adminTab === 'announcements' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-emerald-800/60'}`}>Hebahan</button>
+        <div className="flex gap-4 border-b border-emerald-200 px-4 flex-wrap">
+           <button onClick={() => setAdminTab('students')} className={`px-6 py-4 text-xl font-bold border-b-4 ${adminTab === 'students' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-emerald-800/60'}`}>Data Pelajar</button>
+           <button onClick={() => setAdminTab('announcements')} className={`px-6 py-4 text-xl font-bold border-b-4 ${adminTab === 'announcements' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-emerald-800/60'}`}>Hebahan</button>
+           <button onClick={() => setAdminTab('logs')} className={`px-6 py-4 text-xl font-bold border-b-4 ${adminTab === 'logs' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-emerald-800/60'}`}>Log Sistem (系统日志)</button>
         </div>
         
         <div className="bg-white rounded-[2rem] p-8 border border-emerald-100">
@@ -496,6 +561,9 @@ export default function App() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                    {announcements.map(ann => (
                       <div key={ann.id} className="bg-white rounded-2xl p-6 border border-emerald-100 flex flex-col">
+                         {ann.imageUrl && (
+                           <img src={ann.imageUrl} alt={ann.title} className="w-full h-40 object-cover rounded-xl mb-4 border border-emerald-100" />
+                         )}
                          <div className="flex justify-between mb-4">
                            <h3 className="text-2xl font-bold text-emerald-900">{ann.title}</h3>
                            <div className="flex gap-2">
@@ -510,6 +578,44 @@ export default function App() {
                    ))}
                 </div>
              </div>
+          )}
+
+          {adminTab === 'logs' && (
+            <div className="space-y-6">
+               <div className="bg-amber-50 border border-amber-200 p-6 rounded-2xl">
+                 <h3 className="text-xl font-bold text-amber-900 mb-2">📜 Log Aktiviti Sistem (100 Rekod Terkini)</h3>
+                 <p className="text-amber-800">Semua carian awam, log masuk guru/admin, dan pengubahsuaian data direkodkan di sini untuk tujuan keselamatan.</p>
+               </div>
+               <div className="overflow-x-auto rounded-2xl border border-emerald-100 max-h-[800px] overflow-y-auto">
+                <table className="w-full text-left border-collapse min-w-[1000px]">
+                  <thead className="bg-emerald-50 text-emerald-800 text-lg sticky top-0 shadow-sm">
+                    <tr>
+                      <th className="p-4 border-b border-emerald-100 w-64">Tarikh & Masa (Waktu)</th>
+                      <th className="p-4 border-b border-emerald-100 w-48">Peranan (Siapa)</th>
+                      <th className="p-4 border-b border-emerald-100 w-64">Tindakan (Buat Apa)</th>
+                      <th className="p-4 border-b border-emerald-100">Butiran Lanjut</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-lg bg-white">
+                    {systemLogs.slice(0, 100).map(log => (
+                      <tr key={log.id} className="border-b border-emerald-50 hover:bg-emerald-50">
+                        <td className="p-4 font-mono text-sm text-emerald-700">{log.timestamp}</td>
+                        <td className="p-4">
+                          <span className={`px-3 py-1 rounded-full text-sm font-bold ${log.role === 'Admin' ? 'bg-rose-100 text-rose-800' : log.role === 'Guru' ? 'bg-sky-100 text-sky-800' : 'bg-emerald-100 text-emerald-800'}`}>
+                            {log.role}
+                          </span>
+                        </td>
+                        <td className="p-4 font-bold text-emerald-950">{log.action}</td>
+                        <td className="p-4 text-emerald-800">{log.detail}</td>
+                      </tr>
+                    ))}
+                    {systemLogs.length === 0 && (
+                      <tr><td colSpan="4" className="p-10 text-center text-emerald-600/50">Tiada log direkodkan lagi.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           )}
         </div>
       </div>
@@ -562,11 +668,15 @@ export default function App() {
           </div>
           <form onSubmit={handleAdminSaveAnnouncement} className="p-8 space-y-6 bg-emerald-50/30">
              <FormField label="Tajuk / 标题 *" value={editingAnnouncement.title || ''} onChange={(v) => setEditingAnnouncement({...editingAnnouncement, title: v})} required />
+             <FormField label="URL Gambar / 照片链接 (Pilihan) 🔗" type="url" placeholder="Cth: https://.../gambar.jpg" value={editingAnnouncement.imageUrl || ''} onChange={(v) => setEditingAnnouncement({...editingAnnouncement, imageUrl: v})} />
+             <div className="bg-emerald-100 p-4 rounded-xl text-emerald-800 text-sm font-medium border border-emerald-200">
+               💡 Tips: Muat naik gambar ke Facebook atau Google Drive, kemudian klik kanan "Copy Image Address" (Salin Pautan Gambar) dan tampal di sini.
+             </div>
              <div className="flex flex-col">
                 <label className="text-emerald-800 font-medium mb-2 text-lg">Kandungan / 内容详情</label>
                 <textarea rows="5" value={editingAnnouncement.content || ''} onChange={e => setEditingAnnouncement({...editingAnnouncement, content: e.target.value})} className="bg-white border rounded-2xl px-5 py-4 text-xl w-full" />
              </div>
-             <FormField label="URL Pautan" type="url" value={editingAnnouncement.linkUrl || ''} onChange={(v) => setEditingAnnouncement({...editingAnnouncement, linkUrl: v})} />
+             <FormField label="URL Pautan Tambahan (Pilihan)" type="url" value={editingAnnouncement.linkUrl || ''} onChange={(v) => setEditingAnnouncement({...editingAnnouncement, linkUrl: v})} />
              <div className="pt-6 flex justify-end gap-4">
                 <button type="button" onClick={() => setEditingAnnouncement(null)} className="px-8 py-4 text-xl bg-emerald-50 rounded-2xl font-bold">Batal</button>
                 <button type="submit" className="px-10 py-4 text-xl bg-emerald-500 text-white rounded-2xl font-bold">Simpan 发布</button>
@@ -575,6 +685,31 @@ export default function App() {
         </div>
       </div>
     );
+  };
+
+  const renderTeacherTransferModal = () => {
+      if(!teacherTransferStudent) return null;
+      return (
+        <div className="fixed inset-0 bg-emerald-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in">
+          <div className="bg-white rounded-[2rem] w-full max-w-lg shadow-2xl p-8 border border-emerald-100 flex flex-col">
+             <div className="flex justify-between items-start mb-6">
+                <div>
+                   <h3 className="text-2xl font-bold text-emerald-900">Urus Pindah Sekolah</h3>
+                   <p className="text-emerald-700 text-lg">办理转校: {teacherTransferStudent.name}</p>
+                </div>
+                <button onClick={() => setTeacherTransferStudent(null)} className="text-2xl">❌</button>
+             </div>
+             <form onSubmit={handleTeacherTransferSubmit} className="space-y-6">
+                 <FormField label="Sekolah Baharu / 准备转去的学校 *" value={teacherTransferStudent.transferSchool || ''} onChange={(v) => setTeacherTransferStudent({...teacherTransferStudent, transferSchool: v})} required />
+                 <FormField type="date" label="Tarikh Pindah / 转校日期" value={teacherTransferStudent.transferDate || new Date().toISOString().split('T')[0]} onChange={(v) => setTeacherTransferStudent({...teacherTransferStudent, transferDate: v})} />
+                 <div className="bg-orange-50 p-4 rounded-xl border border-orange-200 text-orange-800 text-sm font-medium">
+                     Nota: Murid ini akan dipindahkan secara automatik ke kelas "19 - Murid pindah sekolah".<br/>(学生将自动移至第19班: 转校生班)
+                 </div>
+                 <button type="submit" className="w-full py-4 text-xl font-bold bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl shadow-lg shadow-emerald-500/30 transition-colors">Sahkan Pindah 确认办理</button>
+             </form>
+          </div>
+        </div>
+      )
   };
 
   const renderBulkUpdateModal = () => {
@@ -607,8 +742,14 @@ export default function App() {
     if (!loginRole) return null;
     const handleLoginSubmit = (e) => {
       e.preventDefault();
-      if (loginRole === 'admin' && loginPin === 'admin888') { setViewState('admin'); setLoginRole(null); setLoginPin(''); } 
-      else if (loginRole === 'teacher' && loginPin === 'guru123') { setViewState('teacher'); setLoginRole(null); setLoginPin(''); } 
+      if (loginRole === 'admin' && loginPin === 'admin888') { 
+        addSystemLog('Admin', 'Log Masuk', 'Admin log masuk ke sistem');
+        setViewState('admin'); setLoginRole(null); setLoginPin(''); 
+      } 
+      else if (loginRole === 'teacher' && loginPin === 'guru123') { 
+        addSystemLog('Guru', 'Log Masuk', 'Guru log masuk ke sistem');
+        setViewState('teacher'); setLoginRole(null); setLoginPin(''); 
+      } 
       else { showToast('Kata laluan salah'); }
     };
     return (
@@ -662,6 +803,7 @@ export default function App() {
       {renderLoginModal()}
       {renderStudentModal()}
       {renderAnnouncementModal()}
+      {renderTeacherTransferModal()}
       {renderBulkUpdateModal()}
       
       {deleteConfirm && (
