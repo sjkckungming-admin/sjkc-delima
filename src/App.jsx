@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, query, onSnapshot, doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
-import { Search, LogOut, Download, Upload, Edit, Trash2, ChevronRight, UserCheck, Settings, BookOpen, AlertCircle, RefreshCw } from 'lucide-react';
+import { Search, LogOut, Download, Upload, Trash2, ChevronRight, UserCheck, Settings, BookOpen, AlertCircle, RefreshCw } from 'lucide-react';
 
 // ==========================================
 // 1. Firebase 设定与初始化
@@ -123,7 +123,12 @@ export default function App() {
   // 渲染主体内容
   const renderContent = () => {
     if (isLoading) {
-      return <div className="text-center p-20 text-2xl text-purple-500">正在加载系统...</div>;
+      return (
+        <div className="flex flex-col items-center justify-center p-20 space-y-4">
+          <RefreshCw className="animate-spin text-purple-500" size={48} />
+          <div className="text-2xl text-purple-600 font-semibold animate-pulse">正在加载系统...</div>
+        </div>
+      );
     }
 
     if (activeTab === 'home') {
@@ -154,11 +159,12 @@ export default function App() {
             className="h-32 mb-4 object-contain drop-shadow-md"
             onError={(e) => { e.target.src = "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Logo_Kementerian_Pendidikan_Malaysia.png/250px-Logo_Kementerian_Pendidikan_Malaysia.png"; }}
           />
-          <h2 className="text-2xl font-bold tracking-widest text-gray-700 uppercase">SJKC KUNG MING</h2>
+          <h2 className="text-2xl md:text-3xl font-bold tracking-widest text-gray-700 uppercase mt-2 mb-1">
+            SJKC KUNG MING, BEAUFORT, SABAH.
+          </h2>
           <h1 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-800 to-purple-500 my-3 py-2">
             保佛公民小学 Delima 账户查询
           </h1>
-          <p className="text-xl font-medium text-purple-600 tracking-wide">BEAUFORT, SABAH.</p>
         </div>
 
         {/* 导航按钮 */}
@@ -211,12 +217,19 @@ export default function App() {
 
       {/* 统一提示弹窗 */}
       {modalMessage && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl animate-bounce-in">
-            <h3 className={`text-3xl font-bold mb-4 ${modalMessage.title === '错误' ? 'text-red-600' : 'text-purple-700'}`}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl animate-bounce-in transform transition-all">
+            <div className="flex items-center justify-center mb-4">
+              {modalMessage.title === '错误' || modalMessage.title.includes('失败') ? (
+                 <AlertCircle size={48} className="text-red-500" />
+              ) : (
+                 <UserCheck size={48} className="text-purple-500" />
+              )}
+            </div>
+            <h3 className={`text-3xl font-bold mb-4 text-center ${modalMessage.title === '错误' ? 'text-red-600' : 'text-purple-700'}`}>
               {modalMessage.title}
             </h3>
-            <p className="text-2xl text-gray-700 leading-relaxed">{modalMessage.text}</p>
+            <p className="text-2xl text-gray-700 leading-relaxed text-center whitespace-pre-line">{modalMessage.text}</p>
             <button 
               onClick={() => setModalMessage(null)}
               className="mt-8 w-full bg-purple-600 text-white rounded-2xl py-4 text-2xl font-bold hover:bg-purple-700 transition-colors"
@@ -316,7 +329,7 @@ function HomeView({ students, announcements, setActiveTab }) {
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {announcements.length === 0 ? (
-            <p className="text-2xl text-gray-500 p-8 col-span-2 text-center bg-white rounded-3xl">暂无最新公告。</p>
+            <p className="text-2xl text-gray-500 p-8 col-span-2 text-center bg-white rounded-3xl shadow-sm">暂无最新公告。</p>
           ) : (
             announcements.map((ann) => (
               <a 
@@ -381,7 +394,7 @@ function LoginView({ roleTarget, setAuthRole, showMessage }) {
   };
 
   return (
-    <div className="bg-white rounded-[32px] p-10 max-w-md mx-auto shadow-2xl text-center border-t-8 border-purple-600">
+    <div className="bg-white rounded-[32px] p-10 max-w-md mx-auto shadow-2xl text-center border-t-8 border-purple-600 animate-fade-in">
       <div className="bg-purple-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
         {roleTarget === 'admin' ? <Settings size={48} className="text-purple-700" /> : <UserCheck size={48} className="text-purple-700" />}
       </div>
@@ -482,7 +495,7 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
   };
 
   return (
-    <div className="bg-white rounded-[32px] p-6 md:p-10 shadow-xl border border-purple-50">
+    <div className="bg-white rounded-[32px] p-6 md:p-10 shadow-xl border border-purple-50 animate-fade-in">
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-6 border-b-2 border-purple-100 pb-8">
         <div>
           <h2 className="text-3xl font-bold text-amber-600 flex items-center gap-3">
@@ -544,7 +557,7 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
                   {selectedYear !== '19' && selectedYear !== '20' && (
                     <button 
                       onClick={() => setTransferModal(s)}
-                      className="bg-amber-100 text-amber-700 hover:bg-amber-200 px-4 py-2 rounded-lg font-bold text-sm"
+                      className="bg-amber-100 text-amber-700 hover:bg-amber-200 px-4 py-2 rounded-lg font-bold text-sm transition-colors"
                     >
                       标为转校
                     </button>
@@ -570,7 +583,7 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
               <p>Pwd: <span className="font-mono text-gray-800">{s.password}</span></p>
             </div>
             {selectedYear !== '19' && selectedYear !== '20' && (
-              <button onClick={() => setTransferModal(s)} className="w-full bg-amber-100 text-amber-700 py-3 rounded-xl font-bold">
+              <button onClick={() => setTransferModal(s)} className="w-full bg-amber-100 text-amber-700 py-3 rounded-xl font-bold transition-colors">
                 标为转校 (Pindah Sekolah)
               </button>
             )}
@@ -581,7 +594,7 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
       {/* 转校弹窗 */}
       {transferModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl animate-slide-up">
             <h3 className="text-3xl font-bold text-amber-600 mb-2">处理转校</h3>
             <p className="text-xl text-gray-600 mb-6">学生: <strong>{transferModal.name}</strong></p>
             
@@ -595,10 +608,10 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
                 <input type="text" name="transferSchool" required placeholder="如: SJKC HWA SHIONG" className="w-full p-3 border-2 border-gray-300 rounded-xl text-xl" />
               </div>
               <div className="flex gap-4 mt-8">
-                <button type="button" onClick={() => setTransferModal(null)} className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-4 rounded-xl text-xl">
+                <button type="button" onClick={() => setTransferModal(null)} className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-4 rounded-xl text-xl transition-colors">
                   取消 (Batal)
                 </button>
-                <button type="submit" className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold py-4 rounded-xl text-xl">
+                <button type="submit" className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold py-4 rounded-xl text-xl transition-colors">
                   确认 (Sahkan)
                 </button>
               </div>
@@ -615,6 +628,7 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
 // ==========================================
 function AdminPortal({ students, announcements, db, getCollectionPath, showMessage }) {
   const [adminTab, setAdminTab] = useState('upload'); // 'upload', 'manage', 'announcements', 'promotion'
+  const [confirmModal, setConfirmModal] = useState(null); // { message: string, onConfirm: () => void }
 
   // 下载 Excel 模板
   const downloadTemplate = () => {
@@ -699,10 +713,17 @@ function AdminPortal({ students, announcements, db, getCollectionPath, showMessa
     reader.readAsBinaryString(file);
   };
 
+  // 触发升学操作确认
+  const promptYearlyPromotion = () => {
+    setConfirmModal({
+      message: "确定要进行年度升学操作吗？\n\n六年级将移至毕业班，其余年级将自动升一级。此操作不可逆，请谨慎执行！",
+      onConfirm: executeYearlyPromotion
+    });
+  };
+
   // 年度换班调整逻辑 (Promotion)
-  const handleYearlyPromotion = async () => {
-    if (!window.confirm("确定要进行年度升学操作吗？\n六年级将移至毕业班，其余年级将升一级。此操作不可逆！")) return;
-    
+  const executeYearlyPromotion = async () => {
+    setConfirmModal(null);
     try {
       let count = 0;
       for (const s of students) {
@@ -718,7 +739,10 @@ function AdminPortal({ students, announcements, db, getCollectionPath, showMessa
         }
         
         if (newYear !== s.classYear) {
-          await updateDoc(doc(db, getCollectionPath('students'), s.id), { classYear: newYear, graduationDate: newYear === '20' ? new Date().toISOString().split('T')[0] : null });
+          await updateDoc(doc(db, getCollectionPath('students'), s.id), { 
+            classYear: newYear, 
+            graduationDate: newYear === '20' ? new Date().toISOString().split('T')[0] : null 
+          });
           count++;
         }
       }
@@ -730,6 +754,7 @@ function AdminPortal({ students, announcements, db, getCollectionPath, showMessa
 
   // 管理公告
   const [annForm, setAnnForm] = useState({ title: '', content: '', type: 'App', link: '' });
+  
   const handleAddAnnouncement = async (e) => {
     e.preventDefault();
     try {
@@ -744,14 +769,25 @@ function AdminPortal({ students, announcements, db, getCollectionPath, showMessa
       showMessage("错误", "发布失败: " + err.message);
     }
   };
-  const deleteAnnouncement = async (id) => {
-    if(window.confirm("确定要删除这条公告吗？")) {
+
+  const promptDeleteAnnouncement = (id) => {
+    setConfirmModal({
+      message: "确定要删除这条公告吗？删除后将无法恢复。",
+      onConfirm: () => executeDeleteAnnouncement(id)
+    });
+  };
+
+  const executeDeleteAnnouncement = async (id) => {
+    setConfirmModal(null);
+    try {
       await deleteDoc(doc(db, getCollectionPath('announcements'), id));
+    } catch (err) {
+      showMessage("错误", "删除失败: " + err.message);
     }
   };
 
   return (
-    <div className="bg-white rounded-[32px] p-6 md:p-10 shadow-2xl border-t-8 border-purple-800">
+    <div className="bg-white rounded-[32px] p-6 md:p-10 shadow-2xl border-t-8 border-purple-800 animate-fade-in relative">
       <h2 className="text-4xl font-extrabold text-purple-900 mb-8 flex items-center gap-3">
         <Settings size={40} className="text-purple-600" /> 系统后台管理 (Admin)
       </h2>
@@ -775,7 +811,7 @@ function AdminPortal({ students, announcements, db, getCollectionPath, showMessa
 
       {/* 导入区 */}
       {adminTab === 'upload' && (
-        <div className="bg-purple-50 p-8 rounded-2xl border border-purple-200">
+        <div className="bg-purple-50 p-8 rounded-2xl border border-purple-200 animate-slide-up">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
             <div>
               <h3 className="text-2xl font-bold text-purple-800 mb-2">通过 Excel 批量导入学生</h3>
@@ -806,15 +842,15 @@ function AdminPortal({ students, announcements, db, getCollectionPath, showMessa
 
       {/* 升学操作 */}
       {adminTab === 'promotion' && (
-        <div className="bg-amber-50 p-8 rounded-2xl border border-amber-200 text-center">
+        <div className="bg-amber-50 p-8 rounded-2xl border border-amber-200 text-center animate-slide-up">
           <AlertCircle size={64} className="text-amber-500 mx-auto mb-6" />
           <h3 className="text-3xl font-bold text-amber-800 mb-4">新学年：全体班级调整 (Kenaikan Kelas)</h3>
-          <p className="text-xl text-gray-700 mb-8 max-w-2xl mx-auto">
+          <p className="text-xl text-gray-700 mb-8 max-w-2xl mx-auto leading-relaxed">
             点击下方按钮，系统将自动把一年级升至二年级，依此类推。六年级学生将被移入第20班（已毕业）。
             请在每学年年初执行一次。
           </p>
           <button 
-            onClick={handleYearlyPromotion}
+            onClick={promptYearlyPromotion}
             className="bg-amber-600 hover:bg-amber-700 text-white text-2xl font-bold px-10 py-5 rounded-2xl shadow-xl transition-transform active:scale-95"
           >
             执行升学操作
@@ -824,51 +860,83 @@ function AdminPortal({ students, announcements, db, getCollectionPath, showMessa
 
       {/* 公告管理 */}
       {adminTab === 'announcements' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-slide-up">
           {/* 发布表单 */}
           <div className="bg-white border-2 border-gray-100 p-8 rounded-2xl shadow-sm">
             <h3 className="text-2xl font-bold text-gray-800 mb-6">发布新通告/App介绍</h3>
             <form onSubmit={handleAddAnnouncement} className="space-y-4">
               <div>
                 <label className="block text-lg font-bold text-gray-600 mb-1">标题</label>
-                <input required type="text" value={annForm.title} onChange={e=>setAnnForm({...annForm, title: e.target.value})} className="w-full p-3 border-2 rounded-xl text-lg" />
+                <input required type="text" value={annForm.title} onChange={e=>setAnnForm({...annForm, title: e.target.value})} className="w-full p-3 border-2 rounded-xl text-lg outline-none focus:border-purple-500 transition-colors" />
               </div>
               <div>
                 <label className="block text-lg font-bold text-gray-600 mb-1">类型</label>
-                <select value={annForm.type} onChange={e=>setAnnForm({...annForm, type: e.target.value})} className="w-full p-3 border-2 rounded-xl text-lg">
+                <select value={annForm.type} onChange={e=>setAnnForm({...annForm, type: e.target.value})} className="w-full p-3 border-2 rounded-xl text-lg outline-none focus:border-purple-500 transition-colors">
                   <option value="App">App 推荐</option>
                   <option value="Activity">活动通告</option>
                 </select>
               </div>
               <div>
                 <label className="block text-lg font-bold text-gray-600 mb-1">内容描述</label>
-                <textarea required rows="4" value={annForm.content} onChange={e=>setAnnForm({...annForm, content: e.target.value})} className="w-full p-3 border-2 rounded-xl text-lg"></textarea>
+                <textarea required rows="4" value={annForm.content} onChange={e=>setAnnForm({...annForm, content: e.target.value})} className="w-full p-3 border-2 rounded-xl text-lg outline-none focus:border-purple-500 transition-colors"></textarea>
               </div>
               <div>
                 <label className="block text-lg font-bold text-gray-600 mb-1">链接 (可选)</label>
-                <input type="url" value={annForm.link} onChange={e=>setAnnForm({...annForm, link: e.target.value})} placeholder="https://" className="w-full p-3 border-2 rounded-xl text-lg" />
+                <input type="url" value={annForm.link} onChange={e=>setAnnForm({...annForm, link: e.target.value})} placeholder="https://" className="w-full p-3 border-2 rounded-xl text-lg outline-none focus:border-purple-500 transition-colors" />
               </div>
-              <button type="submit" className="w-full bg-purple-600 text-white font-bold py-4 rounded-xl text-xl mt-4">
+              <button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 rounded-xl text-xl mt-4 transition-colors">
                 发布
               </button>
             </form>
           </div>
           {/* 列表 */}
-          <div className="bg-gray-50 border-2 border-gray-100 p-8 rounded-2xl shadow-inner h-96 overflow-y-auto">
+          <div className="bg-gray-50 border-2 border-gray-100 p-8 rounded-2xl shadow-inner h-[600px] overflow-y-auto">
             <h3 className="text-2xl font-bold text-gray-800 mb-6">已发布内容</h3>
             <div className="space-y-4">
               {announcements.map(a => (
-                <div key={a.id} className="bg-white p-4 rounded-xl shadow border border-gray-200 flex justify-between items-center">
+                <div key={a.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex justify-between items-center hover:shadow-md transition-shadow">
                   <div>
                     <span className="text-xs font-bold text-purple-600 bg-purple-100 px-2 py-1 rounded">{a.type}</span>
                     <h4 className="text-xl font-bold mt-2">{a.title}</h4>
                     <p className="text-sm text-gray-500">{a.date}</p>
                   </div>
-                  <button onClick={() => deleteAnnouncement(a.id)} className="text-red-500 p-2 hover:bg-red-50 rounded-lg">
+                  <button onClick={() => promptDeleteAnnouncement(a.id)} className="text-red-500 p-3 hover:bg-red-50 rounded-lg transition-colors">
                     <Trash2 size={24} />
                   </button>
                 </div>
               ))}
+              {announcements.length === 0 && (
+                 <p className="text-center text-gray-500 mt-10 text-lg">暂无发布的公告。</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 确认操作统一弹窗 */}
+      {confirmModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[110]">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl animate-bounce-in">
+            <div className="flex justify-center mb-4 text-amber-500">
+               <AlertCircle size={64} />
+            </div>
+            <h3 className="text-3xl font-bold text-center text-gray-800 mb-4">确认操作</h3>
+            <p className="text-xl text-gray-600 mb-8 whitespace-pre-line text-center leading-relaxed">
+              {confirmModal.message}
+            </p>
+            <div className="flex gap-4">
+              <button 
+                onClick={() => setConfirmModal(null)} 
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-4 rounded-2xl text-xl transition-colors"
+              >
+                取消 (Batal)
+              </button>
+              <button 
+                onClick={confirmModal.onConfirm} 
+                className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-4 rounded-2xl text-xl transition-colors"
+              >
+                确认 (Sahkan)
+              </button>
             </div>
           </div>
         </div>
