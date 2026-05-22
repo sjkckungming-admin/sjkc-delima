@@ -76,13 +76,19 @@ export default function App() {
         }
       } catch (err) {
         console.error("Auth error:", err);
+        setIsLoading(false);
+        setModalMessage({ 
+          title: "连接配置异常", 
+          text: `无法连接至 Firebase 账户。\n如果您部署在 Vercel，请确保您已在 Firebase Console 中：\n1. 启用了 Authentication (身份验证)\n2. 开启了 Anonymous (匿名登录) 功能。\n\n详细错误: ${err.message}`
+        });
       }
     };
     initAuth();
 
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
-      if (currentUser) setIsLoading(false);
+      // 无论登录成功与否，只要有了响应就关闭加载动画
+      setIsLoading(false);
     });
 
     // 动态加载 SheetJS 以处理 Excel
@@ -103,18 +109,29 @@ export default function App() {
   useEffect(() => {
     if (!user) return;
 
+    // 统一处理 Firestore 权限等错误
+    const handleFirestoreError = (error) => {
+      console.error("Firestore error:", error);
+      if (error.code === 'permission-denied' || (error.message && error.message.includes('Missing or insufficient permissions'))) {
+         setModalMessage({ 
+           title: "数据库读写被拦截", 
+           text: "系统无法读取或写入数据。\n\n请前往 Firebase Console -> Firestore Database -> Rules 标签页，将规则更新为：\n\nmatch /{document=**} {\n  allow read, write: if true;\n}\n\n(设置后等待一分钟即可生效)" 
+         });
+      }
+    };
+
     const studentsRef = collection(db, getCollectionPath('students'));
     const unsubscribeStudents = onSnapshot(query(studentsRef), (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setStudents(data);
-    }, (error) => console.error("Error fetching students:", error));
+    }, handleFirestoreError);
 
     const announcementsRef = collection(db, getCollectionPath('announcements'));
     const unsubscribeAnnouncements = onSnapshot(query(announcementsRef), (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       // 按照日期倒序
       setAnnouncements(data.sort((a, b) => new Date(b.date) - new Date(a.date)));
-    }, (error) => console.error("Error fetching announcements:", error));
+    }, handleFirestoreError);
 
     return () => {
       unsubscribeStudents();
@@ -140,7 +157,7 @@ export default function App() {
       return (
         <div className="flex flex-col items-center justify-center p-20 space-y-4">
           <RefreshCw className="animate-spin text-purple-500" size={48} />
-          <div className="text-2xl text-purple-600 font-semibold animate-pulse">正在加载系统...</div>
+          <div className="text-2xl text-purple-600 font-semibold animate-pulse">正在安全连接系统...</div>
         </div>
       );
     }
@@ -234,16 +251,16 @@ export default function App() {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
           <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl animate-bounce-in transform transition-all">
             <div className="flex items-center justify-center mb-4">
-              {modalMessage.title === '错误' || modalMessage.title.includes('失败') ? (
+              {modalMessage.title.includes('异常') || modalMessage.title.includes('被拦截') || modalMessage.title === '错误' || modalMessage.title.includes('失败') ? (
                  <AlertCircle size={48} className="text-red-500" />
               ) : (
                  <UserCheck size={48} className="text-purple-500" />
               )}
             </div>
-            <h3 className={`text-3xl font-bold mb-4 text-center ${modalMessage.title === '错误' ? 'text-red-600' : 'text-purple-700'}`}>
+            <h3 className={`text-3xl font-bold mb-4 text-center ${modalMessage.title.includes('异常') || modalMessage.title.includes('被拦截') || modalMessage.title === '错误' ? 'text-red-600' : 'text-purple-700'}`}>
               {modalMessage.title}
             </h3>
-            <p className="text-2xl text-gray-700 leading-relaxed text-center whitespace-pre-line">{modalMessage.text}</p>
+            <p className="text-xl text-gray-700 leading-relaxed text-center whitespace-pre-line">{modalMessage.text}</p>
             <button 
               onClick={() => setModalMessage(null)}
               className="mt-8 w-full bg-purple-600 text-white rounded-2xl py-4 text-2xl font-bold hover:bg-purple-700 transition-colors"
@@ -343,7 +360,7 @@ function HomeView({ students, announcements, setActiveTab }) {
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {announcements.length === 0 ? (
-            <p className="text-2xl text-gray-500 p-8 col-span-2 text-center bg-white rounded-3xl shadow-sm">暂无最新公告。</p>
+            <p className="text-xl text-gray-500 p-8 col-span-2 text-center bg-white rounded-3xl shadow-sm">暂无最新公告。管理员可在后台发布新内容。</p>
           ) : (
             announcements.map((ann) => (
               <a 
@@ -580,7 +597,7 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
               </tr>
             ))}
             {classStudents.length === 0 && (
-              <tr><td colSpan="5" className="p-10 text-center text-gray-500 text-xl">该班级暂无学生数据。</td></tr>
+              <tr><td colSpan="5" className="p-10 text-center text-gray-500 text-xl">该班级暂无学生数据。如果是全新部署，请前往 Admin 后台导入数据。</td></tr>
             )}
           </tbody>
         </table>
@@ -603,6 +620,11 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
             )}
           </div>
         ))}
+        {classStudents.length === 0 && (
+          <div className="p-5 text-center text-gray-500 text-lg border border-gray-200 rounded-2xl">
+            该班级暂无学生数据。如果是全新部署，请前往 Admin 后台导入数据。
+          </div>
+        )}
       </div>
 
       {/* 转校弹窗 */}
