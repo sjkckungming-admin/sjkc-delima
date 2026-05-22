@@ -17,6 +17,7 @@ const Settings = ({ size = 28, className = "" }) => (<svg width={size} height={s
 const BookOpen = ({ size = 28, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>);
 const AlertCircle = ({ size = 28, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>);
 const RefreshCw = ({ size = 28, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>);
+const ClipboardList = ({ size = 28, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>);
 
 // ==========================================
 // 1. Firebase 设定与初始化
@@ -60,6 +61,7 @@ export default function App() {
   // 数据状态
   const [students, setStudents] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
+  const [logs, setLogs] = useState([]);
   
   // 弹窗与加载状态
   const [isLoading, setIsLoading] = useState(true);
@@ -84,6 +86,23 @@ export default function App() {
       }
     };
     initAuth();
+
+    // 记录系统操作日志辅助函数
+    const logAction = async (role, action, details) => {
+      try {
+        const newRef = doc(collection(db, getCollectionPath('logs')));
+        await setDoc(newRef, {
+          role,
+          action,
+          details,
+          timestamp: new Date().toISOString()
+        });
+      } catch (e) {
+        console.error("Failed to log action:", e);
+      }
+    };
+    // 将其挂载到 window 对象以便全局简易调用 (单文件结构下)
+    window.logSystemAction = logAction;
 
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -133,9 +152,17 @@ export default function App() {
       setAnnouncements(data.sort((a, b) => new Date(b.date) - new Date(a.date)));
     }, handleFirestoreError);
 
+    const logsRef = collection(db, getCollectionPath('logs'));
+    const unsubscribeLogs = onSnapshot(query(logsRef), (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // 按照时间倒序
+      setLogs(data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)));
+    }, handleFirestoreError);
+
     return () => {
       unsubscribeStudents();
       unsubscribeAnnouncements();
+      unsubscribeLogs();
     };
   }, [user]);
 
@@ -146,6 +173,9 @@ export default function App() {
 
   // 登出处理
   const handleLogout = () => {
+    if (authRole) {
+      window.logSystemAction(authRole, '退出系统', '用户安全登出');
+    }
     setAuthRole('');
     setActiveTab('home');
     showMessage("成功", "已安全退出账户。");
@@ -156,8 +186,8 @@ export default function App() {
     if (isLoading) {
       return (
         <div className="flex flex-col items-center justify-center p-20 space-y-4">
-          <RefreshCw className="animate-spin text-purple-500" size={56} />
-          <div className="text-3xl text-purple-600 font-semibold animate-pulse">正在安全连接系统...</div>
+          <RefreshCw className="animate-spin text-purple-500" size={48} />
+          <div className="text-2xl text-purple-600 font-semibold animate-pulse">正在安全连接系统...</div>
         </div>
       );
     }
@@ -172,7 +202,7 @@ export default function App() {
       }
     } else if (activeTab === 'admin') {
       if (authRole === 'admin') {
-        return <AdminPortal students={students} announcements={announcements} db={db} getCollectionPath={getCollectionPath} showMessage={showMessage} />;
+        return <AdminPortal students={students} announcements={announcements} logs={logs} db={db} getCollectionPath={getCollectionPath} showMessage={showMessage} />;
       } else {
         return <LoginView roleTarget="admin" setAuthRole={setAuthRole} showMessage={showMessage} />;
       }
@@ -182,28 +212,28 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#FDF9FF] text-gray-800 font-sans selection:bg-purple-200">
       {/* 顶部 Header 设计：温馨高级紫 */}
-      <header className="bg-white shadow-lg rounded-b-[40px] pb-10 pt-8 px-6 mx-auto max-w-5xl mb-10 relative border-b-8 border-purple-600">
+      <header className="bg-white shadow-lg rounded-b-[40px] pb-8 pt-6 px-4 mx-auto max-w-5xl mb-8 relative border-b-8 border-purple-600">
         <div className="flex flex-col items-center text-center">
           <img 
             src="delima.jpg" 
             alt="DELIMA SJKC KUNG MING" 
-            className="h-36 mb-6 object-contain drop-shadow-md"
+            className="h-32 mb-4 object-contain drop-shadow-md"
             onError={(e) => { e.target.src = "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Logo_Kementerian_Pendidikan_Malaysia.png/250px-Logo_Kementerian_Pendidikan_Malaysia.png"; }}
           />
-          <h2 className="text-3xl md:text-4xl font-bold tracking-widest text-gray-700 uppercase mt-2 mb-2">
+          <h2 className="text-2xl md:text-3xl font-bold tracking-widest text-gray-700 uppercase mt-2 mb-1">
             SJKC KUNG MING, BEAUFORT, SABAH.
           </h2>
-          <h1 className="text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-800 to-purple-500 my-4 py-2">
+          <h1 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-800 to-purple-500 my-3 py-2">
             保佛公民小学 Delima 账户查询
           </h1>
         </div>
 
         {/* 导航按钮 */}
-        <div className="flex justify-center gap-6 mt-10 flex-wrap">
+        <div className="flex justify-center gap-4 mt-8 flex-wrap">
           {activeTab !== 'home' && (
             <button 
               onClick={() => setActiveTab('home')}
-              className="px-10 py-4 rounded-full text-2xl font-bold bg-purple-50 text-purple-700 hover:bg-purple-100 transition-all shadow-md"
+              className="px-8 py-3 rounded-full text-xl font-bold bg-purple-50 text-purple-700 hover:bg-purple-100 transition-all shadow-md"
             >
               返回首页 (Kembali)
             </button>
@@ -211,9 +241,9 @@ export default function App() {
           {authRole !== '' && (
             <button 
               onClick={handleLogout}
-              className="flex items-center gap-3 px-10 py-4 rounded-full text-2xl font-bold bg-red-50 text-red-600 hover:bg-red-100 shadow-md transition-all"
+              className="flex items-center gap-2 px-8 py-3 rounded-full text-xl font-bold bg-red-50 text-red-600 hover:bg-red-100 shadow-md transition-all"
             >
-              <LogOut size={28} /> 登出
+              <LogOut size={24} /> 登出
             </button>
           )}
         </div>
@@ -226,10 +256,10 @@ export default function App() {
 
       {/* 底部版权与隐藏入口 */}
       <footer className="text-center py-10 mt-10 text-purple-400">
-        <p className="text-xl mb-4">© {new Date().getFullYear()} SJKC KUNG MING. Hak Cipta Terpelihara.</p>
+        <p className="text-lg mb-4">© {new Date().getFullYear()} SJKC KUNG MING. Hak Cipta Terpelihara.</p>
         
         {/* 不起眼的教师与管理员入口 */}
-        <div className="flex justify-center items-center gap-6 text-base mt-4 opacity-60 hover:opacity-100 transition-opacity">
+        <div className="flex justify-center items-center gap-4 text-sm mt-2 opacity-60 hover:opacity-100 transition-opacity">
           <button 
             onClick={() => setActiveTab('teacher')}
             className="hover:text-amber-600 transition-colors"
@@ -249,21 +279,21 @@ export default function App() {
       {/* 统一提示弹窗 */}
       {modalMessage && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
-          <div className="bg-white rounded-[32px] p-10 max-w-lg w-full shadow-2xl animate-bounce-in transform transition-all">
-            <div className="flex items-center justify-center mb-6">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl animate-bounce-in transform transition-all">
+            <div className="flex items-center justify-center mb-4">
               {modalMessage.title.includes('异常') || modalMessage.title.includes('被拦截') || modalMessage.title === '错误' || modalMessage.title.includes('失败') ? (
-                 <AlertCircle size={56} className="text-red-500" />
+                 <AlertCircle size={48} className="text-red-500" />
               ) : (
-                 <UserCheck size={56} className="text-purple-500" />
+                 <UserCheck size={48} className="text-purple-500" />
               )}
             </div>
-            <h3 className={`text-4xl font-bold mb-6 text-center ${modalMessage.title.includes('异常') || modalMessage.title.includes('被拦截') || modalMessage.title === '错误' ? 'text-red-600' : 'text-purple-700'}`}>
+            <h3 className={`text-3xl font-bold mb-4 text-center ${modalMessage.title.includes('异常') || modalMessage.title.includes('被拦截') || modalMessage.title === '错误' ? 'text-red-600' : 'text-purple-700'}`}>
               {modalMessage.title}
             </h3>
-            <p className="text-2xl text-gray-700 leading-relaxed text-center whitespace-pre-line">{modalMessage.text}</p>
+            <p className="text-xl text-gray-700 leading-relaxed text-center whitespace-pre-line">{modalMessage.text}</p>
             <button 
               onClick={() => setModalMessage(null)}
-              className="mt-10 w-full bg-purple-600 text-white rounded-2xl py-5 text-3xl font-bold hover:bg-purple-700 transition-colors"
+              className="mt-8 w-full bg-purple-600 text-white rounded-2xl py-4 text-2xl font-bold hover:bg-purple-700 transition-colors"
             >
               确定 (Tutup)
             </button>
@@ -294,32 +324,32 @@ function HomeView({ students, announcements, setActiveTab }) {
   };
 
   return (
-    <div className="space-y-14 animate-fade-in">
+    <div className="space-y-12 animate-fade-in">
       {/* 搜索区 (家长专用) */}
-      <section className="bg-white rounded-[40px] p-10 md:p-14 shadow-xl border border-purple-100 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-purple-100 rounded-full blur-3xl opacity-50 -translate-y-1/2 translate-x-1/2"></div>
-        <h2 className="text-4xl md:text-5xl font-extrabold text-purple-800 mb-8 flex items-center gap-4 relative z-10">
-          <Search size={42} className="text-purple-600" /> 查询学生 Delima 资料
+      <section className="bg-white rounded-[32px] p-8 md:p-12 shadow-xl border border-purple-100 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-purple-100 rounded-full blur-3xl opacity-50 -translate-y-1/2 translate-x-1/2"></div>
+        <h2 className="text-3xl md:text-4xl font-extrabold text-purple-800 mb-6 flex items-center gap-3 relative z-10">
+          <Search size={36} className="text-purple-600" /> 查询学生 Delima 资料
         </h2>
-        <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-6 relative z-10">
+        <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4 relative z-10">
           <input 
             type="text" 
             placeholder="请输入学生 IC 号码 (Sila masukkan No. K/P)" 
-            className="flex-1 text-3xl p-6 border-2 border-purple-200 rounded-3xl focus:outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-100 transition-all shadow-inner"
+            className="flex-1 text-2xl p-5 border-2 border-purple-200 rounded-2xl focus:outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-100 transition-all shadow-inner"
             value={icNumber}
             onChange={(e) => setIcNumber(e.target.value)}
           />
-          <button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-3xl px-12 py-6 rounded-3xl shadow-lg transition-transform active:scale-95">
+          <button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-2xl px-10 py-5 rounded-2xl shadow-lg transition-transform active:scale-95">
             查询 (Cari)
           </button>
         </form>
 
         {searched && (
-          <div className="mt-10 border-t-2 border-purple-50 pt-10 animate-slide-up">
+          <div className="mt-8 border-t-2 border-purple-50 pt-8 animate-slide-up">
             {result ? (
-              <div className="bg-purple-50 rounded-[32px] p-10 border border-purple-200 shadow-md">
-                <h3 className="text-4xl font-bold text-purple-900 mb-8 border-b-2 border-purple-200 pb-5">学生资料 (Maklumat Murid)</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-y-8 gap-x-10 text-2xl">
+              <div className="bg-purple-50 rounded-3xl p-8 border border-purple-200 shadow-md">
+                <h3 className="text-3xl font-bold text-purple-900 mb-6 border-b-2 border-purple-200 pb-4">学生资料 (Maklumat Murid)</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-8 text-xl">
                   <InfoItem label="姓名 (Nama)" value={result.name} />
                   <InfoItem label="学号 (ID Murid)" value={result.studentId} />
                   <InfoItem label="班级 (Kelas)" value={formatClassName(result.classYear, result.classColor)} />
@@ -345,8 +375,8 @@ function HomeView({ students, announcements, setActiveTab }) {
                 </div>
               </div>
             ) : (
-              <div className="bg-red-50 text-red-600 p-10 rounded-3xl text-3xl text-center font-bold border border-red-100 flex items-center justify-center gap-4">
-                <AlertCircle size={40} /> 找不到该学生的资料，请检查 IC 号码是否正确。
+              <div className="bg-red-50 text-red-600 p-8 rounded-2xl text-2xl text-center font-bold border border-red-100 flex items-center justify-center gap-3">
+                <AlertCircle size={32} /> 找不到该学生的资料，请检查 IC 号码是否正确。
               </div>
             )}
           </div>
@@ -355,12 +385,12 @@ function HomeView({ students, announcements, setActiveTab }) {
 
       {/* 公告区 (Hebahan) */}
       <section>
-        <h2 className="text-4xl font-extrabold text-purple-800 mb-10 flex items-center gap-4 pl-5 border-l-8 border-amber-400 rounded-l-md">
-          <BookOpen size={42} className="text-amber-500" /> Hebahan & Aktiviti DELIMA (最新活动)
+        <h2 className="text-3xl font-extrabold text-purple-800 mb-8 flex items-center gap-3 pl-4 border-l-8 border-amber-400 rounded-l-md">
+          <BookOpen size={36} className="text-amber-500" /> Hebahan & Aktiviti DELIMA (最新活动)
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {announcements.length === 0 ? (
-            <p className="text-2xl text-gray-500 p-10 col-span-2 text-center bg-white rounded-3xl shadow-sm">暂无最新公告。管理员可在后台发布新内容。</p>
+            <p className="text-xl text-gray-500 p-8 col-span-2 text-center bg-white rounded-3xl shadow-sm">暂无最新公告。管理员可在后台发布新内容。</p>
           ) : (
             announcements.map((ann) => (
               <a 
@@ -368,21 +398,21 @@ function HomeView({ students, announcements, setActiveTab }) {
                 href={ann.link || '#'} 
                 target={ann.link ? "_blank" : "_self"}
                 rel="noreferrer"
-                className="bg-white rounded-3xl p-10 shadow-md hover:shadow-2xl transition-all border border-purple-50 group flex flex-col justify-between"
+                className="bg-white rounded-3xl p-8 shadow-md hover:shadow-2xl transition-all border border-purple-50 group flex flex-col justify-between"
               >
                 <div>
-                  <div className="flex justify-between items-start mb-5">
-                    <span className={`px-5 py-2 rounded-full text-base font-bold tracking-wider ${ann.type === 'App' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                  <div className="flex justify-between items-start mb-4">
+                    <span className={`px-4 py-1.5 rounded-full text-sm font-bold tracking-wider ${ann.type === 'App' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
                       {ann.type}
                     </span>
-                    <span className="text-gray-400 text-xl">{ann.date}</span>
+                    <span className="text-gray-400 text-lg">{ann.date}</span>
                   </div>
-                  <h3 className="text-3xl font-bold text-gray-800 mb-4 group-hover:text-purple-600 transition-colors">{ann.title}</h3>
-                  <p className="text-2xl text-gray-600 leading-relaxed">{ann.content}</p>
+                  <h3 className="text-2xl font-bold text-gray-800 mb-3 group-hover:text-purple-600 transition-colors">{ann.title}</h3>
+                  <p className="text-xl text-gray-600 leading-relaxed">{ann.content}</p>
                 </div>
                 {ann.link && (
-                  <div className="mt-8 flex items-center text-purple-600 font-bold text-2xl group-hover:translate-x-2 transition-transform">
-                    点击前往 (Klik Sini) <ChevronRight size={28} />
+                  <div className="mt-6 flex items-center text-purple-600 font-bold text-xl group-hover:translate-x-2 transition-transform">
+                    点击前往 (Klik Sini) <ChevronRight size={24} />
                   </div>
                 )}
               </a>
@@ -396,9 +426,9 @@ function HomeView({ students, announcements, setActiveTab }) {
 
 function InfoItem({ label, value, isHighlight, isAlert }) {
   return (
-    <div className={`p-5 rounded-2xl ${isHighlight ? 'bg-purple-600 text-white shadow-md' : isAlert ? 'bg-amber-100 text-amber-800' : 'bg-white'}`}>
-      <div className={`text-base md:text-lg font-semibold mb-2 opacity-80`}>{label}</div>
-      <div className={`text-2xl md:text-3xl font-bold break-all`}>{value || '-'}</div>
+    <div className={`p-4 rounded-xl ${isHighlight ? 'bg-purple-600 text-white shadow-md' : isAlert ? 'bg-amber-100 text-amber-800' : 'bg-white'}`}>
+      <div className={`text-sm md:text-base font-semibold mb-1 opacity-80`}>{label}</div>
+      <div className={`text-xl md:text-2xl font-bold break-all`}>{value || '-'}</div>
     </div>
   );
 }
@@ -415,9 +445,11 @@ function LoginView({ roleTarget, setAuthRole, showMessage }) {
     if (roleTarget === 'teacher' && pin === 'guru888') {
       setAuthRole('teacher');
       showMessage("登录成功", "欢迎进入教师控制台。");
+      if (window.logSystemAction) window.logSystemAction('teacher', '系统登录', '教师成功登录系统');
     } else if (roleTarget === 'admin' && pin === 'admin888') {
       setAuthRole('admin');
       showMessage("登录成功", "欢迎进入系统后台。");
+      if (window.logSystemAction) window.logSystemAction('admin', '系统登录', '管理员成功登录后台');
     } else {
       showMessage("错误", "密码不正确，请重试。");
       setPin('');
@@ -425,23 +457,23 @@ function LoginView({ roleTarget, setAuthRole, showMessage }) {
   };
 
   return (
-    <div className="bg-white rounded-[40px] p-12 max-w-lg mx-auto shadow-2xl text-center border-t-8 border-purple-600 animate-fade-in">
-      <div className="bg-purple-100 w-32 h-32 rounded-full flex items-center justify-center mx-auto mb-8">
-        {roleTarget === 'admin' ? <Settings size={56} className="text-purple-700" /> : <UserCheck size={56} className="text-purple-700" />}
+    <div className="bg-white rounded-[32px] p-10 max-w-md mx-auto shadow-2xl text-center border-t-8 border-purple-600 animate-fade-in">
+      <div className="bg-purple-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
+        {roleTarget === 'admin' ? <Settings size={48} className="text-purple-700" /> : <UserCheck size={48} className="text-purple-700" />}
       </div>
-      <h2 className="text-4xl font-bold text-gray-800 mb-4">安全登录</h2>
-      <p className="text-2xl text-gray-500 mb-10">
+      <h2 className="text-3xl font-bold text-gray-800 mb-2">安全登录</h2>
+      <p className="text-xl text-gray-500 mb-8">
         {roleTarget === 'admin' ? "请输入管理员密码" : "请输入教师专属密码 (Kata Laluan Guru)"}
       </p>
-      <form onSubmit={handleLogin} className="space-y-8">
+      <form onSubmit={handleLogin} className="space-y-6">
         <input 
           type="password" 
           placeholder="请输入密码 (Kata Laluan)" 
-          className="w-full text-center text-4xl tracking-[0.5em] p-6 border-2 border-purple-200 rounded-3xl focus:border-purple-600 focus:outline-none"
+          className="w-full text-center text-3xl tracking-[0.5em] p-4 border-2 border-purple-200 rounded-2xl focus:border-purple-600 focus:outline-none"
           value={pin}
           onChange={(e) => setPin(e.target.value)}
         />
-        <button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-3xl py-6 rounded-3xl transition-all shadow-lg">
+        <button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-2xl py-4 rounded-2xl transition-all shadow-lg">
           Log Masuk (登录)
         </button>
       </form>
@@ -519,6 +551,7 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
         transferSchool: school
       });
       showMessage("成功", "学生已成功标记为转校。");
+      if (window.logSystemAction) window.logSystemAction('teacher', '办理转校', `将学生 [${transferModal.name}] 标记为转校至 ${school}`);
       setTransferModal(null);
     } catch (error) {
       showMessage("错误", "更新失败: " + error.message);
@@ -526,19 +559,19 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
   };
 
   return (
-    <div className="bg-white rounded-[40px] p-8 md:p-12 shadow-xl border border-purple-50 animate-fade-in">
-      <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-8 border-b-2 border-purple-100 pb-10">
+    <div className="bg-white rounded-[32px] p-6 md:p-10 shadow-xl border border-purple-50 animate-fade-in">
+      <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-6 border-b-2 border-purple-100 pb-8">
         <div>
-          <h2 className="text-4xl font-bold text-amber-600 flex items-center gap-4">
-            <UserCheck size={36} /> 教师控制台 (Panel Guru)
+          <h2 className="text-3xl font-bold text-amber-600 flex items-center gap-3">
+            <UserCheck size={32} /> 教师控制台 (Panel Guru)
           </h2>
-          <p className="text-2xl text-gray-500 mt-3">请选择您的班级以查看和整理资料。</p>
+          <p className="text-xl text-gray-500 mt-2">请选择您的班级以查看和整理资料。</p>
         </div>
         
         {/* 选择器 */}
-        <div className="flex flex-wrap gap-5 bg-purple-50 p-5 rounded-3xl">
+        <div className="flex flex-wrap gap-4 bg-purple-50 p-4 rounded-2xl">
           <select 
-            className="text-2xl p-4 rounded-2xl border-2 border-purple-200 outline-none"
+            className="text-xl p-3 rounded-xl border-2 border-purple-200 outline-none"
             value={selectedYear}
             onChange={(e) => setSelectedYear(e.target.value)}
           >
@@ -546,7 +579,7 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
           </select>
           {selectedYear !== '19' && selectedYear !== '20' && (
             <select 
-              className="text-2xl p-4 rounded-2xl border-2 border-purple-200 outline-none"
+              className="text-xl p-3 rounded-xl border-2 border-purple-200 outline-none"
               value={selectedColor}
               onChange={(e) => setSelectedColor(e.target.value)}
             >
@@ -556,39 +589,39 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
         </div>
       </div>
 
-      <div className="flex justify-between items-center mb-8">
-        <h3 className="text-3xl font-bold text-gray-800">
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-2xl font-bold text-gray-800">
           学生列表 ({classStudents.length} 人)
         </h3>
-        <button onClick={exportToExcel} className="flex items-center gap-3 bg-green-500 hover:bg-green-600 text-white px-8 py-4 rounded-2xl font-bold text-xl shadow-md transition-all">
-          <Download size={28} /> 导出 Excel
+        <button onClick={exportToExcel} className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-bold text-lg shadow-md transition-all">
+          <Download size={24} /> 导出 Excel
         </button>
       </div>
 
       {/* 响应式表格 (移动端转为卡片) */}
-      <div className="hidden md:block overflow-x-auto bg-gray-50 rounded-3xl border border-gray-200 shadow-inner">
+      <div className="hidden md:block overflow-x-auto bg-gray-50 rounded-2xl border border-gray-200 shadow-inner">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-purple-100 text-purple-900 text-xl">
-              <th className="p-5 rounded-tl-3xl">姓名</th>
-              <th className="p-5">IC 号码</th>
-              <th className="p-5">DELIMA ID</th>
-              <th className="p-5">密码</th>
-              <th className="p-5 text-center rounded-tr-3xl">操作</th>
+            <tr className="bg-purple-100 text-purple-900 text-lg">
+              <th className="p-4 rounded-tl-2xl">姓名</th>
+              <th className="p-4">IC 号码</th>
+              <th className="p-4">DELIMA ID</th>
+              <th className="p-4">密码</th>
+              <th className="p-4 text-center rounded-tr-2xl">操作</th>
             </tr>
           </thead>
           <tbody>
             {classStudents.map((s, idx) => (
-              <tr key={s.id} className={`text-xl border-t border-gray-200 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-purple-50`}>
-                <td className="p-5 font-bold">{s.name}</td>
-                <td className="p-5">{s.ic}</td>
-                <td className="p-5 font-mono text-purple-600">{s.delimaId}</td>
-                <td className="p-5 font-mono">{s.password}</td>
-                <td className="p-5 text-center">
+              <tr key={s.id} className={`text-lg border-t border-gray-200 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-purple-50`}>
+                <td className="p-4 font-bold">{s.name}</td>
+                <td className="p-4">{s.ic}</td>
+                <td className="p-4 font-mono text-purple-600">{s.delimaId}</td>
+                <td className="p-4 font-mono">{s.password}</td>
+                <td className="p-4 text-center">
                   {selectedYear !== '19' && selectedYear !== '20' && (
                     <button 
                       onClick={() => setTransferModal(s)}
-                      className="bg-amber-100 text-amber-700 hover:bg-amber-200 px-5 py-3 rounded-xl font-bold text-base transition-colors"
+                      className="bg-amber-100 text-amber-700 hover:bg-amber-200 px-4 py-2 rounded-lg font-bold text-sm transition-colors"
                     >
                       标为转校
                     </button>
@@ -597,31 +630,31 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
               </tr>
             ))}
             {classStudents.length === 0 && (
-              <tr><td colSpan="5" className="p-12 text-center text-gray-500 text-2xl">该班级暂无学生数据。如果是全新部署，请前往 Admin 后台导入数据。</td></tr>
+              <tr><td colSpan="5" className="p-10 text-center text-gray-500 text-xl">该班级暂无学生数据。如果是全新部署，请前往 Admin 后台导入数据。</td></tr>
             )}
           </tbody>
         </table>
       </div>
 
       {/* 移动端卡片视图 */}
-      <div className="md:hidden space-y-5">
+      <div className="md:hidden space-y-4">
         {classStudents.map(s => (
-          <div key={s.id} className="bg-white border border-gray-200 p-6 rounded-3xl shadow-sm">
-            <h4 className="text-3xl font-bold text-gray-800 mb-3">{s.name}</h4>
-            <div className="space-y-2 text-xl text-gray-600 mb-5">
+          <div key={s.id} className="bg-white border border-gray-200 p-5 rounded-2xl shadow-sm">
+            <h4 className="text-2xl font-bold text-gray-800 mb-2">{s.name}</h4>
+            <div className="space-y-1 text-lg text-gray-600 mb-4">
               <p>IC: <span className="font-mono text-gray-800">{s.ic}</span></p>
               <p>DELIMA: <span className="font-mono text-purple-600 font-bold">{s.delimaId}</span></p>
               <p>Pwd: <span className="font-mono text-gray-800">{s.password}</span></p>
             </div>
             {selectedYear !== '19' && selectedYear !== '20' && (
-              <button onClick={() => setTransferModal(s)} className="w-full bg-amber-100 text-amber-700 py-4 rounded-2xl font-bold transition-colors">
+              <button onClick={() => setTransferModal(s)} className="w-full bg-amber-100 text-amber-700 py-3 rounded-xl font-bold transition-colors">
                 标为转校 (Pindah Sekolah)
               </button>
             )}
           </div>
         ))}
         {classStudents.length === 0 && (
-          <div className="p-6 text-center text-gray-500 text-2xl border border-gray-200 rounded-3xl">
+          <div className="p-5 text-center text-gray-500 text-lg border border-gray-200 rounded-2xl">
             该班级暂无学生数据。如果是全新部署，请前往 Admin 后台导入数据。
           </div>
         )}
@@ -629,25 +662,25 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
 
       {/* 转校弹窗 */}
       {transferModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-5 z-50">
-          <div className="bg-white rounded-3xl p-10 max-w-lg w-full shadow-2xl animate-slide-up">
-            <h3 className="text-4xl font-bold text-amber-600 mb-4">处理转校</h3>
-            <p className="text-2xl text-gray-600 mb-8">学生: <strong>{transferModal.name}</strong></p>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl animate-slide-up">
+            <h3 className="text-3xl font-bold text-amber-600 mb-2">处理转校</h3>
+            <p className="text-xl text-gray-600 mb-6">学生: <strong>{transferModal.name}</strong></p>
             
-            <form onSubmit={handleTransfer} className="space-y-6">
+            <form onSubmit={handleTransfer} className="space-y-5">
               <div>
-                <label className="block text-xl font-bold text-gray-700 mb-3">转校日期</label>
-                <input type="date" name="transferDate" required className="w-full p-4 border-2 border-gray-300 rounded-2xl text-2xl" />
+                <label className="block text-lg font-bold text-gray-700 mb-2">转校日期</label>
+                <input type="date" name="transferDate" required className="w-full p-3 border-2 border-gray-300 rounded-xl text-xl" />
               </div>
               <div>
-                <label className="block text-xl font-bold text-gray-700 mb-3">新学校名称</label>
-                <input type="text" name="transferSchool" required placeholder="如: SJKC HWA SHIONG" className="w-full p-4 border-2 border-gray-300 rounded-2xl text-2xl" />
+                <label className="block text-lg font-bold text-gray-700 mb-2">新学校名称</label>
+                <input type="text" name="transferSchool" required placeholder="如: SJKC HWA SHIONG" className="w-full p-3 border-2 border-gray-300 rounded-xl text-xl" />
               </div>
-              <div className="flex gap-5 mt-10">
-                <button type="button" onClick={() => setTransferModal(null)} className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-5 rounded-2xl text-2xl transition-colors">
+              <div className="flex gap-4 mt-8">
+                <button type="button" onClick={() => setTransferModal(null)} className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-4 rounded-xl text-xl transition-colors">
                   取消 (Batal)
                 </button>
-                <button type="submit" className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold py-5 rounded-2xl text-2xl transition-colors">
+                <button type="submit" className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold py-4 rounded-xl text-xl transition-colors">
                   确认 (Sahkan)
                 </button>
               </div>
@@ -662,8 +695,8 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
 // ==========================================
 // 6. 管理员后台 (Admin Portal)
 // ==========================================
-function AdminPortal({ students, announcements, db, getCollectionPath, showMessage }) {
-  const [adminTab, setAdminTab] = useState('upload'); // 'upload', 'manage', 'announcements', 'promotion'
+function AdminPortal({ students, announcements, logs, db, getCollectionPath, showMessage }) {
+  const [adminTab, setAdminTab] = useState('upload'); // 'upload', 'manage', 'announcements', 'promotion', 'logs'
   const [confirmModal, setConfirmModal] = useState(null); // { message: string, onConfirm: () => void }
 
   // 下载 Excel 模板
@@ -742,6 +775,7 @@ function AdminPortal({ students, announcements, db, getCollectionPath, showMessa
           }
         }
         showMessage("导入成功", `成功读取并存入 ${successCount} 名学生资料。`);
+        if (window.logSystemAction) window.logSystemAction('admin', '批量导入', `通过 Excel 成功导入/更新了 ${successCount} 名学生资料`);
       } catch (error) {
         showMessage("导入失败", error.message);
       }
@@ -783,6 +817,7 @@ function AdminPortal({ students, announcements, db, getCollectionPath, showMessa
         }
       }
       showMessage("操作成功", `已成功调整 ${count} 名学生的班级。`);
+      if (window.logSystemAction) window.logSystemAction('admin', '年度升学', `成功执行了新学年班级调整，共变动 ${count} 人`);
     } catch (error) {
       showMessage("错误", "升学处理失败: " + error.message);
     }
@@ -800,6 +835,7 @@ function AdminPortal({ students, announcements, db, getCollectionPath, showMessa
         date: new Date().toISOString().split('T')[0]
       });
       showMessage("成功", "已发布最新公告。");
+      if (window.logSystemAction) window.logSystemAction('admin', '发布通告', `发布了标题为 [${annForm.title}] 的通告`);
       setAnnForm({ title: '', content: '', type: 'App', link: '' });
     } catch (err) {
       showMessage("错误", "发布失败: " + err.message);
@@ -816,10 +852,30 @@ function AdminPortal({ students, announcements, db, getCollectionPath, showMessa
   const executeDeleteAnnouncement = async (id) => {
     setConfirmModal(null);
     try {
+      const annToDelete = announcements.find(a => a.id === id);
       await deleteDoc(doc(db, getCollectionPath('announcements'), id));
+      if (window.logSystemAction && annToDelete) window.logSystemAction('admin', '删除通告', `删除了通告 [${annToDelete.title}]`);
     } catch (err) {
       showMessage("错误", "删除失败: " + err.message);
     }
+  };
+
+  const exportLogsToExcel = () => {
+    if (typeof window.XLSX === 'undefined') {
+      showMessage("错误", "Excel导出工具尚未加载，请稍等或刷新页面。");
+      return;
+    }
+    const exportData = logs.map(l => ({
+      "时间 (Masa)": new Date(l.timestamp).toLocaleString(),
+      "身份 (Peranan)": l.role === 'admin' ? '管理员 (Admin)' : '教师 (Guru)',
+      "操作类别 (Tindakan)": l.action,
+      "详细内容 (Butiran)": l.details
+    }));
+
+    const ws = window.XLSX.utils.json_to_sheet(exportData);
+    const wb = window.XLSX.utils.book_new();
+    window.XLSX.utils.book_append_sheet(wb, ws, "System_Logs");
+    window.XLSX.writeFile(wb, `System_Logs_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
   return (
@@ -839,7 +895,8 @@ function AdminPortal({ students, announcements, db, getCollectionPath, showMessa
         {[
           { id: 'upload', label: '批量导入学生', icon: <Upload size={24} /> },
           { id: 'promotion', label: '年度升学操作', icon: <RefreshCw size={24} /> },
-          { id: 'announcements', label: '通告与活动管理', icon: <BookOpen size={24} /> }
+          { id: 'announcements', label: '通告与活动管理', icon: <BookOpen size={24} /> },
+          { id: 'logs', label: '系统操作记录', icon: <ClipboardList size={24} /> }
         ].map(tab => (
           <button 
             key={tab.id}
@@ -884,16 +941,16 @@ function AdminPortal({ students, announcements, db, getCollectionPath, showMessa
 
       {/* 升学操作 */}
       {adminTab === 'promotion' && (
-        <div className="bg-amber-50 p-10 rounded-3xl border border-amber-200 text-center animate-slide-up">
-          <AlertCircle size={72} className="text-amber-500 mx-auto mb-8" />
-          <h3 className="text-4xl font-bold text-amber-800 mb-5">新学年：全体班级调整 (Kenaikan Kelas)</h3>
-          <p className="text-2xl text-gray-700 mb-10 max-w-3xl mx-auto leading-relaxed">
+        <div className="bg-amber-50 p-8 rounded-2xl border border-amber-200 text-center animate-slide-up">
+          <AlertCircle size={64} className="text-amber-500 mx-auto mb-6" />
+          <h3 className="text-3xl font-bold text-amber-800 mb-4">新学年：全体班级调整 (Kenaikan Kelas)</h3>
+          <p className="text-xl text-gray-700 mb-8 max-w-2xl mx-auto leading-relaxed">
             点击下方按钮，系统将自动把一年级升至二年级，依此类推。六年级学生将被移入第20班（已毕业）。
             请在每学年年初执行一次。
           </p>
           <button 
             onClick={promptYearlyPromotion}
-            className="bg-amber-600 hover:bg-amber-700 text-white text-3xl font-bold px-12 py-6 rounded-3xl shadow-xl transition-transform active:scale-95"
+            className="bg-amber-600 hover:bg-amber-700 text-white text-2xl font-bold px-10 py-5 rounded-2xl shadow-xl transition-transform active:scale-95"
           >
             执行升学操作
           </button>
@@ -902,80 +959,127 @@ function AdminPortal({ students, announcements, db, getCollectionPath, showMessa
 
       {/* 公告管理 */}
       {adminTab === 'announcements' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 animate-slide-up">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-slide-up">
           {/* 发布表单 */}
-          <div className="bg-white border-2 border-gray-100 p-10 rounded-3xl shadow-sm">
-            <h3 className="text-3xl font-bold text-gray-800 mb-8">发布新通告/App介绍</h3>
-            <form onSubmit={handleAddAnnouncement} className="space-y-5">
+          <div className="bg-white border-2 border-gray-100 p-8 rounded-2xl shadow-sm">
+            <h3 className="text-2xl font-bold text-gray-800 mb-6">发布新通告/App介绍</h3>
+            <form onSubmit={handleAddAnnouncement} className="space-y-4">
               <div>
-                <label className="block text-xl font-bold text-gray-600 mb-2">标题</label>
-                <input required type="text" value={annForm.title} onChange={e=>setAnnForm({...annForm, title: e.target.value})} className="w-full p-4 border-2 rounded-2xl text-xl outline-none focus:border-purple-500 transition-colors" />
+                <label className="block text-lg font-bold text-gray-600 mb-1">标题</label>
+                <input required type="text" value={annForm.title} onChange={e=>setAnnForm({...annForm, title: e.target.value})} className="w-full p-3 border-2 rounded-xl text-lg outline-none focus:border-purple-500 transition-colors" />
               </div>
               <div>
-                <label className="block text-xl font-bold text-gray-600 mb-2">类型</label>
-                <select value={annForm.type} onChange={e=>setAnnForm({...annForm, type: e.target.value})} className="w-full p-4 border-2 rounded-2xl text-xl outline-none focus:border-purple-500 transition-colors">
+                <label className="block text-lg font-bold text-gray-600 mb-1">类型</label>
+                <select value={annForm.type} onChange={e=>setAnnForm({...annForm, type: e.target.value})} className="w-full p-3 border-2 rounded-xl text-lg outline-none focus:border-purple-500 transition-colors">
                   <option value="App">App 推荐</option>
                   <option value="Activity">活动通告</option>
                 </select>
               </div>
               <div>
-                <label className="block text-xl font-bold text-gray-600 mb-2">内容描述</label>
-                <textarea required rows="5" value={annForm.content} onChange={e=>setAnnForm({...annForm, content: e.target.value})} className="w-full p-4 border-2 rounded-2xl text-xl outline-none focus:border-purple-500 transition-colors"></textarea>
+                <label className="block text-lg font-bold text-gray-600 mb-1">内容描述</label>
+                <textarea required rows="4" value={annForm.content} onChange={e=>setAnnForm({...annForm, content: e.target.value})} className="w-full p-3 border-2 rounded-xl text-lg outline-none focus:border-purple-500 transition-colors"></textarea>
               </div>
               <div>
-                <label className="block text-xl font-bold text-gray-600 mb-2">链接 (可选)</label>
-                <input type="url" value={annForm.link} onChange={e=>setAnnForm({...annForm, link: e.target.value})} placeholder="https://" className="w-full p-4 border-2 rounded-2xl text-xl outline-none focus:border-purple-500 transition-colors" />
+                <label className="block text-lg font-bold text-gray-600 mb-1">链接 (可选)</label>
+                <input type="url" value={annForm.link} onChange={e=>setAnnForm({...annForm, link: e.target.value})} placeholder="https://" className="w-full p-3 border-2 rounded-xl text-lg outline-none focus:border-purple-500 transition-colors" />
               </div>
-              <button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-5 rounded-2xl text-2xl mt-5 transition-colors">
+              <button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 rounded-xl text-xl mt-4 transition-colors">
                 发布
               </button>
             </form>
           </div>
           {/* 列表 */}
-          <div className="bg-gray-50 border-2 border-gray-100 p-10 rounded-3xl shadow-inner h-[650px] overflow-y-auto">
-            <h3 className="text-3xl font-bold text-gray-800 mb-8">已发布内容</h3>
-            <div className="space-y-5">
+          <div className="bg-gray-50 border-2 border-gray-100 p-8 rounded-2xl shadow-inner h-[600px] overflow-y-auto">
+            <h3 className="text-2xl font-bold text-gray-800 mb-6">已发布内容</h3>
+            <div className="space-y-4">
               {announcements.map(a => (
-                <div key={a.id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 flex justify-between items-center hover:shadow-md transition-shadow">
+                <div key={a.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex justify-between items-center hover:shadow-md transition-shadow">
                   <div>
-                    <span className="text-sm font-bold text-purple-600 bg-purple-100 px-3 py-1.5 rounded-lg">{a.type}</span>
-                    <h4 className="text-2xl font-bold mt-3">{a.title}</h4>
-                    <p className="text-base text-gray-500">{a.date}</p>
+                    <span className="text-xs font-bold text-purple-600 bg-purple-100 px-2 py-1 rounded">{a.type}</span>
+                    <h4 className="text-xl font-bold mt-2">{a.title}</h4>
+                    <p className="text-sm text-gray-500">{a.date}</p>
                   </div>
-                  <button onClick={() => promptDeleteAnnouncement(a.id)} className="text-red-500 p-4 hover:bg-red-50 rounded-xl transition-colors">
-                    <Trash2 size={28} />
+                  <button onClick={() => promptDeleteAnnouncement(a.id)} className="text-red-500 p-2 hover:bg-red-50 rounded-lg transition-colors">
+                    <Trash2 size={24} />
                   </button>
                 </div>
               ))}
               {announcements.length === 0 && (
-                 <p className="text-center text-gray-500 mt-12 text-xl">暂无发布的公告。</p>
+                 <p className="text-center text-gray-500 mt-10 text-lg">暂无发布的公告。</p>
               )}
             </div>
           </div>
         </div>
       )}
 
+      {/* 系统操作日志 */}
+      {adminTab === 'logs' && (
+        <div className="bg-gray-50 border-2 border-gray-200 p-8 rounded-3xl shadow-inner animate-slide-up">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-5 border-b-2 border-gray-200 pb-6">
+            <div>
+              <h3 className="text-3xl font-bold text-gray-800 mb-2">系统操作记录 (Log Sistem)</h3>
+              <p className="text-xl text-gray-600">
+                记录系统内所有的登入、资料修改与人员调动（共 {logs.length} 条记录）。
+              </p>
+            </div>
+            <button 
+              onClick={exportLogsToExcel}
+              className="flex items-center gap-3 bg-purple-600 hover:bg-purple-700 text-white px-8 py-4 rounded-2xl font-bold text-xl shadow-md transition-all whitespace-nowrap"
+            >
+              <Download size={28} /> 导出日志 Excel
+            </button>
+          </div>
+          
+          <div className="max-h-[600px] overflow-y-auto pr-4 space-y-4">
+            {logs.length > 0 ? logs.map(log => (
+              <div key={log.id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 flex flex-col md:flex-row md:items-center gap-4 hover:border-purple-300 transition-colors">
+                <div className="md:w-1/4">
+                  <span className="text-gray-500 text-lg font-mono bg-gray-100 px-3 py-1 rounded-lg">
+                    {new Date(log.timestamp).toLocaleString()}
+                  </span>
+                </div>
+                <div className="md:w-1/6">
+                  <span className={`px-4 py-1.5 rounded-full text-base font-bold ${log.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-amber-100 text-amber-700'}`}>
+                    {log.role === 'admin' ? '管理员' : '教师'}
+                  </span>
+                </div>
+                <div className="md:w-1/6 font-bold text-xl text-gray-800">
+                  {log.action}
+                </div>
+                <div className="md:flex-1 text-xl text-gray-600">
+                  {log.details}
+                </div>
+              </div>
+            )) : (
+              <div className="p-10 text-center text-gray-500 text-2xl border-2 border-dashed border-gray-300 rounded-3xl">
+                当前系统还没有任何操作记录。
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* 确认操作统一弹窗 */}
       {confirmModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-5 z-[110]">
-          <div className="bg-white rounded-3xl p-10 max-w-lg w-full shadow-2xl animate-bounce-in">
-            <div className="flex justify-center mb-5 text-amber-500">
-               <AlertCircle size={72} />
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[110]">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl animate-bounce-in">
+            <div className="flex justify-center mb-4 text-amber-500">
+               <AlertCircle size={64} />
             </div>
-            <h3 className="text-4xl font-bold text-center text-gray-800 mb-5">确认操作</h3>
-            <p className="text-2xl text-gray-600 mb-10 whitespace-pre-line text-center leading-relaxed">
+            <h3 className="text-3xl font-bold text-center text-gray-800 mb-4">确认操作</h3>
+            <p className="text-xl text-gray-600 mb-8 whitespace-pre-line text-center leading-relaxed">
               {confirmModal.message}
             </p>
-            <div className="flex gap-5">
+            <div className="flex gap-4">
               <button 
                 onClick={() => setConfirmModal(null)} 
-                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-5 rounded-2xl text-2xl transition-colors"
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-4 rounded-2xl text-xl transition-colors"
               >
                 取消 (Batal)
               </button>
               <button 
                 onClick={confirmModal.onConfirm} 
-                className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-5 rounded-2xl text-2xl transition-colors"
+                className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-4 rounded-2xl text-xl transition-colors"
               >
                 确认 (Sahkan)
               </button>
