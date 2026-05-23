@@ -328,7 +328,7 @@ function HomeView({ students, announcements, setActiveTab }) {
               <div className="bg-purple-50 rounded-2xl p-6 md:p-8 border border-purple-200 shadow-sm">
                 <h3 className="text-2xl font-bold text-purple-900 mb-6 border-b-2 border-purple-200 pb-3">学生资料 (Maklumat Murid)</h3>
                 
-                {/* 完整显示所有项目 */}
+                {/* 完整显示所有项目，注意这里不显示小写 ic，仅显示 IC MURID */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-y-5 gap-x-6">
                   <InfoItem label="姓名 (NAMA MURID)" value={result.name} />
                   <InfoItem label="班级 (KELAS)" value={formatClassName(result.classYear, result.classColor)} />
@@ -412,10 +412,13 @@ function HomeView({ students, announcements, setActiveTab }) {
 }
 
 function InfoItem({ label, value, isHighlight, isAlert }) {
+  // 如果值是空的、或者全是空格、或者是 '-'，则显示 'Sedang dikemaskini'
+  const displayValue = (!value || String(value).trim() === '' || value === '-') ? 'Sedang dikemaskini' : value;
+  
   return (
     <div className={`p-4 rounded-xl border border-transparent ${isHighlight ? 'bg-purple-600 text-white shadow-sm' : isAlert ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-white border-gray-100'}`}>
       <div className={`text-xs md:text-sm font-semibold mb-1 opacity-80`}>{label}</div>
-      <div className={`text-lg md:text-xl font-bold break-all`}>{value || '-'}</div>
+      <div className={`text-lg md:text-xl font-bold break-all ${displayValue === 'Sedang dikemaskini' ? 'italic text-gray-400 font-normal' : ''}`}>{displayValue}</div>
     </div>
   );
 }
@@ -518,6 +521,7 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
       "RUMAH SUKAN": s.sportsHouse || '',
       "SURAT BERANAK": s.birthCert || '',
       "TARIKH LAHIR": s.dob || '',
+      "ic": s.rawIc || '', // 导出时包含小写的 ic 栏位
       "IC MURID": s.ic,
       "EMAIL DELIMA": s.delimaId,
       "PASSWORD": s.password
@@ -694,15 +698,16 @@ function AdminPortal({ students, announcements, logs, db, getCollectionPath, sho
       return;
     }
     
+    // 增加了小写 'ic' 栏位
     const headers = [
       "KELAS", "TARIKH MASUK", "NO.RUJ IDME", "NO RUJ SEK", "NAMA MURID", "姓名", 
-      "JANTINA", "RUMAH SUKAN", "SURAT BERANAK", "TARIKH LAHIR", "IC MURID", 
+      "JANTINA", "RUMAH SUKAN", "SURAT BERANAK", "TARIKH LAHIR", "ic", "IC MURID", 
       "EMAIL DELIMA", "PASSWORD"
     ];
     
     const dummyData = [
       ["1H", "12/1/2026", "231203013003", "2026001", "ABNERCHRIS ARAPOC NICHOLAS", "艾纳士", 
-       "L", "H", "SC 055497", "16/11/2019", "191116-12-0253", 
+       "L", "H", "SC 055497", "16/11/2019", "191116-12-0253", "191116-12-0253", 
        "abnerchrisarapocnicholas@moe-dl.edu.my", "Kmbft@0253"]
     ];
 
@@ -757,7 +762,8 @@ function AdminPortal({ students, announcements, logs, db, getCollectionPath, sho
           }
 
           const newStudent = {
-            ic: String(row['IC MURID'] || row['IC号码'] || '').trim(),
+            ic: String(row['IC MURID'] || row['IC号码'] || '').trim(), // 保持为主识别键
+            rawIc: String(row['ic'] || '').trim(), // 抓取小写 ic
             name: studentName,
             studentId: String(row['NO RUJ SEK'] || row['ID MURID'] || ''),
             delimaId: String(row['EMAIL DELIMA'] || row['MOE EMAIL'] || ''),
