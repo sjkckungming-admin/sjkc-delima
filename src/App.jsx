@@ -4,13 +4,14 @@ import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged }
 import { getFirestore, collection, query, onSnapshot, doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 
 // ==========================================
-// 内置 SVG 图标 (替换外部 lucide-react 依赖，解决 Vercel 部署报错)
+// 内置 SVG 图标
 // ==========================================
 const Search = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>);
 const LogOut = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>);
 const Download = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>);
 const Upload = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>);
 const Trash2 = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>);
+const Edit = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>);
 const ChevronRight = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="9 18 15 12 9 6"/></svg>);
 const UserCheck = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>);
 const Settings = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>);
@@ -77,7 +78,7 @@ export default function App() {
         setIsLoading(false);
         setModalMessage({ 
           title: "连接配置异常", 
-          text: `无法连接至 Firebase 账户。\n如果您部署在 Vercel，请确保您已在 Firebase Console 中：\n1. 启用了 Authentication (身份验证)\n2. 开启了 Anonymous (匿名登录) 功能。\n\n详细错误: ${err.message}`
+          text: `无法连接至 Firebase 账户。\n详细错误: ${err.message}`
         });
       }
     };
@@ -126,7 +127,7 @@ export default function App() {
       if (error.code === 'permission-denied' || (error.message && error.message.includes('Missing or insufficient permissions'))) {
          setModalMessage({ 
            title: "数据库读写被拦截", 
-           text: "系统无法读取或写入数据。\n\n请前往 Firebase Console -> Firestore Database -> Rules 标签页，将规则更新为：\n\nmatch /{document=**} {\n  allow read, write: if true;\n}\n\n(设置后等待一分钟即可生效)" 
+           text: "系统无法读取或写入数据。\n请前往 Firebase Console 更新 Rules 设置。" 
          });
       }
     };
@@ -431,7 +432,8 @@ function LoginView({ roleTarget, setAuthRole, showMessage }) {
 
   const handleLogin = (e) => {
     e.preventDefault();
-    if (roleTarget === 'teacher' && pin === 'guru888') {
+    // 教师端密码更改为 xcc6027@km
+    if (roleTarget === 'teacher' && pin === 'xcc6027@km') {
       setAuthRole('teacher');
       showMessage("登录成功", "欢迎进入教师控制台。");
       if (window.logSystemAction) window.logSystemAction('teacher', '系统登录', '教师成功登录系统');
@@ -489,7 +491,7 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
     { val: '20', label: '第20班: 毕业生 (Tamat)' }
   ];
 
-  // 动态提取系统中所有的班级字母（如 H, M, K）
+  // 动态提取系统中所有的班级字母
   const colors = useMemo(() => {
     const cls = new Set([...students.map(s => s.classColor).filter(Boolean), 'H', 'M', 'K']);
     return Array.from(cls).sort();
@@ -504,7 +506,7 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
     });
   }, [students, selectedYear, selectedColor]);
 
-  // 教师导出的格式也严格遵照您的模板
+  // 教师导出
   const exportToExcel = () => {
     if (typeof window.XLSX === 'undefined') {
       showMessage("错误", "Excel导出工具尚未加载，请稍等或刷新页面。");
@@ -688,36 +690,52 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
 // 6. 管理员后台 (Admin Portal)
 // ==========================================
 function AdminPortal({ students, announcements, logs, db, getCollectionPath, showMessage }) {
-  const [adminTab, setAdminTab] = useState('upload'); 
+  const [adminTab, setAdminTab] = useState('all_students'); 
   const [confirmModal, setConfirmModal] = useState(null);
+  
+  // 用于编辑学生
+  const [editStudent, setEditStudent] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
-  // 【核心更新】按照您提供的截图严格设置模板的表头顺序
+  // 升学与调班管理
+  const [promoMode, setPromoMode] = useState('auto'); // 'auto' | 'manual'
+  const [promoSearchTerm, setPromoSearchTerm] = useState('');
+  const [promoEdits, setPromoEdits] = useState({});
+
+  const years = [
+    { val: '1', label: '一年级' },
+    { val: '2', label: '二年级' },
+    { val: '3', label: '三年级' },
+    { val: '4', label: '四年级' },
+    { val: '5', label: '五年级' },
+    { val: '6', label: '六年级' },
+    { val: '19', label: '19班 (转校)' },
+    { val: '20', label: '20班 (毕业)' }
+  ];
+
+  // 模板下载
   const downloadTemplate = () => {
     if (typeof window.XLSX === 'undefined') {
       showMessage("错误", "组件尚未加载完成，请稍后再试。");
       return;
     }
-    
-    // 增加了小写 'ic' 栏位
     const headers = [
       "KELAS", "TARIKH MASUK", "NO.RUJ IDME", "NO RUJ SEK", "NAMA MURID", "姓名", 
       "JANTINA", "RUMAH SUKAN", "SURAT BERANAK", "TARIKH LAHIR", "ic", "IC MURID", 
       "EMAIL DELIMA", "PASSWORD"
     ];
-    
     const dummyData = [
       ["1H", "12/1/2026", "231203013003", "2026001", "ABNERCHRIS ARAPOC NICHOLAS", "艾纳士", 
        "L", "H", "SC 055497", "16/11/2019", "191116-12-0253", "191116-12-0253", 
        "abnerchrisarapocnicholas@moe-dl.edu.my", "Kmbft@0253"]
     ];
-
     const ws = window.XLSX.utils.aoa_to_sheet([headers, ...dummyData]);
     const wb = window.XLSX.utils.book_new();
     window.XLSX.utils.book_append_sheet(wb, ws, "Template");
     window.XLSX.writeFile(wb, "Template_Data_Murid_SJKC.xlsx");
   };
 
-  // 【核心更新】批量读取 Excel 时适配您的最新表头和列组合
+  // 批量导入
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -738,7 +756,6 @@ function AdminPortal({ students, announcements, logs, db, getCollectionPath, sho
         
         let successCount = 0;
         for (const row of data) {
-          // 姓名提取
           let studentName = String(row['NAMA MURID'] || '').trim();
           const chineseName = String(row['姓名'] || '').trim();
           if (studentName && chineseName) {
@@ -747,7 +764,6 @@ function AdminPortal({ students, announcements, logs, db, getCollectionPath, sho
             studentName = chineseName;
           }
 
-          // 解析班级，如：从 'KELAS' 列提取 '1H' -> 年级 '1', 颜色 'H'
           let classVal = String(row['KELAS'] || row['NO'] || '').trim();
           let pYear = '1';
           let pColor = 'H';
@@ -762,8 +778,8 @@ function AdminPortal({ students, announcements, logs, db, getCollectionPath, sho
           }
 
           const newStudent = {
-            ic: String(row['IC MURID'] || row['IC号码'] || '').trim(), // 保持为主识别键
-            rawIc: String(row['ic'] || '').trim(), // 抓取小写 ic
+            ic: String(row['IC MURID'] || row['IC号码'] || '').trim(), 
+            rawIc: String(row['ic'] || '').trim(),
             name: studentName,
             studentId: String(row['NO RUJ SEK'] || row['ID MURID'] || ''),
             delimaId: String(row['EMAIL DELIMA'] || row['MOE EMAIL'] || ''),
@@ -793,96 +809,160 @@ function AdminPortal({ students, announcements, logs, db, getCollectionPath, sho
     reader.readAsBinaryString(file);
   };
 
+  // 年度升学
   const promptYearlyPromotion = () => {
     setConfirmModal({
       message: "确定要进行年度升学操作吗？\n\n六年级将移至毕业班，其余年级将自动升一级。此操作不可逆，请谨慎执行！",
-      onConfirm: executeYearlyPromotion
+      onConfirm: async () => {
+        setConfirmModal(null);
+        try {
+          let count = 0;
+          for (const s of students) {
+            let newYear = s.classYear;
+            if (newYear === '19' || newYear === '20') continue;
+            const yearInt = parseInt(newYear, 10);
+            if (yearInt === 6) newYear = '20'; 
+            else if (yearInt >= 1 && yearInt <= 5) newYear = String(yearInt + 1);
+            
+            if (newYear !== s.classYear) {
+              await updateDoc(doc(db, getCollectionPath('students'), s.id), { 
+                classYear: newYear, 
+                graduationDate: newYear === '20' ? new Date().toISOString().split('T')[0] : null 
+              });
+              count++;
+            }
+          }
+          showMessage("操作成功", `已成功调整 ${count} 名学生的班级。`);
+          if (window.logSystemAction) window.logSystemAction('admin', '年度升学', `成功执行了新学年班级调整，共变动 ${count} 人`);
+        } catch (error) {
+          showMessage("错误", "升学处理失败: " + error.message);
+        }
+      }
     });
   };
 
-  const executeYearlyPromotion = async () => {
-    setConfirmModal(null);
+  // 手动修改班级
+  const handlePromoEditChange = (id, field, value) => {
+    setPromoEdits(prev => ({
+      ...prev,
+      [id]: { ...(prev[id] || {}), [field]: value }
+    }));
+  };
+
+  const saveManualPromo = async (id, originalStudent) => {
+    const updates = promoEdits[id];
+    if (!updates) return;
     try {
-      let count = 0;
-      for (const s of students) {
-        let newYear = s.classYear;
-        if (newYear === '19' || newYear === '20') continue;
-        
-        const yearInt = parseInt(newYear, 10);
-        if (yearInt === 6) {
-          newYear = '20'; // 毕业
-        } else if (yearInt >= 1 && yearInt <= 5) {
-          newYear = String(yearInt + 1); // 升一级
-        }
-        
-        if (newYear !== s.classYear) {
-          await updateDoc(doc(db, getCollectionPath('students'), s.id), { 
-            classYear: newYear, 
-            graduationDate: newYear === '20' ? new Date().toISOString().split('T')[0] : null 
-          });
-          count++;
-        }
-      }
-      showMessage("操作成功", `已成功调整 ${count} 名学生的班级。`);
-      if (window.logSystemAction) window.logSystemAction('admin', '年度升学', `成功执行了新学年班级调整，共变动 ${count} 人`);
-    } catch (error) {
-      showMessage("错误", "升学处理失败: " + error.message);
+      const newYear = updates.classYear !== undefined ? updates.classYear : originalStudent.classYear;
+      const newColor = updates.classColor !== undefined ? updates.classColor : originalStudent.classColor;
+      await updateDoc(doc(db, getCollectionPath('students'), id), {
+        classYear: newYear,
+        classColor: newColor,
+        graduationDate: newYear === '20' ? new Date().toISOString().split('T')[0] : originalStudent.graduationDate
+      });
+      showMessage("成功", `成功更新 ${originalStudent.name} 的班级。`);
+      if (window.logSystemAction) window.logSystemAction('admin', '手动调班', `将学生 [${originalStudent.name}] 调至 ${newYear}年级 ${newColor}班`);
+      setPromoEdits(prev => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    } catch (err) {
+      showMessage("错误", "更新失败: " + err.message);
     }
   };
 
+  // 公告管理
   const [annForm, setAnnForm] = useState({ title: '', content: '', type: 'App', link: '' });
-  
   const handleAddAnnouncement = async (e) => {
     e.preventDefault();
     try {
       const newRef = doc(collection(db, getCollectionPath('announcements')));
-      await setDoc(newRef, {
-        ...annForm,
-        date: new Date().toISOString().split('T')[0]
-      });
+      await setDoc(newRef, { ...annForm, date: new Date().toISOString().split('T')[0] });
       showMessage("成功", "已发布最新公告。");
       if (window.logSystemAction) window.logSystemAction('admin', '发布通告', `发布了标题为 [${annForm.title}] 的通告`);
       setAnnForm({ title: '', content: '', type: 'App', link: '' });
-    } catch (err) {
-      showMessage("错误", "发布失败: " + err.message);
-    }
+    } catch (err) { showMessage("错误", "发布失败: " + err.message); }
   };
-
   const promptDeleteAnnouncement = (id) => {
     setConfirmModal({
       message: "确定要删除这条公告吗？删除后将无法恢复。",
-      onConfirm: () => executeDeleteAnnouncement(id)
+      onConfirm: async () => {
+        setConfirmModal(null);
+        try {
+          const annToDelete = announcements.find(a => a.id === id);
+          await deleteDoc(doc(db, getCollectionPath('announcements'), id));
+          if (window.logSystemAction && annToDelete) window.logSystemAction('admin', '删除通告', `删除了通告 [${annToDelete.title}]`);
+        } catch (err) { showMessage("错误", "删除失败: " + err.message); }
+      }
     });
   };
 
-  const executeDeleteAnnouncement = async (id) => {
-    setConfirmModal(null);
-    try {
-      const annToDelete = announcements.find(a => a.id === id);
-      await deleteDoc(doc(db, getCollectionPath('announcements'), id));
-      if (window.logSystemAction && annToDelete) window.logSystemAction('admin', '删除通告', `删除了通告 [${annToDelete.title}]`);
-    } catch (err) {
-      showMessage("错误", "删除失败: " + err.message);
-    }
-  };
-
+  // 日志导出
   const exportLogsToExcel = () => {
-    if (typeof window.XLSX === 'undefined') {
-      showMessage("错误", "Excel导出工具尚未加载，请稍等或刷新页面。");
-      return;
-    }
+    if (typeof window.XLSX === 'undefined') { showMessage("错误", "Excel导出工具尚未加载，请稍等或刷新页面。"); return; }
     const exportData = logs.map(l => ({
       "时间 (Masa)": new Date(l.timestamp).toLocaleString(),
       "身份 (Peranan)": l.role === 'admin' ? '管理员 (Admin)' : '教师 (Guru)',
       "操作类别 (Tindakan)": l.action,
       "详细内容 (Butiran)": l.details
     }));
-
     const ws = window.XLSX.utils.json_to_sheet(exportData);
     const wb = window.XLSX.utils.book_new();
     window.XLSX.utils.book_append_sheet(wb, ws, "System_Logs");
     window.XLSX.writeFile(wb, `System_Logs_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
+
+  // 【新增功能】删除学生
+  const promptDeleteStudent = (student) => {
+    setConfirmModal({
+      message: `确认要将学生 [${student.name}] 彻底从系统中删除吗？此操作无法恢复！`,
+      onConfirm: async () => {
+        setConfirmModal(null);
+        try {
+          await deleteDoc(doc(db, getCollectionPath('students'), student.id));
+          showMessage("成功", "已成功删除该学生。");
+          if (window.logSystemAction) window.logSystemAction('admin', '删除学生', `管理员删除了学生档案: ${student.name} (IC: ${student.ic})`);
+        } catch (err) {
+          showMessage("错误", "删除失败: " + err.message);
+        }
+      }
+    });
+  };
+
+  // 【新增功能】更新学生资料
+  const handleUpdateStudent = async (e) => {
+    e.preventDefault();
+    try {
+      await updateDoc(doc(db, getCollectionPath('students'), editStudent.id), editStudent);
+      showMessage("成功", "学生资料已成功更新。");
+      if (window.logSystemAction) window.logSystemAction('admin', '修改资料', `管理员更新了学生 [${editStudent.name}] 的资料`);
+      setEditStudent(null);
+    } catch (err) {
+      showMessage("错误", "更新失败: " + err.message);
+    }
+  };
+
+  // 全校学生列表搜索过滤
+  const filteredAllStudents = useMemo(() => {
+    if (!searchTerm) return students;
+    const lower = searchTerm.toLowerCase();
+    return students.filter(s => 
+      s.name.toLowerCase().includes(lower) || 
+      s.ic.toLowerCase().includes(lower) || 
+      formatClassName(s.classYear, s.classColor).toLowerCase().includes(lower)
+    );
+  }, [students, searchTerm]);
+
+  // 手动调班列表过滤
+  const filteredPromoStudents = useMemo(() => {
+    if (!promoSearchTerm) return students;
+    const lower = promoSearchTerm.toLowerCase();
+    return students.filter(s => 
+      s.name.toLowerCase().includes(lower) || 
+      s.ic.toLowerCase().includes(lower)
+    );
+  }, [students, promoSearchTerm]);
 
   return (
     <div className="bg-white rounded-3xl p-6 md:p-10 shadow-xl border-t-8 border-purple-800 animate-fade-in relative">
@@ -897,6 +977,7 @@ function AdminPortal({ students, announcements, logs, db, getCollectionPath, sho
       
       <div className="flex flex-wrap gap-3 mb-8 border-b border-gray-100 pb-4">
         {[
+          { id: 'all_students', label: '全校学生名单', icon: <UserCheck size={18} /> },
           { id: 'upload', label: '批量导入学生', icon: <Upload size={18} /> },
           { id: 'promotion', label: '年度升学操作', icon: <RefreshCw size={18} /> },
           { id: 'announcements', label: '通告与活动管理', icon: <BookOpen size={18} /> },
@@ -911,6 +992,84 @@ function AdminPortal({ students, announcements, logs, db, getCollectionPath, sho
           </button>
         ))}
       </div>
+
+      {/* 【新增面板】全校学生名单 (查看/编辑/删除) */}
+      {adminTab === 'all_students' && (
+        <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm animate-slide-up">
+          <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+            <h3 className="text-lg md:text-xl font-bold text-purple-800">全校学生名单管理</h3>
+            <div className="relative w-full md:w-1/3">
+              <input 
+                type="text" 
+                placeholder="搜索姓名、IC 或 班级..." 
+                className="w-full p-2.5 pl-10 border border-gray-300 rounded-xl text-sm focus:outline-none focus:border-purple-500 transition-colors"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              <Search size={18} className="absolute left-3 top-3 text-gray-400" />
+            </div>
+          </div>
+          
+          <div className="overflow-x-auto rounded-xl border border-gray-200 h-[600px] overflow-y-auto">
+            <table className="w-full text-left border-collapse min-w-max">
+              <thead className="sticky top-0 bg-gray-50 shadow-sm z-10">
+                <tr className="text-gray-600 text-sm border-b border-gray-200">
+                  <th className="p-4 font-semibold whitespace-nowrap">姓名</th>
+                  <th className="p-4 font-semibold whitespace-nowrap">班级</th>
+                  <th className="p-4 font-semibold whitespace-nowrap">IC MURID</th>
+                  <th className="p-4 font-semibold whitespace-nowrap">ic (小写)</th>
+                  <th className="p-4 font-semibold whitespace-nowrap">性别</th>
+                  <th className="p-4 font-semibold whitespace-nowrap">DELIMA Email</th>
+                  <th className="p-4 font-semibold whitespace-nowrap">密码</th>
+                  <th className="p-4 font-semibold whitespace-nowrap">学号</th>
+                  <th className="p-4 font-semibold whitespace-nowrap">IDME</th>
+                  <th className="p-4 font-semibold whitespace-nowrap">出生日期</th>
+                  <th className="p-4 font-semibold whitespace-nowrap">报生纸</th>
+                  <th className="p-4 font-semibold whitespace-nowrap">入学日期</th>
+                  <th className="p-4 font-semibold whitespace-nowrap">运动屋</th>
+                  <th className="p-4 font-semibold text-center whitespace-nowrap sticky right-0 bg-gray-50 shadow-[-2px_0_5px_rgba(0,0,0,0.05)]">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredAllStudents.map((s, idx) => (
+                  <tr key={s.id} className={`text-sm border-b border-gray-100 ${idx % 2 === 0 ? 'bg-white' : 'bg-[#fafafa]'} hover:bg-purple-50 transition-colors`}>
+                    <td className="p-4 font-bold text-gray-800 whitespace-nowrap">{s.name}</td>
+                    <td className="p-4 text-gray-600 whitespace-nowrap">{formatClassName(s.classYear, s.classColor)}</td>
+                    <td className="p-4 font-mono text-gray-600 whitespace-nowrap">{s.ic}</td>
+                    <td className="p-4 font-mono text-gray-500 whitespace-nowrap">{s.rawIc}</td>
+                    <td className="p-4 text-gray-600 whitespace-nowrap">{s.gender}</td>
+                    <td className="p-4 font-mono text-purple-600 whitespace-nowrap">{s.delimaId}</td>
+                    <td className="p-4 font-mono text-gray-600 whitespace-nowrap">{s.password}</td>
+                    <td className="p-4 font-mono text-gray-600 whitespace-nowrap">{s.studentId}</td>
+                    <td className="p-4 font-mono text-gray-600 whitespace-nowrap">{s.idme}</td>
+                    <td className="p-4 text-gray-600 whitespace-nowrap">{s.dob}</td>
+                    <td className="p-4 font-mono text-gray-600 whitespace-nowrap">{s.birthCert}</td>
+                    <td className="p-4 text-gray-600 whitespace-nowrap">{s.admissionDate}</td>
+                    <td className="p-4 text-gray-600 whitespace-nowrap">{s.sportsHouse}</td>
+                    <td className="p-4 flex justify-center gap-3 sticky right-0 shadow-[-2px_0_5px_rgba(0,0,0,0.05)]" style={{ backgroundColor: idx % 2 === 0 ? '#ffffff' : '#fafafa' }}>
+                      <button 
+                        onClick={() => setEditStudent({ ...s })} 
+                        className="text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors font-semibold"
+                      >
+                        <Edit size={16} /> 编辑
+                      </button>
+                      <button 
+                        onClick={() => promptDeleteStudent(s)} 
+                        className="text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors font-semibold"
+                      >
+                        <Trash2 size={16} /> 删除
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {filteredAllStudents.length === 0 && (
+                  <tr><td colSpan="14" className="p-8 text-center text-gray-500">未找到符合条件的学生</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {adminTab === 'upload' && (
         <div className="bg-purple-50/50 p-6 md:p-8 rounded-2xl border border-purple-100 animate-slide-up">
@@ -943,19 +1102,112 @@ function AdminPortal({ students, announcements, logs, db, getCollectionPath, sho
       )}
 
       {adminTab === 'promotion' && (
-        <div className="bg-amber-50/50 p-8 rounded-2xl border border-amber-200 text-center animate-slide-up">
-          <AlertCircle size={56} className="text-amber-500 mx-auto mb-4" />
-          <h3 className="text-xl md:text-2xl font-bold text-amber-800 mb-3">新学年：全体班级调整 (Kenaikan Kelas)</h3>
-          <p className="text-sm md:text-base text-gray-700 mb-6 max-w-2xl mx-auto leading-relaxed">
-            点击下方按钮，系统将自动把一年级升至二年级，依此类推。六年级学生将被移入第20班（已毕业）。<br/>
-            请在每学年年初执行一次。
-          </p>
-          <button 
-            onClick={promptYearlyPromotion}
-            className="bg-amber-500 hover:bg-amber-600 text-white text-base md:text-lg font-bold px-8 py-3 rounded-xl shadow-md transition-transform active:scale-95"
-          >
-            执行升学操作
-          </button>
+        <div className="bg-white p-6 md:p-8 rounded-2xl border border-gray-200 shadow-sm animate-slide-up">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+            <h3 className="text-xl md:text-2xl font-bold text-amber-800">升学与班级管理</h3>
+            <div className="flex bg-gray-100 p-1 rounded-xl">
+              <button 
+                onClick={() => setPromoMode('auto')} 
+                className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${promoMode === 'auto' ? 'bg-white shadow-sm text-amber-600' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                一键全部升学
+              </button>
+              <button 
+                onClick={() => setPromoMode('manual')} 
+                className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${promoMode === 'manual' ? 'bg-white shadow-sm text-amber-600' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                手动逐一调班
+              </button>
+            </div>
+          </div>
+
+          {promoMode === 'auto' ? (
+            <div className="bg-amber-50/50 p-8 rounded-2xl border border-amber-200 text-center mt-4">
+              <AlertCircle size={56} className="text-amber-500 mx-auto mb-4" />
+              <h3 className="text-xl md:text-2xl font-bold text-amber-800 mb-3">新学年：全体班级调整 (Kenaikan Kelas)</h3>
+              <p className="text-sm md:text-base text-gray-700 mb-6 max-w-2xl mx-auto leading-relaxed">
+                点击下方按钮，系统将自动把一年级升至二年级，依此类推。六年级学生将被移入第20班（已毕业）。<br/>
+                请在每学年年初执行一次。
+              </p>
+              <button 
+                onClick={promptYearlyPromotion}
+                className="bg-amber-500 hover:bg-amber-600 text-white text-base md:text-lg font-bold px-8 py-3 rounded-xl shadow-md transition-transform active:scale-95"
+              >
+                执行升学操作
+              </button>
+            </div>
+          ) : (
+            <div className="mt-4">
+              <div className="relative w-full md:w-1/3 mb-4">
+                <input 
+                  type="text" 
+                  placeholder="搜索学生姓名或 IC..." 
+                  className="w-full p-2.5 pl-10 border border-gray-300 rounded-xl text-sm focus:outline-none focus:border-amber-500 transition-colors"
+                  value={promoSearchTerm}
+                  onChange={(e) => setPromoSearchTerm(e.target.value)}
+                />
+                <Search size={18} className="absolute left-3 top-3 text-gray-400" />
+              </div>
+              <div className="overflow-x-auto rounded-xl border border-gray-200 h-[500px] overflow-y-auto">
+                <table className="w-full text-left border-collapse min-w-max">
+                  <thead className="sticky top-0 bg-gray-50 shadow-sm z-10">
+                    <tr className="text-gray-600 text-sm border-b border-gray-200">
+                      <th className="p-4 font-semibold whitespace-nowrap">姓名</th>
+                      <th className="p-4 font-semibold whitespace-nowrap">IC 号码</th>
+                      <th className="p-4 font-semibold whitespace-nowrap">原班级</th>
+                      <th className="p-4 font-semibold whitespace-nowrap">修改年级</th>
+                      <th className="p-4 font-semibold whitespace-nowrap">修改班名 (字母)</th>
+                      <th className="p-4 font-semibold text-center whitespace-nowrap">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredPromoStudents.map((s, idx) => {
+                      const editedYear = promoEdits[s.id]?.classYear !== undefined ? promoEdits[s.id].classYear : s.classYear;
+                      const editedColor = promoEdits[s.id]?.classColor !== undefined ? promoEdits[s.id].classColor : s.classColor;
+                      const hasChanges = editedYear !== s.classYear || editedColor !== s.classColor;
+                      
+                      return (
+                        <tr key={s.id} className={`text-sm border-b border-gray-100 ${idx % 2 === 0 ? 'bg-white' : 'bg-[#fafafa]'}`}>
+                          <td className="p-4 font-bold text-gray-800 whitespace-nowrap">{s.name}</td>
+                          <td className="p-4 font-mono text-gray-600 whitespace-nowrap">{s.ic}</td>
+                          <td className="p-4 text-gray-600 whitespace-nowrap">{formatClassName(s.classYear, s.classColor)}</td>
+                          <td className="p-4">
+                            <select 
+                              className="p-2 border border-gray-300 rounded-lg outline-none focus:border-amber-500"
+                              value={editedYear}
+                              onChange={e => handlePromoEditChange(s.id, 'classYear', e.target.value)}
+                            >
+                              {years.map(y => <option key={y.val} value={y.val}>{y.label}</option>)}
+                            </select>
+                          </td>
+                          <td className="p-4">
+                            <input 
+                              type="text" 
+                              className="p-2 border border-gray-300 rounded-lg outline-none focus:border-amber-500 w-24 text-center"
+                              value={editedColor}
+                              onChange={e => handlePromoEditChange(s.id, 'classColor', e.target.value.toUpperCase())}
+                            />
+                          </td>
+                          <td className="p-4 text-center">
+                            <button 
+                              disabled={!hasChanges}
+                              onClick={() => saveManualPromo(s.id, s)}
+                              className={`px-4 py-2 rounded-lg font-bold text-xs transition-colors ${hasChanges ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-sm' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
+                            >
+                              保存修改
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                    {filteredPromoStudents.length === 0 && (
+                      <tr><td colSpan="6" className="p-8 text-center text-gray-500">未找到符合条件的学生</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1057,6 +1309,90 @@ function AdminPortal({ students, announcements, logs, db, getCollectionPath, sho
         </div>
       )}
 
+      {/* 编辑学生的独立弹窗 */}
+      {editStudent && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[105]">
+          <div className="bg-white rounded-3xl p-8 w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl animate-slide-up">
+            <h3 className="text-2xl font-bold text-purple-800 mb-6 flex items-center gap-2">
+              <Edit size={24} /> 编辑学生资料
+            </h3>
+            <form onSubmit={handleUpdateStudent}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* 姓名 */}
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">姓名 (NAMA MURID)</label>
+                  <input required type="text" value={editStudent.name} onChange={(e) => setEditStudent({...editStudent, name: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:border-purple-500 outline-none" />
+                </div>
+                {/* IC - 设置为不可修改 */}
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">IC 号码 (IC MURID) <span className="text-red-500 text-xs font-normal ml-2">不可修改，作为唯一账号识别</span></label>
+                  <input disabled type="text" value={editStudent.ic} className="w-full p-2.5 border border-gray-200 bg-gray-100 text-gray-500 rounded-lg text-sm" />
+                </div>
+                {/* 年级 */}
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">年级编号 (1~6 或 19转校, 20毕业)</label>
+                  <input required type="text" value={editStudent.classYear} onChange={(e) => setEditStudent({...editStudent, classYear: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:border-purple-500 outline-none" />
+                </div>
+                {/* 班级 */}
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">班级 (如 H, M)</label>
+                  <input type="text" value={editStudent.classColor} onChange={(e) => setEditStudent({...editStudent, classColor: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:border-purple-500 outline-none" />
+                </div>
+                {/* DELIMA ID */}
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">DELIMA ID</label>
+                  <input type="text" value={editStudent.delimaId} onChange={(e) => setEditStudent({...editStudent, delimaId: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:border-purple-500 outline-none" />
+                </div>
+                {/* 密码 */}
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">密码 (PASSWORD)</label>
+                  <input type="text" value={editStudent.password} onChange={(e) => setEditStudent({...editStudent, password: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:border-purple-500 outline-none" />
+                </div>
+                {/* 性别 */}
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">性别 (JANTINA)</label>
+                  <input type="text" value={editStudent.gender} onChange={(e) => setEditStudent({...editStudent, gender: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:border-purple-500 outline-none" />
+                </div>
+                {/* 学号 */}
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">学号 (NO RUJ SEK)</label>
+                  <input type="text" value={editStudent.studentId} onChange={(e) => setEditStudent({...editStudent, studentId: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:border-purple-500 outline-none" />
+                </div>
+                {/* IDME */}
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">IDME</label>
+                  <input type="text" value={editStudent.idme} onChange={(e) => setEditStudent({...editStudent, idme: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:border-purple-500 outline-none" />
+                </div>
+                {/* 报生纸 */}
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">报生纸 (SURAT BERANAK)</label>
+                  <input type="text" value={editStudent.birthCert} onChange={(e) => setEditStudent({...editStudent, birthCert: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:border-purple-500 outline-none" />
+                </div>
+                {/* 出生日期 */}
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">出生日期 (TARIKH LAHIR)</label>
+                  <input type="text" value={editStudent.dob} onChange={(e) => setEditStudent({...editStudent, dob: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:border-purple-500 outline-none" />
+                </div>
+                {/* 运动屋 */}
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">运动屋 (RUMAH SUKAN)</label>
+                  <input type="text" value={editStudent.sportsHouse} onChange={(e) => setEditStudent({...editStudent, sportsHouse: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:border-purple-500 outline-none" />
+                </div>
+              </div>
+              <div className="flex gap-4 mt-8">
+                <button type="button" onClick={() => setEditStudent(null)} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 rounded-xl text-base transition-colors">
+                  取消 (Batal)
+                </button>
+                <button type="submit" className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl text-base transition-colors">
+                  保存修改 (Simpan)
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 确认操作统一弹窗 */}
       {confirmModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[110]">
           <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-bounce-in">
