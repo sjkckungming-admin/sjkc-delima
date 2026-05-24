@@ -19,6 +19,7 @@ const BookOpen = ({ size = 20, className = "" }) => (<svg width={size} height={s
 const AlertCircle = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>);
 const RefreshCw = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>);
 const ClipboardList = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>);
+const ImageIcon = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>);
 
 // ==========================================
 // 1. Firebase 设定与初始化
@@ -84,16 +85,10 @@ export default function App() {
     };
     initAuth();
 
-    // 记录系统操作日志辅助函数
     const logAction = async (role, action, details) => {
       try {
         const newRef = doc(collection(db, getCollectionPath('logs')));
-        await setDoc(newRef, {
-          role,
-          action,
-          details,
-          timestamp: new Date().toISOString()
-        });
+        await setDoc(newRef, { role, action, details, timestamp: new Date().toISOString() });
       } catch (e) {
         console.error("Failed to log action:", e);
       }
@@ -244,15 +239,10 @@ export default function App() {
       {/* 底部 */}
       <footer className="text-center py-8 mt-8 text-purple-400">
         <p className="text-sm mb-2">© {new Date().getFullYear()} SJKC KUNG MING. Hak Cipta Terpelihara.</p>
-        
         <div className="flex justify-center items-center gap-4 text-xs mt-2 opacity-60 hover:opacity-100 transition-opacity">
-          <button onClick={() => setActiveTab('teacher')} className="hover:text-amber-600 transition-colors">
-            panel guru
-          </button>
+          <button onClick={() => setActiveTab('teacher')} className="hover:text-amber-600 transition-colors">panel guru</button>
           <span>|</span>
-          <button onClick={() => setActiveTab('admin')} className="hover:text-purple-700 transition-colors">
-            admin access
-          </button>
+          <button onClick={() => setActiveTab('admin')} className="hover:text-purple-700 transition-colors">admin access</button>
         </div>
       </footer>
 
@@ -296,8 +286,14 @@ function HomeView({ students, announcements, setActiveTab }) {
     e.preventDefault();
     if (!icNumber.trim()) return;
     
-    const cleanIC = icNumber.replace(/[^a-zA-Z0-9]/g, '');
-    const student = students.find(s => s.ic.replace(/[^a-zA-Z0-9]/g, '') === cleanIC);
+    const cleanInput = icNumber.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    
+    // 同时支持 IC 和 报生纸号码 (Surat Beranak) 的模糊/精准匹配
+    const student = students.find(s => {
+      const cleanIC = (s.ic || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+      const cleanBC = (s.birthCert || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+      return cleanIC === cleanInput || cleanBC === cleanInput;
+    });
     
     setResult(student || null);
     setSearched(true);
@@ -313,7 +309,7 @@ function HomeView({ students, announcements, setActiveTab }) {
         <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4 relative z-10">
           <input 
             type="text" 
-            placeholder="请输入学生 IC 号码 (Sila masukkan IC MURID)" 
+            placeholder="请输入学生 IC 或 报生纸号码 (No.K/P atau Surat Beranak)" 
             className="flex-1 text-lg p-4 border-2 border-purple-200 rounded-2xl focus:outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-100 transition-all shadow-inner"
             value={icNumber}
             onChange={(e) => setIcNumber(e.target.value)}
@@ -329,15 +325,21 @@ function HomeView({ students, announcements, setActiveTab }) {
               <div className="bg-purple-50 rounded-2xl p-6 md:p-8 border border-purple-200 shadow-sm">
                 <h3 className="text-2xl font-bold text-purple-900 mb-6 border-b-2 border-purple-200 pb-3">学生资料 (Maklumat Murid)</h3>
                 
-                {/* 完整显示所有项目，注意这里不显示小写 ic，仅显示 IC MURID */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-y-5 gap-x-6">
                   <InfoItem label="姓名 (NAMA MURID)" value={result.name} />
-                  <InfoItem label="班级 (KELAS)" value={formatClassName(result.classYear, result.classColor)} />
+                  <InfoItem label="班级 (KELAS)" value={formatSimpleClassName(result.classYear, result.classColor)} />
                   <InfoItem label="IC 号码 (IC MURID)" value={result.ic} />
                   <InfoItem label="性别 (JANTINA)" value={result.gender} />
                   
                   <InfoItem label="DELIMA ID (EMAIL)" value={result.delimaId} isHighlight />
-                  <InfoItem label="密码 (PASSWORD)" value={result.password} isHighlight />
+                  
+                  {/* 密码及下方红色提示 */}
+                  <div className="flex flex-col">
+                    <InfoItem label="密码 (PASSWORD)" value={result.password} isHighlight />
+                    <span className="text-red-500 font-bold text-xs md:text-sm mt-2 px-1 leading-tight">
+                      * Sila hubungi Guru Penyelaras Delima Sekolah jika ingin menukar kata laluan.
+                    </span>
+                  </div>
                   
                   <InfoItem label="学号 (NO RUJ SEK)" value={result.studentId} />
                   <InfoItem label="IDME (NO.RUJ IDME)" value={result.idme} />
@@ -365,7 +367,7 @@ function HomeView({ students, announcements, setActiveTab }) {
               </div>
             ) : (
               <div className="bg-red-50 text-red-600 p-6 rounded-2xl text-lg text-center font-bold border border-red-100 flex items-center justify-center gap-3">
-                <AlertCircle size={24} /> 找不到该学生的资料，请检查 IC 号码是否正确。
+                <AlertCircle size={24} /> 找不到该学生的资料，请检查输入的号码是否正确。
               </div>
             )}
           </div>
@@ -386,8 +388,14 @@ function HomeView({ students, announcements, setActiveTab }) {
                 href={ann.link || '#'} 
                 target={ann.link ? "_blank" : "_self"}
                 rel="noreferrer"
-                className="bg-white rounded-2xl p-6 md:p-8 shadow-sm hover:shadow-md transition-all border border-purple-50 group flex flex-col justify-between"
+                className="bg-white rounded-2xl p-6 md:p-8 shadow-sm hover:shadow-md transition-all border border-purple-50 group flex flex-col justify-between overflow-hidden"
               >
+                {/* 照片展示 */}
+                {ann.image && (
+                  <div className="-mx-6 md:-mx-8 -mt-6 md:-mt-8 mb-6">
+                    <img src={ann.image} alt={ann.title} className="w-full h-48 object-cover border-b border-gray-100" />
+                  </div>
+                )}
                 <div>
                   <div className="flex justify-between items-start mb-4">
                     <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wider ${ann.type === 'App' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
@@ -412,14 +420,14 @@ function HomeView({ students, announcements, setActiveTab }) {
   );
 }
 
-function InfoItem({ label, value, isHighlight, isAlert }) {
-  // 如果值是空的、或者全是空格、或者是 '-'，则显示 'Sedang dikemaskini'
+function InfoItem({ label, value, isHighlight, isAlert, className = "" }) {
+  // 如果值是空的、或者是 '-'，则显示 'Sedang dikemaskini'
   const displayValue = (!value || String(value).trim() === '' || value === '-') ? 'Sedang dikemaskini' : value;
   
   return (
-    <div className={`p-4 rounded-xl border border-transparent ${isHighlight ? 'bg-purple-600 text-white shadow-sm' : isAlert ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-white border-gray-100'}`}>
+    <div className={`p-4 rounded-xl border border-transparent ${isHighlight ? 'bg-purple-600 text-white shadow-sm' : isAlert ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-white border-gray-100'} ${className}`}>
       <div className={`text-xs md:text-sm font-semibold mb-1 opacity-80`}>{label}</div>
-      <div className={`text-lg md:text-xl font-bold break-all ${displayValue === 'Sedang dikemaskini' ? 'italic text-gray-400 font-normal' : ''}`}>{displayValue}</div>
+      <div className={`text-lg md:text-xl font-bold break-all ${displayValue === 'Sedang dikemaskini' ? 'italic opacity-60 font-normal text-base' : ''}`}>{displayValue}</div>
     </div>
   );
 }
@@ -432,7 +440,6 @@ function LoginView({ roleTarget, setAuthRole, showMessage }) {
 
   const handleLogin = (e) => {
     e.preventDefault();
-    // 教师端密码更改为 xcc6027@km
     if (roleTarget === 'teacher' && pin === 'xcc6027@km') {
       setAuthRole('teacher');
       showMessage("登录成功", "欢迎进入教师控制台。");
@@ -477,7 +484,7 @@ function LoginView({ roleTarget, setAuthRole, showMessage }) {
 // ==========================================
 function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
   const [selectedYear, setSelectedYear] = useState('1');
-  const [selectedColor, setSelectedColor] = useState('H'); // 默认使用 H
+  const [selectedColor, setSelectedColor] = useState('H');
   const [transferModal, setTransferModal] = useState(null);
 
   const years = [
@@ -491,7 +498,6 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
     { val: '20', label: '第20班: 毕业生 (Tamat)' }
   ];
 
-  // 动态提取系统中所有的班级字母
   const colors = useMemo(() => {
     const cls = new Set([...students.map(s => s.classColor).filter(Boolean), 'H', 'M', 'K']);
     return Array.from(cls).sort();
@@ -506,7 +512,6 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
     });
   }, [students, selectedYear, selectedColor]);
 
-  // 教师导出
   const exportToExcel = () => {
     if (typeof window.XLSX === 'undefined') {
       showMessage("错误", "Excel导出工具尚未加载，请稍等或刷新页面。");
@@ -523,7 +528,7 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
       "RUMAH SUKAN": s.sportsHouse || '',
       "SURAT BERANAK": s.birthCert || '',
       "TARIKH LAHIR": s.dob || '',
-      "ic": s.rawIc || '', // 导出时包含小写的 ic 栏位
+      "ic": s.rawIc || '',
       "IC MURID": s.ic,
       "EMAIL DELIMA": s.delimaId,
       "PASSWORD": s.password
@@ -693,12 +698,10 @@ function AdminPortal({ students, announcements, logs, db, getCollectionPath, sho
   const [adminTab, setAdminTab] = useState('all_students'); 
   const [confirmModal, setConfirmModal] = useState(null);
   
-  // 用于编辑学生
   const [editStudent, setEditStudent] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // 升学与调班管理
-  const [promoMode, setPromoMode] = useState('auto'); // 'auto' | 'manual'
+  const [promoMode, setPromoMode] = useState('auto'); 
   const [promoSearchTerm, setPromoSearchTerm] = useState('');
   const [promoEdits, setPromoEdits] = useState({});
 
@@ -713,7 +716,6 @@ function AdminPortal({ students, announcements, logs, db, getCollectionPath, sho
     { val: '20', label: '20班 (毕业)' }
   ];
 
-  // 模板下载
   const downloadTemplate = () => {
     if (typeof window.XLSX === 'undefined') {
       showMessage("错误", "组件尚未加载完成，请稍后再试。");
@@ -735,7 +737,6 @@ function AdminPortal({ students, announcements, logs, db, getCollectionPath, sho
     window.XLSX.writeFile(wb, "Template_Data_Murid_SJKC.xlsx");
   };
 
-  // 批量导入
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -752,7 +753,9 @@ function AdminPortal({ students, announcements, logs, db, getCollectionPath, sho
         const wb = window.XLSX.read(bstr, { type: 'binary' });
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
-        const data = window.XLSX.utils.sheet_to_json(ws);
+        
+        // 【核心修复】设置 raw: false 将 Excel 里的日期数字 (例如 41890) 自动转为字符串格式 (例如 13/09/2016)
+        const data = window.XLSX.utils.sheet_to_json(ws, { raw: false });
         
         let successCount = 0;
         for (const row of data) {
@@ -809,7 +812,6 @@ function AdminPortal({ students, announcements, logs, db, getCollectionPath, sho
     reader.readAsBinaryString(file);
   };
 
-  // 年度升学
   const promptYearlyPromotion = () => {
     setConfirmModal({
       message: "确定要进行年度升学操作吗？\n\n六年级将移至毕业班，其余年级将自动升一级。此操作不可逆，请谨慎执行！",
@@ -841,12 +843,8 @@ function AdminPortal({ students, announcements, logs, db, getCollectionPath, sho
     });
   };
 
-  // 手动修改班级
   const handlePromoEditChange = (id, field, value) => {
-    setPromoEdits(prev => ({
-      ...prev,
-      [id]: { ...(prev[id] || {}), [field]: value }
-    }));
+    setPromoEdits(prev => ({ ...prev, [id]: { ...(prev[id] || {}), [field]: value } }));
   };
 
   const saveManualPromo = async (id, originalStudent) => {
@@ -856,24 +854,61 @@ function AdminPortal({ students, announcements, logs, db, getCollectionPath, sho
       const newYear = updates.classYear !== undefined ? updates.classYear : originalStudent.classYear;
       const newColor = updates.classColor !== undefined ? updates.classColor : originalStudent.classColor;
       await updateDoc(doc(db, getCollectionPath('students'), id), {
-        classYear: newYear,
-        classColor: newColor,
+        classYear: newYear, classColor: newColor,
         graduationDate: newYear === '20' ? new Date().toISOString().split('T')[0] : originalStudent.graduationDate
       });
       showMessage("成功", `成功更新 ${originalStudent.name} 的班级。`);
       if (window.logSystemAction) window.logSystemAction('admin', '手动调班', `将学生 [${originalStudent.name}] 调至 ${newYear}年级 ${newColor}班`);
-      setPromoEdits(prev => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
-    } catch (err) {
-      showMessage("错误", "更新失败: " + err.message);
-    }
+      setPromoEdits(prev => { const next = { ...prev }; delete next[id]; return next; });
+    } catch (err) { showMessage("错误", "更新失败: " + err.message); }
   };
 
-  // 公告管理
-  const [annForm, setAnnForm] = useState({ title: '', content: '', type: 'App', link: '' });
+  const [annForm, setAnnForm] = useState({ title: '', content: '', type: 'App', link: '', image: '' });
+  
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      showMessage("错误", "请上传图片文件 (JPG, PNG)");
+      e.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 800;
+        const MAX_HEIGHT = 800;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+        } else {
+          if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        setAnnForm({...annForm, image: dataUrl});
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const clearImage = () => {
+    setAnnForm({...annForm, image: ''});
+    const fileInput = document.getElementById('announcement-image-upload');
+    if(fileInput) fileInput.value = '';
+  };
+
   const handleAddAnnouncement = async (e) => {
     e.preventDefault();
     try {
@@ -881,9 +916,13 @@ function AdminPortal({ students, announcements, logs, db, getCollectionPath, sho
       await setDoc(newRef, { ...annForm, date: new Date().toISOString().split('T')[0] });
       showMessage("成功", "已发布最新公告。");
       if (window.logSystemAction) window.logSystemAction('admin', '发布通告', `发布了标题为 [${annForm.title}] 的通告`);
-      setAnnForm({ title: '', content: '', type: 'App', link: '' });
+      
+      setAnnForm({ title: '', content: '', type: 'App', link: '', image: '' });
+      const fileInput = document.getElementById('announcement-image-upload');
+      if(fileInput) fileInput.value = '';
     } catch (err) { showMessage("错误", "发布失败: " + err.message); }
   };
+  
   const promptDeleteAnnouncement = (id) => {
     setConfirmModal({
       message: "确定要删除这条公告吗？删除后将无法恢复。",
@@ -898,7 +937,6 @@ function AdminPortal({ students, announcements, logs, db, getCollectionPath, sho
     });
   };
 
-  // 日志导出
   const exportLogsToExcel = () => {
     if (typeof window.XLSX === 'undefined') { showMessage("错误", "Excel导出工具尚未加载，请稍等或刷新页面。"); return; }
     const exportData = logs.map(l => ({
@@ -913,7 +951,6 @@ function AdminPortal({ students, announcements, logs, db, getCollectionPath, sho
     window.XLSX.writeFile(wb, `System_Logs_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
-  // 【新增功能】删除学生
   const promptDeleteStudent = (student) => {
     setConfirmModal({
       message: `确认要将学生 [${student.name}] 彻底从系统中删除吗？此操作无法恢复！`,
@@ -930,7 +967,6 @@ function AdminPortal({ students, announcements, logs, db, getCollectionPath, sho
     });
   };
 
-  // 【新增功能】更新学生资料
   const handleUpdateStudent = async (e) => {
     e.preventDefault();
     try {
@@ -943,7 +979,6 @@ function AdminPortal({ students, announcements, logs, db, getCollectionPath, sho
     }
   };
 
-  // 全校学生列表搜索过滤
   const filteredAllStudents = useMemo(() => {
     if (!searchTerm) return students;
     const lower = searchTerm.toLowerCase();
@@ -954,7 +989,6 @@ function AdminPortal({ students, announcements, logs, db, getCollectionPath, sho
     );
   }, [students, searchTerm]);
 
-  // 手动调班列表过滤
   const filteredPromoStudents = useMemo(() => {
     if (!promoSearchTerm) return students;
     const lower = promoSearchTerm.toLowerCase();
@@ -993,7 +1027,6 @@ function AdminPortal({ students, announcements, logs, db, getCollectionPath, sho
         ))}
       </div>
 
-      {/* 【新增面板】全校学生名单 (查看/编辑/删除) */}
       {adminTab === 'all_students' && (
         <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm animate-slide-up">
           <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
@@ -1220,20 +1253,45 @@ function AdminPortal({ students, announcements, logs, db, getCollectionPath, sho
                 <label className="block text-sm font-bold text-gray-700 mb-1.5">标题</label>
                 <input required type="text" value={annForm.title} onChange={e=>setAnnForm({...annForm, title: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-lg text-sm outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-200 transition-all" />
               </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1.5">类型</label>
-                <select value={annForm.type} onChange={e=>setAnnForm({...annForm, type: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-lg text-sm outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-200 transition-all">
-                  <option value="App">App 推荐</option>
-                  <option value="Activity">活动通告</option>
-                </select>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1.5">类型</label>
+                  <select value={annForm.type} onChange={e=>setAnnForm({...annForm, type: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-lg text-sm outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-200 transition-all">
+                    <option value="App">App 推荐</option>
+                    <option value="Activity">活动通告</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1.5">链接 (可选)</label>
+                  <input type="url" value={annForm.link} onChange={e=>setAnnForm({...annForm, link: e.target.value})} placeholder="https://" className="w-full p-2.5 border border-gray-300 rounded-lg text-sm outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-200 transition-all" />
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1.5">内容描述</label>
                 <textarea required rows="4" value={annForm.content} onChange={e=>setAnnForm({...annForm, content: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-lg text-sm outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-200 transition-all"></textarea>
               </div>
+              {/* 图片上传 */}
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1.5">链接 (可选)</label>
-                <input type="url" value={annForm.link} onChange={e=>setAnnForm({...annForm, link: e.target.value})} placeholder="https://" className="w-full p-2.5 border border-gray-300 rounded-lg text-sm outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-200 transition-all" />
+                <label className="block text-sm font-bold text-gray-700 mb-1.5">上传照片 (可选)</label>
+                <div className="flex items-center gap-4">
+                  <label className="flex-1 flex items-center justify-center gap-2 p-2.5 border border-gray-300 border-dashed rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors text-sm text-gray-600">
+                    <ImageIcon size={18} /> 选择照片
+                    <input type="file" id="announcement-image-upload" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                  </label>
+                </div>
+                {annForm.image && (
+                  <div className="relative inline-block mt-3">
+                    <img src={annForm.image} alt="预览" className="h-32 w-auto object-cover rounded-lg border border-gray-200 shadow-sm" />
+                    <button 
+                      type="button" 
+                      onClick={clearImage} 
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 shadow-md hover:bg-red-600 transition-colors"
+                      title="移除照片"
+                    >
+                       <Trash2 size={14} />
+                    </button>
+                  </div>
+                )}
               </div>
               <button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg text-base mt-2 transition-colors">
                 发布
@@ -1245,14 +1303,17 @@ function AdminPortal({ students, announcements, logs, db, getCollectionPath, sho
             <div className="space-y-3">
               {announcements.map(a => (
                 <div key={a.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex justify-between items-center hover:shadow-md transition-shadow">
-                  <div>
-                    <span className="text-xs font-bold text-purple-600 bg-purple-100 px-2 py-1 rounded-md">{a.type}</span>
-                    <h4 className="text-base font-bold mt-2 text-gray-800">{a.title}</h4>
-                    <p className="text-xs text-gray-500 mt-1">{a.date}</p>
+                  <div className="flex gap-4 items-center w-full">
+                    {a.image && <img src={a.image} alt="" className="w-16 h-16 object-cover rounded-md border border-gray-100" />}
+                    <div className="flex-1">
+                      <span className="text-xs font-bold text-purple-600 bg-purple-100 px-2 py-1 rounded-md">{a.type}</span>
+                      <h4 className="text-base font-bold mt-2 text-gray-800">{a.title}</h4>
+                      <p className="text-xs text-gray-500 mt-1">{a.date}</p>
+                    </div>
+                    <button onClick={() => promptDeleteAnnouncement(a.id)} className="text-red-500 p-2 hover:bg-red-50 rounded-lg transition-colors ml-auto">
+                      <Trash2 size={20} />
+                    </button>
                   </div>
-                  <button onClick={() => promptDeleteAnnouncement(a.id)} className="text-red-500 p-2 hover:bg-red-50 rounded-lg transition-colors">
-                    <Trash2 size={20} />
-                  </button>
                 </div>
               ))}
               {announcements.length === 0 && (
@@ -1424,7 +1485,14 @@ function AdminPortal({ students, announcements, logs, db, getCollectionPath, sho
   );
 }
 
-// 辅助函数：格式化班级名称
+// 辅助函数：格式化简单班级名称 (例如 6H)
+function formatSimpleClassName(year, color) {
+  if (year === '19') return '19 (转校)';
+  if (year === '20') return '20 (毕业)';
+  return `${year}${color}`;
+}
+
+// 辅助函数：格式化详情班级名称
 function formatClassName(year, color) {
   if (year === '19') return '第19班 (转校)';
   if (year === '20') return '第20班 (毕业)';
