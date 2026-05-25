@@ -393,6 +393,25 @@ function HomeView({ students, announcements, setActiveTab }) {
         )}
       </section>
 
+      {/* DELIMA Login Button */}
+      <section className="animate-slide-up">
+        <a 
+          href="https://d2.delima.edu.my/login" 
+          target="_blank" 
+          rel="noreferrer"
+          className="group block w-full bg-white border-4 border-purple-500 rounded-3xl p-6 md:p-10 text-center shadow-xl hover:shadow-2xl hover:bg-purple-50 transition-all active:scale-95"
+        >
+          <div className="flex flex-col items-center justify-center gap-1 md:gap-2">
+            <h3 className="text-sm md:text-lg font-bold text-purple-600 uppercase tracking-widest opacity-90">
+              Click here for login
+            </h3>
+            <h2 className="text-2xl md:text-4xl lg:text-5xl font-extrabold text-purple-800 leading-tight group-hover:scale-[1.02] transition-transform">
+              Digital Educational Learning Initiative Malaysia
+            </h2>
+          </div>
+        </a>
+      </section>
+
       <section>
         <h2 className="text-2xl md:text-3xl font-extrabold text-purple-800 mb-6 flex items-center gap-3 pl-4 border-l-8 border-amber-400 rounded-l-md">
           <BookOpen size={28} className="text-amber-500" /> Hebahan & Aktiviti DELIMA (最新活动)
