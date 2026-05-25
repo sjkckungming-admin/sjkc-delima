@@ -20,6 +20,7 @@ const AlertCircle = ({ size = 20, className = "" }) => (<svg width={size} height
 const RefreshCw = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>);
 const ClipboardList = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>);
 const ImageIcon = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>);
+const Monitor = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>);
 
 // ==========================================
 // 1. Firebase 设定与初始化
@@ -67,6 +68,29 @@ export default function App() {
 
   // 初始化验证与数据抓取
   useEffect(() => {
+    // 动态修改网页的 App 图标 (Favicon / Apple Touch Icon) 为紫色电脑图案
+    // 这样用户将其“下载/添加”到手机或电脑主屏时，就会显示这个电脑图标
+    const faviconSvg = encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="#9333ea"/><g transform="translate(20, 20) scale(2.5)" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></g></svg>');
+    
+    let iconLink = document.querySelector("link[rel~='icon']");
+    if (!iconLink) {
+      iconLink = document.createElement('link');
+      iconLink.rel = 'icon';
+      document.head.appendChild(iconLink);
+    }
+    iconLink.type = 'image/svg+xml';
+    iconLink.href = `data:image/svg+xml,${faviconSvg}`;
+
+    let appleIcon = document.querySelector("link[rel='apple-touch-icon']");
+    if (!appleIcon) {
+      appleIcon = document.createElement('link');
+      appleIcon.rel = 'apple-touch-icon';
+      document.head.appendChild(appleIcon);
+    }
+    appleIcon.href = `data:image/svg+xml,${faviconSvg}`;
+    
+    document.title = "SJKC Kung Ming Delima";
+
     const initAuth = async () => {
       try {
         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -288,7 +312,6 @@ function HomeView({ students, announcements, setActiveTab }) {
     
     const cleanInput = icNumber.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
     
-    // 同时支持 IC 和 报生纸号码 (Surat Beranak) 的模糊/精准匹配
     const student = students.find(s => {
       const cleanIC = (s.ic || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
       const cleanBC = (s.birthCert || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
@@ -333,7 +356,6 @@ function HomeView({ students, announcements, setActiveTab }) {
                   
                   <InfoItem label="DELIMA ID (EMAIL)" value={result.delimaId} isHighlight />
                   
-                  {/* 密码及下方红色提示 */}
                   <div className="flex flex-col">
                     <InfoItem label="密码 (PASSWORD)" value={result.password} isHighlight />
                     <span className="text-red-500 font-bold text-xs md:text-sm mt-2 px-1 leading-tight">
@@ -344,11 +366,8 @@ function HomeView({ students, announcements, setActiveTab }) {
                   <InfoItem label="学号 (NO RUJ SEK)" value={result.studentId} />
                   <InfoItem label="IDME (NO.RUJ IDME)" value={result.idme} />
                   
-                  <InfoItem label="出生日期 (TARIKH LAHIR)" value={result.dob} />
                   <InfoItem label="报生纸 (SURAT BERANAK)" value={result.birthCert} />
-                  
-                  <InfoItem label="入学日期 (TARIKH MASUK)" value={result.admissionDate} />
-                  <InfoItem label="运动屋 (RUMAH SUKAN)" value={result.sportsHouse} />
+                  <InfoItem label="运动队伍 (RUMAH SUKAN)" value={result.sportsHouse} />
                   
                   {result.classYear === '19' && (
                     <>
@@ -390,15 +409,16 @@ function HomeView({ students, announcements, setActiveTab }) {
                 rel="noreferrer"
                 className="bg-white rounded-2xl p-6 md:p-8 shadow-sm hover:shadow-md transition-all border border-purple-50 group flex flex-col justify-between overflow-hidden"
               >
-                {/* 照片展示 */}
                 {ann.image && (
-                  <div className="-mx-6 md:-mx-8 -mt-6 md:-mt-8 mb-6">
-                    <img src={ann.image} alt={ann.title} className="w-full h-48 object-cover border-b border-gray-100" />
+                  <div className="-mx-6 md:-mx-8 -mt-6 md:-mt-8 mb-6 bg-gray-50 flex items-center justify-center border-b border-gray-100">
+                    <img src={ann.image} alt={ann.title} className="w-full h-auto max-h-80 object-contain" />
                   </div>
                 )}
                 <div>
                   <div className="flex justify-between items-start mb-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wider ${ann.type === 'App' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                    {/* 添加电脑小图标如果在 App 类型下 */}
+                    <span className={`flex items-center gap-1 w-fit px-3 py-1 rounded-full text-xs font-bold tracking-wider ${ann.type === 'App' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                      {ann.type === 'App' && <Monitor size={14} />}
                       {ann.type}
                     </span>
                     <span className="text-gray-400 text-sm">{ann.date}</span>
@@ -421,7 +441,6 @@ function HomeView({ students, announcements, setActiveTab }) {
 }
 
 function InfoItem({ label, value, isHighlight, isAlert, className = "" }) {
-  // 如果值是空的、或者是 '-'，则显示 'Sedang dikemaskini'
   const displayValue = (!value || String(value).trim() === '' || value === '-') ? 'Sedang dikemaskini' : value;
   
   return (
@@ -754,7 +773,6 @@ function AdminPortal({ students, announcements, logs, db, getCollectionPath, sho
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
         
-        // 【核心修复】设置 raw: false 将 Excel 里的日期数字 (例如 41890) 自动转为字符串格式 (例如 13/09/2016)
         const data = window.XLSX.utils.sheet_to_json(ws, { raw: false });
         
         let successCount = 0;
@@ -1027,6 +1045,7 @@ function AdminPortal({ students, announcements, logs, db, getCollectionPath, sho
         ))}
       </div>
 
+      {/* 【新增面板】全校学生名单 (查看/编辑/删除) */}
       {adminTab === 'all_students' && (
         <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm animate-slide-up">
           <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
@@ -1059,7 +1078,7 @@ function AdminPortal({ students, announcements, logs, db, getCollectionPath, sho
                   <th className="p-4 font-semibold whitespace-nowrap">出生日期</th>
                   <th className="p-4 font-semibold whitespace-nowrap">报生纸</th>
                   <th className="p-4 font-semibold whitespace-nowrap">入学日期</th>
-                  <th className="p-4 font-semibold whitespace-nowrap">运动屋</th>
+                  <th className="p-4 font-semibold whitespace-nowrap">运动队伍</th>
                   <th className="p-4 font-semibold text-center whitespace-nowrap sticky right-0 bg-gray-50 shadow-[-2px_0_5px_rgba(0,0,0,0.05)]">操作</th>
                 </tr>
               </thead>
@@ -1244,6 +1263,7 @@ function AdminPortal({ students, announcements, logs, db, getCollectionPath, sho
         </div>
       )}
 
+      {/* 【更新：公告发布表单增加图片上传】 */}
       {adminTab === 'announcements' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-slide-up">
           <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm">
@@ -1281,7 +1301,7 @@ function AdminPortal({ students, announcements, logs, db, getCollectionPath, sho
                 </div>
                 {annForm.image && (
                   <div className="relative inline-block mt-3">
-                    <img src={annForm.image} alt="预览" className="h-32 w-auto object-cover rounded-lg border border-gray-200 shadow-sm" />
+                    <img src={annForm.image} alt="预览" className="h-32 w-auto object-contain rounded-lg border border-gray-200 shadow-sm bg-gray-50" />
                     <button 
                       type="button" 
                       onClick={clearImage} 
@@ -1434,9 +1454,9 @@ function AdminPortal({ students, announcements, logs, db, getCollectionPath, sho
                   <label className="block text-sm font-bold text-gray-700 mb-1">出生日期 (TARIKH LAHIR)</label>
                   <input type="text" value={editStudent.dob} onChange={(e) => setEditStudent({...editStudent, dob: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:border-purple-500 outline-none" />
                 </div>
-                {/* 运动屋 */}
+                {/* 运动队伍 */}
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">运动屋 (RUMAH SUKAN)</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">运动队伍 (RUMAH SUKAN)</label>
                   <input type="text" value={editStudent.sportsHouse} onChange={(e) => setEditStudent({...editStudent, sportsHouse: e.target.value})} className="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:border-purple-500 outline-none" />
                 </div>
               </div>
