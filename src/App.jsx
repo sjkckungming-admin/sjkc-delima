@@ -320,6 +320,15 @@ function HomeView({ students, announcements, setActiveTab }) {
     
     setResult(student || null);
     setSearched(true);
+
+    // 记录家长/访客的查询行为
+    if (window.logSystemAction) {
+      if (student) {
+        window.logSystemAction('visitor', '查询资料', `访客/家长成功查询了资料，输入的号码: ${icNumber} (对应学生: ${student.name})`);
+      } else {
+        window.logSystemAction('visitor', '查询失败', `有人尝试查询资料但未找到结果，输入的号码: ${icNumber}`);
+      }
+    }
   };
 
   return (
@@ -978,7 +987,7 @@ function AdminPortal({ students, announcements, logs, db, getCollectionPath, sho
     if (typeof window.XLSX === 'undefined') { showMessage("错误", "Excel导出工具尚未加载，请稍等或刷新页面。"); return; }
     const exportData = logs.map(l => ({
       "时间 (Masa)": new Date(l.timestamp).toLocaleString(),
-      "身份 (Peranan)": l.role === 'admin' ? '管理员 (Admin)' : '教师 (Guru)',
+      "身份 (Peranan)": l.role === 'admin' ? '管理员 (Admin)' : l.role === 'teacher' ? '教师 (Guru)' : '访客/家长 (Pelawat)',
       "操作类别 (Tindakan)": l.action,
       "详细内容 (Butiran)": l.details
     }));
@@ -1369,7 +1378,7 @@ function AdminPortal({ students, announcements, logs, db, getCollectionPath, sho
             <div>
               <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-1">系统操作记录 (Log Sistem)</h3>
               <p className="text-xs md:text-sm text-gray-600">
-                记录系统内所有的登入、资料修改与人员调动（共 {logs.length} 条记录）。
+                记录系统内所有的登入、资料修改、人员调动以及家长查询记录（共 {logs.length} 条记录）。
               </p>
             </div>
             <button 
@@ -1389,8 +1398,12 @@ function AdminPortal({ students, announcements, logs, db, getCollectionPath, sho
                   </span>
                 </div>
                 <div className="md:w-1/6">
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${log.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-amber-100 text-amber-700'}`}>
-                    {log.role === 'admin' ? '管理员' : '教师'}
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                    log.role === 'admin' ? 'bg-purple-100 text-purple-700' : 
+                    log.role === 'teacher' ? 'bg-amber-100 text-amber-700' : 
+                    'bg-blue-100 text-blue-700'
+                  }`}>
+                    {log.role === 'admin' ? '管理员' : log.role === 'teacher' ? '教师' : '访客/家长'}
                   </span>
                 </div>
                 <div className="md:w-1/6 font-bold text-sm text-gray-800">
