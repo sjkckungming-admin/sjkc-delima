@@ -23,7 +23,6 @@ const ImageIcon = ({ size = 20, className = "" }) => (<svg width={size} height={
 const Users = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>);
 const FileText = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>);
 const BarChart = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>);
-const Lock = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>);
 
 // ==========================================
 // 1. Firebase 设定与初始化
@@ -65,7 +64,7 @@ export default function App() {
   const [announcements, setAnnouncements] = useState([]);
   const [logs, setLogs] = useState([]);
   const [schoolReports, setSchoolReports] = useState([]); 
-  const [adminNotes, setAdminNotes] = useState([]); // 新增 Admin 私密备注状态
+  const [adminNotes, setAdminNotes] = useState([]); 
   
   // 弹窗与加载状态
   const [isLoading, setIsLoading] = useState(true);
@@ -169,7 +168,6 @@ export default function App() {
       setSchoolReports(data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)));
     }, handleFirestoreError);
 
-    // 新增：抓取 Admin 私密备注
     const notesRef = collection(db, getCollectionPath('adminNotes'));
     const unsubscribeNotes = onSnapshot(query(notesRef), (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -451,7 +449,6 @@ function HomeView({ students, announcements, schoolReports, setActiveTab }) {
                     </div>
                   )}
                   
-                  {/* 新增：最后更新时间提示 */}
                   <div className="text-xs text-gray-400 font-medium text-right mt-2 border-t border-gray-100 pt-3">
                     Tarikh Kemaskini: {new Date(rep.timestamp).toLocaleString()}
                   </div>
@@ -718,10 +715,10 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
 }
 
 // ==========================================
-// 6. 管理员后台 (Admin Portal) 包含4个标签页
+// 6. 管理员后台 (Admin Portal)
 // ==========================================
 function AdminPortal({ students, announcements, logs, schoolReports, adminNotes, db, getCollectionPath, showMessage }) {
-  const [adminMainTab, setAdminMainTab] = useState('students_mgmt'); // 'students_mgmt', 'ann_logs', 'school_reports', 'admin_notes'
+  const [adminMainTab, setAdminMainTab] = useState('students_mgmt'); 
   const [confirmModal, setConfirmModal] = useState(null);
   
   // ---------- 数据压缩转换函数 (共用) ----------
@@ -881,8 +878,12 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
 
   // ---------- 标签 3：学校报告与数据管理 ----------
   const [reportForm, setReportForm] = useState({ title: '', content: '', image: '', studentUsage: '', teacherUsage: '' });
+  const [editReport, setEditReport] = useState(null); // 新增：用于编辑官方报告的状态
+
   const handleReportImage = (e) => compressImage(e.target.files[0], (data) => setReportForm({...reportForm, image: data}));
   
+  const handleEditReportImage = (e) => compressImage(e.target.files[0], (data) => setEditReport({...editReport, image: data}));
+
   const handleAddReport = async (e) => {
     e.preventDefault();
     try {
@@ -895,16 +896,43 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         timestamp: new Date().toISOString()
       });
       showMessage("成功", "学校报告已成功保存并在首页展示。");
+      if (window.logSystemAction) window.logSystemAction('admin', '发布报告', `发布了官方报告 [${reportForm.title}]`);
       setReportForm({ title: '', content: '', image: '', studentUsage: '', teacherUsage: '' });
       const f = document.getElementById('report-image-upload'); if (f) f.value = '';
     } catch (err) { showMessage("错误", "保存失败: " + err.message); }
   };
 
-  const promptDeleteReport = (id) => {
-    setConfirmModal({ message: "确定要删除这篇官方报告吗？首页将不再显示。", onConfirm: async () => { setConfirmModal(null); await deleteDoc(doc(db, getCollectionPath('schoolReports'), id)); } });
+  const handleUpdateReport = async (e) => {
+    e.preventDefault();
+    try {
+      await updateDoc(doc(db, getCollectionPath('schoolReports'), editReport.id), {
+        title: editReport.title,
+        content: editReport.content,
+        studentUsage: editReport.studentUsage ? Number(editReport.studentUsage) : null,
+        teacherUsage: editReport.teacherUsage ? Number(editReport.teacherUsage) : null,
+        image: editReport.image || '',
+        timestamp: new Date().toISOString() // 更新最新时间
+      });
+      showMessage("成功", "学校报告资料已成功更新。");
+      if (window.logSystemAction) window.logSystemAction('admin', '修改报告', `更新了官方报告 [${editReport.title}]`);
+      setEditReport(null);
+    } catch (err) {
+      showMessage("错误", "更新失败: " + err.message);
+    }
   };
 
-  // ---------- 标签 4：Admin 备注记录 (新增、私密) ----------
+  const promptDeleteReport = (id, title) => {
+    setConfirmModal({ 
+      message: "确定要彻底删除这篇官方报告吗？首页将不再显示。", 
+      onConfirm: async () => { 
+        setConfirmModal(null); 
+        await deleteDoc(doc(db, getCollectionPath('schoolReports'), id)); 
+        if (window.logSystemAction) window.logSystemAction('admin', '删除报告', `删除了官方报告 [${title}]`);
+      } 
+    });
+  };
+
+  // ---------- 标签 4：Admin 备注记录 (私密) ----------
   const [noteForm, setNoteForm] = useState({ title: '', content: '', link: '', image: '' });
   const handleNoteImage = (e) => compressImage(e.target.files[0], (data) => setNoteForm({...noteForm, image: data}));
 
@@ -938,7 +966,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         </div>
       </div>
       
-      {/* 顶部主导航菜单：分为4大模块 */}
+      {/* 顶部主导航菜单 */}
       <div className="flex flex-wrap gap-3 mb-8 border-b-2 border-gray-100 pb-4">
         <button onClick={() => setAdminMainTab('students_mgmt')} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${adminMainTab === 'students_mgmt' ? 'bg-purple-600 text-white shadow-md' : 'bg-gray-50 text-gray-600 hover:bg-purple-100'}`}>
           <UserCheck size={18} /> 学生综合管理
@@ -958,7 +986,6 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
       {adminMainTab === 'students_mgmt' && (
         <div className="space-y-12 animate-slide-up">
           
-          {/* 区块 1: 批量导入 */}
           <div className="bg-purple-50/50 p-6 md:p-8 rounded-2xl border border-purple-100">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
               <div>
@@ -976,7 +1003,6 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
 
           <hr className="border-gray-200" />
 
-          {/* 区块 2: 年度升学/调班 */}
           <div className="bg-white p-6 md:p-8 rounded-2xl border border-gray-200 shadow-sm">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
               <h3 className="text-xl md:text-2xl font-bold text-amber-800 flex items-center gap-2"><RefreshCw size={24}/> 2. 升学与班级管理</h3>
@@ -1020,7 +1046,6 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
 
           <hr className="border-gray-200" />
 
-          {/* 区块 3: 全校学生名单 */}
           <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm">
              <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
               <h3 className="text-lg md:text-xl font-bold text-purple-800 flex items-center gap-2"><UserCheck size={24} /> 3. 全校名单及详细资料管理</h3>
@@ -1104,7 +1129,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         </div>
       )}
 
-      {/* ======================= 模块 3：学校重要信息与数据 ======================= */}
+      {/* ======================= 模块 3：学校报告与数据管理 ======================= */}
       {adminMainTab === 'school_reports' && (
         <div className="space-y-8 animate-slide-up">
           <div className="bg-blue-50/50 p-6 md:p-8 rounded-2xl border border-blue-200 grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -1135,13 +1160,22 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
               <div className="space-y-4">
                 {schoolReports.map(rep => (
                   <div key={rep.id} className="p-4 rounded-xl border border-gray-100 bg-gray-50 shadow-sm relative overflow-hidden group">
-                    <button onClick={() => promptDeleteReport(rep.id)} className="absolute top-2 right-2 text-red-500 bg-white p-1.5 rounded-lg shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={16} /></button>
                     <p className="text-xs text-blue-500 font-bold mb-1">{rep.date}</p>
                     <h4 className="font-bold text-gray-800 text-base mb-2 pr-8">{rep.title}</h4>
                     {rep.image && <img src={rep.image} alt="report" className="w-full h-24 object-cover rounded-md mb-2" />}
                     <div className="flex gap-4 text-xs font-bold text-gray-600 mt-2">
                       {rep.studentUsage && <span>学生: <span className="text-blue-600">{rep.studentUsage}%</span></span>}
                       {rep.teacherUsage && <span>老师: <span className="text-green-600">{rep.teacherUsage}%</span></span>}
+                    </div>
+                    
+                    {/* 添加编辑和删除官方报告的功能 */}
+                    <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-200">
+                      <button onClick={() => setEditReport({ ...rep })} className="flex items-center gap-1 text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-100 transition-colors">
+                        <Edit size={14} /> 编辑
+                      </button>
+                      <button onClick={() => promptDeleteReport(rep.id, rep.title)} className="flex items-center gap-1 text-red-600 bg-red-50 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-100 transition-colors">
+                        <Trash2 size={14} /> 删除
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -1152,7 +1186,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         </div>
       )}
 
-      {/* ======================= 模块 4：Admin 备注记录 (新增，私密) ======================= */}
+      {/* ======================= 模块 4：Admin 备注记录 (新增、私密) ======================= */}
       {adminMainTab === 'admin_notes' && (
         <div className="space-y-8 animate-slide-up">
           <div className="bg-red-50/30 p-6 md:p-8 rounded-2xl border border-red-100 grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -1222,6 +1256,62 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         </div>
       )}
 
+      {/* 编辑官方报告的独立弹窗 (针对模块 3) */}
+      {editReport && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[105]">
+          <div className="bg-white rounded-3xl p-8 w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl animate-slide-up">
+            <h3 className="text-2xl font-bold text-blue-900 mb-6 flex items-center gap-2"><Edit size={24} /> 编辑官方报告</h3>
+            <form onSubmit={handleUpdateReport} className="space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">报告标题</label>
+                <input required type="text" value={editReport.title} onChange={(e) => setEditReport({...editReport, title: e.target.value})} className="w-full p-2.5 border border-blue-200 rounded-lg text-sm outline-none focus:border-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">详细说明</label>
+                <textarea required rows="4" value={editReport.content} onChange={(e) => setEditReport({...editReport, content: e.target.value})} className="w-full p-2.5 border border-blue-200 rounded-lg text-sm outline-none focus:border-blue-500"></textarea>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">学生使用率 (%)</label>
+                  <input type="number" min="0" max="100" value={editReport.studentUsage || ''} onChange={(e) => setEditReport({...editReport, studentUsage: e.target.value})} className="w-full p-2.5 border border-blue-200 rounded-lg text-sm" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">老师使用率 (%)</label>
+                  <input type="number" min="0" max="100" value={editReport.teacherUsage || ''} onChange={(e) => setEditReport({...editReport, teacherUsage: e.target.value})} className="w-full p-2.5 border border-blue-200 rounded-lg text-sm" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">更换照片证据</label>
+                <div className="flex items-center gap-4">
+                  <label className="flex-1 flex items-center justify-center gap-2 p-2.5 border border-blue-200 border-dashed rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors text-sm text-blue-600">
+                    <ImageIcon size={18} /> 上传新照片
+                    <input type="file" accept="image/*" onChange={handleEditReportImage} className="hidden" />
+                  </label>
+                </div>
+                {editReport.image && (
+                  <div className="relative inline-block mt-3">
+                    <img src={editReport.image} alt="预览" className="h-32 w-auto object-contain rounded-lg border border-blue-100 bg-white" />
+                    <button 
+                      type="button" 
+                      onClick={() => setEditReport({...editReport, image: ''})} 
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 shadow-md hover:bg-red-600 transition-colors"
+                      title="移除照片"
+                    >
+                       <Trash2 size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-4 mt-8">
+                <button type="button" onClick={() => setEditReport(null)} className="flex-1 bg-gray-100 font-bold py-3 rounded-xl">取消</button>
+                <button type="submit" className="flex-1 bg-blue-600 text-white font-bold py-3 rounded-xl">保存修改</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 确认操作统一弹窗 */}
       {confirmModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[110]"><div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center"><AlertCircle size={48} className="text-amber-500 mx-auto mb-4" /><h3 className="text-xl font-bold mb-2">确认操作</h3><p className="text-sm text-gray-600 mb-6">{confirmModal.message}</p><div className="flex gap-4"><button onClick={() => setConfirmModal(null)} className="flex-1 bg-gray-100 font-bold py-2 rounded-lg">取消</button><button onClick={confirmModal.onConfirm} className="flex-1 bg-amber-500 text-white font-bold py-2 rounded-lg">确认</button></div></div></div>
       )}
