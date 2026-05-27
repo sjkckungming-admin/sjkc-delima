@@ -71,6 +71,7 @@ export default function App() {
   const [modalMessage, setModalMessage] = useState(null);
 
   useEffect(() => {
+    // 设置网页紫色的电脑图标 (Favicon)
     const faviconSvg = encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="#9333ea"/><g transform="translate(20, 20) scale(2.5)" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></g></svg>');
     let iconLink = document.querySelector("link[rel~='icon']");
     if (!iconLink) {
@@ -321,8 +322,8 @@ function HomeView({ students, announcements, schoolReports, setActiveTab }) {
     setSearched(true);
 
     if (window.logSystemAction) {
-      if (student) window.logSystemAction('visitor', '查询资料', `访客/家长成功查询了资料，输入的号码: ${icNumber} (对应学生: ${student.name})`);
-      else window.logSystemAction('visitor', '查询失败', `有人尝试查询资料但未找到结果，输入的号码: ${icNumber}`);
+      if (student) window.logSystemAction('visitor', '成功查询资料', `家长/学生成功进入，输入的身份证/报生纸: ${icNumber} (学生: ${student.name}, 班级: ${student.classYear}${student.classColor})`);
+      else window.logSystemAction('visitor', '查询失败', `家长/学生尝试进入但失败，输入的号码: ${icNumber}`);
     }
   };
 
@@ -721,7 +722,6 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
   const [adminMainTab, setAdminMainTab] = useState('students_mgmt'); 
   const [confirmModal, setConfirmModal] = useState(null);
   
-  // ---------- 数据压缩转换函数 (共用) ----------
   const compressImage = (file, callback) => {
     if (!file.type.startsWith('image/')) { showMessage("错误", "请上传图片文件"); return; }
     const reader = new FileReader();
@@ -857,7 +857,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
     catch (err) { showMessage("错误", err.message); }
   };
 
-  // ---------- 标签 2：通告与系统记录 ----------
+  // ---------- 标签 2：通告与活动管理 ----------
   const [annForm, setAnnForm] = useState({ title: '', content: '', type: 'App', link: '', image: '' });
   const handleAnnImage = (e) => compressImage(e.target.files[0], (data) => setAnnForm({...annForm, image: data}));
   const handleAddAnnouncement = async (e) => {
@@ -870,18 +870,27 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
   const promptDeleteAnnouncement = (id) => {
     setConfirmModal({ message: "确定要删除这条公告吗？", onConfirm: async () => { setConfirmModal(null); await deleteDoc(doc(db, getCollectionPath('announcements'), id)); } });
   };
+
+  // ---------- 标签 3：访客与系统日志 ----------
   const exportLogsToExcel = () => {
-    if (typeof window.XLSX === 'undefined') return;
-    const ws = window.XLSX.utils.json_to_sheet(logs.map(l => ({ "时间": new Date(l.timestamp).toLocaleString(), "身份": l.role, "操作": l.action, "详细内容": l.details })));
-    const wb = window.XLSX.utils.book_new(); window.XLSX.utils.book_append_sheet(wb, ws, "Logs"); window.XLSX.writeFile(wb, `Logs_${new Date().toISOString().split('T')[0]}.xlsx`);
+    if (typeof window.XLSX === 'undefined') { showMessage("错误", "Excel导出工具尚未加载，请稍等或刷新页面。"); return; }
+    const exportData = logs.map(l => ({
+      "时间 (Masa)": new Date(l.timestamp).toLocaleString(),
+      "身份 (Peranan)": l.role === 'admin' ? '管理员 (Admin)' : l.role === 'teacher' ? '教师 (Guru)' : '访客/家长 (Pelawat)',
+      "操作类别 (Tindakan)": l.action,
+      "详细内容 (Butiran)": l.details
+    }));
+    const ws = window.XLSX.utils.json_to_sheet(exportData);
+    const wb = window.XLSX.utils.book_new();
+    window.XLSX.utils.book_append_sheet(wb, ws, "System_Logs");
+    window.XLSX.writeFile(wb, `System_Logs_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
-  // ---------- 标签 3：学校报告与数据管理 ----------
+  // ---------- 标签 4：学校报告与数据管理 ----------
   const [reportForm, setReportForm] = useState({ title: '', content: '', image: '', studentUsage: '', teacherUsage: '' });
-  const [editReport, setEditReport] = useState(null); // 新增：用于编辑官方报告的状态
+  const [editReport, setEditReport] = useState(null); 
 
   const handleReportImage = (e) => compressImage(e.target.files[0], (data) => setReportForm({...reportForm, image: data}));
-  
   const handleEditReportImage = (e) => compressImage(e.target.files[0], (data) => setEditReport({...editReport, image: data}));
 
   const handleAddReport = async (e) => {
@@ -911,7 +920,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         studentUsage: editReport.studentUsage ? Number(editReport.studentUsage) : null,
         teacherUsage: editReport.teacherUsage ? Number(editReport.teacherUsage) : null,
         image: editReport.image || '',
-        timestamp: new Date().toISOString() // 更新最新时间
+        timestamp: new Date().toISOString() 
       });
       showMessage("成功", "学校报告资料已成功更新。");
       if (window.logSystemAction) window.logSystemAction('admin', '修改报告', `更新了官方报告 [${editReport.title}]`);
@@ -932,7 +941,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
     });
   };
 
-  // ---------- 标签 4：Admin 备注记录 (私密) ----------
+  // ---------- 标签 5：Admin 备注记录 (私密) ----------
   const [noteForm, setNoteForm] = useState({ title: '', content: '', link: '', image: '' });
   const handleNoteImage = (e) => compressImage(e.target.files[0], (data) => setNoteForm({...noteForm, image: data}));
 
@@ -971,66 +980,79 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         <button onClick={() => setAdminMainTab('students_mgmt')} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${adminMainTab === 'students_mgmt' ? 'bg-purple-600 text-white shadow-md' : 'bg-gray-50 text-gray-600 hover:bg-purple-100'}`}>
           <UserCheck size={18} /> 学生综合管理
         </button>
-        <button onClick={() => setAdminMainTab('ann_logs')} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${adminMainTab === 'ann_logs' ? 'bg-purple-600 text-white shadow-md' : 'bg-gray-50 text-gray-600 hover:bg-purple-100'}`}>
-          <BookOpen size={18} /> 通告与系统记录
+        <button onClick={() => setAdminMainTab('announcements')} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${adminMainTab === 'announcements' ? 'bg-purple-600 text-white shadow-md' : 'bg-gray-50 text-gray-600 hover:bg-purple-100'}`}>
+          <BookOpen size={18} /> 通告与活动管理
+        </button>
+        <button onClick={() => setAdminMainTab('sys_logs')} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${adminMainTab === 'sys_logs' ? 'bg-green-600 text-white shadow-md' : 'bg-gray-50 text-gray-600 hover:bg-green-100'}`}>
+          <ClipboardList size={18} /> 访客与系统日志
         </button>
         <button onClick={() => setAdminMainTab('school_reports')} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${adminMainTab === 'school_reports' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-50 text-gray-600 hover:bg-blue-100'}`}>
           <BarChart size={18} /> 学校报告与数据
         </button>
         <button onClick={() => setAdminMainTab('admin_notes')} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${adminMainTab === 'admin_notes' ? 'bg-red-600 text-white shadow-md' : 'bg-gray-50 text-gray-600 hover:bg-red-100'}`}>
-          <ClipboardList size={18} /> Admin 备注记录
+          <Edit size={18} /> Admin 备注记录
         </button>
       </div>
 
       {/* ======================= 模块 1：学生综合管理 ======================= */}
       {adminMainTab === 'students_mgmt' && (
         <div className="space-y-12 animate-slide-up">
-          
-          <div className="bg-purple-50/50 p-6 md:p-8 rounded-2xl border border-purple-100">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-              <div>
-                <h3 className="text-lg md:text-xl font-bold text-purple-800 mb-1 flex items-center gap-2"><Upload size={20}/> 1. 批量导入学生数据</h3>
-                <p className="text-xs md:text-sm text-gray-600">请下载模板，系统会以 `IC MURID` 作为唯一识别，自动更新或新增。</p>
+          <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm">
+            <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+              <h3 className="text-lg md:text-xl font-bold text-purple-800">全校学生名单管理</h3>
+              <div className="relative w-full md:w-1/3">
+                <input type="text" placeholder="搜索姓名、IC 或 班级..." className="w-full p-2.5 pl-10 border border-gray-300 rounded-xl text-sm focus:outline-none focus:border-purple-500" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                <Search size={18} className="absolute left-3 top-3 text-gray-400" />
               </div>
-              <button onClick={downloadTemplate} className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-all"><Download size={20} /> 下载模板</button>
             </div>
-            <label className="flex flex-col items-center justify-center w-full h-32 md:h-40 border-2 border-purple-300 border-dashed rounded-2xl cursor-pointer bg-white hover:bg-purple-50 transition-colors">
-              <Upload size={36} className="text-purple-400 mb-2" />
-              <p className="text-sm md:text-base font-bold text-gray-700">点击或拖拽上传填写好的 Excel 文件</p>
-              <input type="file" className="hidden" accept=".xlsx, .xls" onChange={handleFileUpload} />
-            </label>
+            <div className="overflow-x-auto rounded-xl border border-gray-200 h-[600px] overflow-y-auto">
+              <table className="w-full text-left border-collapse min-w-max">
+                <thead className="sticky top-0 bg-gray-50 shadow-sm z-10"><tr className="text-gray-600 text-sm border-b border-gray-200"><th className="p-4">姓名</th><th className="p-4">班级</th><th className="p-4">IC MURID</th><th className="p-4">ic (小写)</th><th className="p-4">性别</th><th className="p-4">DELIMA Email</th><th className="p-4">密码</th><th className="p-4">学号</th><th className="p-4">IDME</th><th className="p-4">出生日期</th><th className="p-4">报生纸</th><th className="p-4">入学日期</th><th className="p-4">运动队伍</th><th className="p-4 text-center sticky right-0 bg-gray-50">操作</th></tr></thead>
+                <tbody>
+                  {filteredAllStudents.map((s, idx) => (
+                    <tr key={s.id} className={`text-sm border-b border-gray-100 ${idx % 2 === 0 ? 'bg-white' : 'bg-[#fafafa]'} hover:bg-purple-50`}><td className="p-4 font-bold">{s.name}</td><td className="p-4">{formatClassName(s.classYear, s.classColor)}</td><td className="p-4 font-mono">{s.ic}</td><td className="p-4 font-mono text-gray-500">{s.rawIc}</td><td className="p-4">{s.gender}</td><td className="p-4 font-mono text-purple-600">{s.delimaId}</td><td className="p-4 font-mono">{s.password}</td><td className="p-4 font-mono">{s.studentId}</td><td className="p-4 font-mono">{s.idme}</td><td className="p-4">{s.dob}</td><td className="p-4 font-mono">{s.birthCert}</td><td className="p-4">{s.admissionDate}</td><td className="p-4">{s.sportsHouse}</td><td className="p-4 flex gap-2 sticky right-0" style={{ backgroundColor: idx % 2 === 0 ? '#ffffff' : '#fafafa' }}><button onClick={() => setEditStudent({ ...s })} className="text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg flex items-center gap-1 font-semibold"><Edit size={16} /> 编辑</button><button onClick={() => promptDeleteStudent(s)} className="text-red-600 bg-red-50 px-3 py-1.5 rounded-lg flex items-center gap-1 font-semibold"><Trash2 size={16} /> 删除</button></td></tr>
+                  ))}
+                  {filteredAllStudents.length === 0 && (<tr><td colSpan="14" className="p-8 text-center text-gray-500">未找到符合条件的学生</td></tr>)}
+                </tbody>
+              </table>
+            </div>
           </div>
 
-          <hr className="border-gray-200" />
+          <div className="bg-purple-50/50 p-6 md:p-8 rounded-2xl border border-purple-100">
+            <div className="flex justify-between items-center mb-6 gap-4">
+              <div><h3 className="text-lg font-bold text-purple-800 mb-1">批量导入学生数据</h3><p className="text-xs text-gray-600">请下载模板，系统会以 `IC MURID` 作为唯一识别，自动更新或新增。</p></div>
+              <button onClick={downloadTemplate} className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-all"><Download size={20} /> 下载模板</button>
+            </div>
+            <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-purple-300 border-dashed rounded-2xl cursor-pointer bg-white hover:bg-purple-50"><Upload size={36} className="text-purple-400 mb-2" /><p className="font-bold text-gray-700">点击或拖拽上传填写好的 Excel 文件</p><input type="file" className="hidden" accept=".xlsx, .xls" onChange={handleFileUpload} /></label>
+          </div>
 
           <div className="bg-white p-6 md:p-8 rounded-2xl border border-gray-200 shadow-sm">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-              <h3 className="text-xl md:text-2xl font-bold text-amber-800 flex items-center gap-2"><RefreshCw size={24}/> 2. 升学与班级管理</h3>
+              <h3 className="text-xl font-bold text-amber-800 flex items-center gap-2"><RefreshCw size={24}/> 升学与班级管理</h3>
               <div className="flex bg-gray-100 p-1 rounded-xl">
-                <button onClick={() => setPromoMode('auto')} className={`px-4 py-2 rounded-lg font-bold text-sm ${promoMode === 'auto' ? 'bg-white shadow-sm text-amber-600' : 'text-gray-500 hover:text-gray-700'}`}>一键升学</button>
-                <button onClick={() => setPromoMode('manual')} className={`px-4 py-2 rounded-lg font-bold text-sm ${promoMode === 'manual' ? 'bg-white shadow-sm text-amber-600' : 'text-gray-500 hover:text-gray-700'}`}>手动调班</button>
+                <button onClick={() => setPromoMode('auto')} className={`px-4 py-2 rounded-lg font-bold text-sm ${promoMode === 'auto' ? 'bg-white shadow-sm text-amber-600' : 'text-gray-500'}`}>一键升学</button>
+                <button onClick={() => setPromoMode('manual')} className={`px-4 py-2 rounded-lg font-bold text-sm ${promoMode === 'manual' ? 'bg-white shadow-sm text-amber-600' : 'text-gray-500'}`}>手动调班</button>
               </div>
             </div>
-
             {promoMode === 'auto' ? (
               <div className="bg-amber-50 p-6 rounded-2xl border border-amber-200 text-center">
-                <p className="text-sm md:text-base text-gray-700 mb-4">自动把一年级升至二年级，依此类推。六年级将被移入毕业班 (第20班)。</p>
+                <p className="text-gray-700 mb-4">自动把一年级升至二年级，依此类推。六年级将被移入毕业班 (第20班)。</p>
                 <button onClick={promptYearlyPromotion} className="bg-amber-500 hover:bg-amber-600 text-white text-base font-bold px-8 py-3 rounded-xl shadow-md">执行一键升学</button>
               </div>
             ) : (
               <div>
-                <input type="text" placeholder="搜索学生姓名或 IC..." className="w-full md:w-1/3 p-2.5 border border-gray-300 rounded-xl text-sm mb-4" value={promoSearchTerm} onChange={(e) => setPromoSearchTerm(e.target.value)} />
-                <div className="overflow-x-auto rounded-xl border border-gray-200 max-h-[400px]">
+                <input type="text" placeholder="搜索学生..." className="w-full md:w-1/3 p-2.5 border rounded-xl text-sm mb-4" value={promoSearchTerm} onChange={(e) => setPromoSearchTerm(e.target.value)} />
+                <div className="overflow-x-auto rounded-xl border max-h-[400px]">
                   <table className="w-full text-left border-collapse min-w-max">
-                    <thead className="sticky top-0 bg-gray-50 z-10"><tr className="text-gray-600 text-sm border-b border-gray-200"><th className="p-3">姓名</th><th className="p-3">IC</th><th className="p-3">原班级</th><th className="p-3">修改年级</th><th className="p-3">修改班名</th><th className="p-3 text-center">操作</th></tr></thead>
+                    <thead className="sticky top-0 bg-gray-50 z-10"><tr className="text-gray-600 text-sm border-b"><th className="p-3">姓名</th><th className="p-3">IC</th><th className="p-3">原班级</th><th className="p-3">修改年级</th><th className="p-3">修改班名</th><th className="p-3 text-center">操作</th></tr></thead>
                     <tbody>
                       {filteredPromoStudents.map((s, idx) => {
                         const ey = promoEdits[s.id]?.classYear !== undefined ? promoEdits[s.id].classYear : s.classYear;
                         const ec = promoEdits[s.id]?.classColor !== undefined ? promoEdits[s.id].classColor : s.classColor;
                         const hc = ey !== s.classYear || ec !== s.classColor;
                         return (
-                          <tr key={s.id} className={`text-sm border-b border-gray-100 ${idx % 2 === 0 ? 'bg-white' : 'bg-[#fafafa]'}`}>
-                            <td className="p-3 font-bold">{s.name}</td><td className="p-3 font-mono text-gray-600">{s.ic}</td><td className="p-3">{formatClassName(s.classYear, s.classColor)}</td>
+                          <tr key={s.id} className={`text-sm border-b ${idx % 2 === 0 ? 'bg-white' : 'bg-[#fafafa]'}`}>
+                            <td className="p-3 font-bold">{s.name}</td><td className="p-3 font-mono">{s.ic}</td><td className="p-3">{formatClassName(s.classYear, s.classColor)}</td>
                             <td className="p-3"><select className="p-1.5 border rounded-md" value={ey} onChange={e => handlePromoEditChange(s.id, 'classYear', e.target.value)}>{years.map(y => <option key={y.val} value={y.val}>{y.label}</option>)}</select></td>
                             <td className="p-3"><input type="text" className="p-1.5 border rounded-md w-16 text-center" value={ec} onChange={e => handlePromoEditChange(s.id, 'classColor', e.target.value.toUpperCase())} /></td>
                             <td className="p-3 text-center"><button disabled={!hc} onClick={() => saveManualPromo(s.id, s)} className={`px-3 py-1.5 rounded-lg font-bold text-xs ${hc ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-400'}`}>保存</button></td>
@@ -1043,85 +1065,36 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
               </div>
             )}
           </div>
-
-          <hr className="border-gray-200" />
-
-          <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm">
-             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-              <h3 className="text-lg md:text-xl font-bold text-purple-800 flex items-center gap-2"><UserCheck size={24} /> 3. 全校名单及详细资料管理</h3>
-              <div className="relative w-full md:w-1/3">
-                <input type="text" placeholder="搜索姓名、IC 或 班级..." className="w-full p-2.5 pl-10 border border-gray-300 rounded-xl text-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                <Search size={18} className="absolute left-3 top-3 text-gray-400" />
-              </div>
-            </div>
-            <div className="overflow-x-auto rounded-xl border border-gray-200 h-[500px]">
-              <table className="w-full text-left border-collapse min-w-max">
-                <thead className="sticky top-0 bg-gray-50 shadow-sm z-10"><tr className="text-gray-600 text-sm border-b border-gray-200"><th className="p-4">姓名</th><th className="p-4">班级</th><th className="p-4">IC MURID</th><th className="p-4">DELIMA Email</th><th className="p-4">密码</th><th className="p-4">出生日期</th><th className="p-4 text-center sticky right-0 bg-gray-50">操作</th></tr></thead>
-                <tbody>
-                  {filteredAllStudents.map((s, idx) => (
-                    <tr key={s.id} className={`text-sm border-b border-gray-100 ${idx % 2 === 0 ? 'bg-white' : 'bg-[#fafafa]'}`}>
-                      <td className="p-4 font-bold">{s.name}</td><td className="p-4">{formatClassName(s.classYear, s.classColor)}</td><td className="p-4 font-mono">{s.ic}</td><td className="p-4 font-mono text-purple-600">{s.delimaId}</td><td className="p-4 font-mono">{s.password}</td><td className="p-4">{s.dob}</td>
-                      <td className="p-4 flex gap-2 sticky right-0" style={{ backgroundColor: idx % 2 === 0 ? '#ffffff' : '#fafafa' }}>
-                        <button onClick={() => setEditStudent({ ...s })} className="text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg flex items-center gap-1 font-semibold"><Edit size={16} /> 编辑</button>
-                        <button onClick={() => promptDeleteStudent(s)} className="text-red-600 bg-red-50 px-3 py-1.5 rounded-lg flex items-center gap-1 font-semibold"><Trash2 size={16} /> 删除</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
         </div>
       )}
 
-      {/* ======================= 模块 2：通告与系统记录 ======================= */}
-      {adminMainTab === 'ann_logs' && (
-        <div className="space-y-12 animate-slide-up">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm">
-              <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-5 flex items-center gap-2"><BookOpen size={24}/> 发布新通告/App介绍</h3>
-              <form onSubmit={handleAddAnnouncement} className="space-y-4">
-                <input required type="text" placeholder="通告标题" value={annForm.title} onChange={e=>setAnnForm({...annForm, title: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" />
-                <div className="grid grid-cols-2 gap-4">
-                  <select value={annForm.type} onChange={e=>setAnnForm({...annForm, type: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm"><option value="App">App 推荐</option><option value="Activity">活动通告</option></select>
-                  <input type="url" placeholder="附加链接 https://" value={annForm.link} onChange={e=>setAnnForm({...annForm, link: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" />
-                </div>
-                <textarea required rows="4" placeholder="内容描述..." value={annForm.content} onChange={e=>setAnnForm({...annForm, content: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm"></textarea>
-                <div>
-                  <label className="flex items-center justify-center gap-2 p-2.5 border border-dashed rounded-lg bg-gray-50 cursor-pointer text-sm text-gray-600"><ImageIcon size={18} /> 附加宣传照片<input type="file" id="announcement-image-upload" accept="image/*" onChange={handleAnnImage} className="hidden" /></label>
-                  {annForm.image && <div className="relative mt-2"><img src={annForm.image} alt="预览" className="h-20 w-auto rounded border" /><button type="button" onClick={() => {setAnnForm({...annForm, image: ''}); document.getElementById('announcement-image-upload').value='';}} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"><Trash2 size={12}/></button></div>}
-                </div>
-                <button type="submit" className="w-full bg-purple-600 text-white font-bold py-3 rounded-lg">发布通告</button>
-              </form>
-            </div>
-            <div className="bg-gray-50 border border-gray-200 p-6 rounded-2xl h-[480px] overflow-y-auto">
-              <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-5">已发布通告</h3>
-              <div className="space-y-3">
-                {announcements.map(a => (
-                  <div key={a.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex items-center gap-4">
-                    {a.image && <img src={a.image} alt="" className="w-12 h-12 object-cover rounded" />}
-                    <div className="flex-1"><span className="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded">{a.type}</span><h4 className="font-bold mt-1 text-sm">{a.title}</h4></div>
-                    <button onClick={() => promptDeleteAnnouncement(a.id)} className="text-red-500 p-2"><Trash2 size={18} /></button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
+      {/* ======================= 模块 2：通告与活动管理 ======================= */}
+      {adminMainTab === 'announcements' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-slide-up">
           <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg md:text-xl font-bold text-gray-800 flex items-center gap-2"><ClipboardList size={24}/> 系统操作与访客记录</h3>
-              <button onClick={exportLogsToExcel} className="flex items-center gap-2 bg-purple-100 text-purple-700 px-4 py-2 rounded-lg font-bold text-sm"><Download size={16}/> 导出 Excel</button>
-            </div>
-            <div className="max-h-[400px] overflow-y-auto pr-2 space-y-3">
-              {logs.map(log => (
-                <div key={log.id} className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex flex-col md:flex-row md:items-center gap-3">
-                  <span className="text-gray-500 text-xs font-mono md:w-48">{new Date(log.timestamp).toLocaleString()}</span>
-                  <span className={`px-2 py-1 rounded text-xs font-bold w-fit ${log.role === 'admin' ? 'bg-purple-100 text-purple-700' : log.role === 'teacher' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
-                    {log.role === 'admin' ? '管理员' : log.role === 'teacher' ? '教师' : '访客'}
-                  </span>
-                  <span className="font-bold text-sm md:w-32">{log.action}</span>
-                  <span className="text-sm text-gray-600 flex-1">{log.details}</span>
+            <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-5 flex items-center gap-2"><BookOpen size={24}/> 发布新通告/App介绍</h3>
+            <form onSubmit={handleAddAnnouncement} className="space-y-4">
+              <input required type="text" placeholder="通告标题" value={annForm.title} onChange={e=>setAnnForm({...annForm, title: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" />
+              <div className="grid grid-cols-2 gap-4">
+                <select value={annForm.type} onChange={e=>setAnnForm({...annForm, type: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm"><option value="App">App 推荐</option><option value="Activity">活动通告</option></select>
+                <input type="url" placeholder="附加链接 https://" value={annForm.link} onChange={e=>setAnnForm({...annForm, link: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" />
+              </div>
+              <textarea required rows="4" placeholder="内容描述..." value={annForm.content} onChange={e=>setAnnForm({...annForm, content: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm"></textarea>
+              <div>
+                <label className="flex items-center justify-center gap-2 p-2.5 border border-dashed rounded-lg bg-gray-50 cursor-pointer text-sm text-gray-600"><ImageIcon size={18} /> 附加宣传照片<input type="file" id="announcement-image-upload" accept="image/*" onChange={handleAnnImage} className="hidden" /></label>
+                {annForm.image && <div className="relative mt-2"><img src={annForm.image} alt="预览" className="h-20 w-auto rounded border" /><button type="button" onClick={() => {setAnnForm({...annForm, image: ''}); document.getElementById('announcement-image-upload').value='';}} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"><Trash2 size={12}/></button></div>}
+              </div>
+              <button type="submit" className="w-full bg-purple-600 text-white font-bold py-3 rounded-lg">发布通告</button>
+            </form>
+          </div>
+          <div className="bg-gray-50 border border-gray-200 p-6 rounded-2xl h-[480px] overflow-y-auto">
+            <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-5">已发布通告</h3>
+            <div className="space-y-3">
+              {announcements.map(a => (
+                <div key={a.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex items-center gap-4">
+                  {a.image && <img src={a.image} alt="" className="w-12 h-12 object-cover rounded" />}
+                  <div className="flex-1"><span className="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded">{a.type}</span><h4 className="font-bold mt-1 text-sm">{a.title}</h4></div>
+                  <button onClick={() => promptDeleteAnnouncement(a.id)} className="text-red-500 p-2"><Trash2 size={18} /></button>
                 </div>
               ))}
             </div>
@@ -1129,7 +1102,55 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         </div>
       )}
 
-      {/* ======================= 模块 3：学校报告与数据管理 ======================= */}
+      {/* ======================= 模块 3：访客与系统操作记录 ======================= */}
+      {adminMainTab === 'sys_logs' && (
+        <div className="space-y-8 animate-slide-up">
+          <div className="bg-white border border-gray-200 p-6 md:p-8 rounded-2xl shadow-sm">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 border-b border-gray-200 pb-4">
+              <div>
+                <h3 className="text-lg md:text-2xl font-bold text-gray-800 mb-2 flex items-center gap-2">
+                  <ClipboardList size={28}/> 系统访客与操作记录 (Log Sistem)
+                </h3>
+                <p className="text-sm text-gray-600">
+                  记录系统内所有的登入、资料修改、人员调动以及家长/学生的查询记录（共 {logs.length} 条记录）。
+                </p>
+              </div>
+              <button 
+                onClick={exportLogsToExcel}
+                className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-bold text-sm shadow-md transition-all whitespace-nowrap"
+              >
+                <Download size={20} /> 导出日志为 Excel
+              </button>
+            </div>
+            
+            <div className="max-h-[600px] overflow-y-auto pr-2 space-y-3">
+              {logs.map(log => (
+                <div key={log.id} className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex flex-col md:flex-row md:items-center gap-3 hover:border-green-300 transition-colors">
+                  <span className="text-gray-500 text-xs md:text-sm font-mono md:w-48 bg-white px-2 py-1 rounded shadow-sm border border-gray-100">
+                    {new Date(log.timestamp).toLocaleString()}
+                  </span>
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold w-fit ${
+                    log.role === 'admin' ? 'bg-purple-100 text-purple-700' : 
+                    log.role === 'teacher' ? 'bg-amber-100 text-amber-700' : 
+                    'bg-blue-100 text-blue-700'
+                  }`}>
+                    {log.role === 'admin' ? '管理员' : log.role === 'teacher' ? '教师' : '访客/家长'}
+                  </span>
+                  <span className="font-bold text-sm text-gray-800 md:w-32">{log.action}</span>
+                  <span className="text-sm text-gray-700 flex-1 leading-relaxed">{log.details}</span>
+                </div>
+              ))}
+              {logs.length === 0 && (
+                <div className="p-8 text-center text-gray-500 text-sm border-2 border-dashed border-gray-300 rounded-2xl">
+                  当前系统还没有任何操作记录。
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================= 模块 4：学校报告与数据管理 ======================= */}
       {adminMainTab === 'school_reports' && (
         <div className="space-y-8 animate-slide-up">
           <div className="bg-blue-50/50 p-6 md:p-8 rounded-2xl border border-blue-200 grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -1150,7 +1171,6 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
                   <label className="flex items-center justify-center gap-2 p-3 border-2 border-blue-200 border-dashed rounded-xl bg-white cursor-pointer text-sm text-blue-600 hover:bg-blue-50 transition-colors font-bold"><ImageIcon size={18} /> 附带报告照片证据<input type="file" id="report-image-upload" accept="image/*" onChange={handleReportImage} className="hidden" /></label>
                   {reportForm.image && <div className="relative mt-3"><img src={reportForm.image} alt="预览" className="h-32 w-auto object-contain rounded-lg border border-blue-100 bg-white" /><button type="button" onClick={() => {setReportForm({...reportForm, image: ''}); document.getElementById('report-image-upload').value='';}} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5"><Trash2 size={14}/></button></div>}
                 </div>
-                
                 <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl text-lg mt-4 transition-colors shadow-md">发布学校官方报告</button>
               </form>
             </div>
@@ -1168,14 +1188,9 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
                       {rep.teacherUsage && <span>老师: <span className="text-green-600">{rep.teacherUsage}%</span></span>}
                     </div>
                     
-                    {/* 添加编辑和删除官方报告的功能 */}
                     <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-200">
-                      <button onClick={() => setEditReport({ ...rep })} className="flex items-center gap-1 text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-100 transition-colors">
-                        <Edit size={14} /> 编辑
-                      </button>
-                      <button onClick={() => promptDeleteReport(rep.id, rep.title)} className="flex items-center gap-1 text-red-600 bg-red-50 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-100 transition-colors">
-                        <Trash2 size={14} /> 删除
-                      </button>
+                      <button onClick={() => setEditReport({ ...rep })} className="flex items-center gap-1 text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-100 transition-colors"><Edit size={14} /> 编辑</button>
+                      <button onClick={() => promptDeleteReport(rep.id, rep.title)} className="flex items-center gap-1 text-red-600 bg-red-50 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-100 transition-colors"><Trash2 size={14} /> 删除</button>
                     </div>
                   </div>
                 ))}
@@ -1186,7 +1201,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         </div>
       )}
 
-      {/* ======================= 模块 4：Admin 备注记录 (新增、私密) ======================= */}
+      {/* ======================= 模块 5：Admin 备注记录 (新增，私密) ======================= */}
       {adminMainTab === 'admin_notes' && (
         <div className="space-y-8 animate-slide-up">
           <div className="bg-red-50/30 p-6 md:p-8 rounded-2xl border border-red-100 grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -1256,7 +1271,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         </div>
       )}
 
-      {/* 编辑官方报告的独立弹窗 (针对模块 3) */}
+      {/* 编辑官方报告的独立弹窗 (针对模块 4) */}
       {editReport && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[105]">
           <div className="bg-white rounded-3xl p-8 w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl animate-slide-up">
