@@ -23,6 +23,7 @@ const ImageIcon = ({ size = 20, className = "" }) => (<svg width={size} height={
 const Users = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>);
 const FileText = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>);
 const BarChart = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>);
+const Lock = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>);
 
 // ==========================================
 // 1. Firebase 设定与初始化
@@ -56,21 +57,21 @@ const getCollectionPath = (collectionName) => {
 // ==========================================
 export default function App() {
   const [user, setUser] = useState(null);
-  const [activeTab, setActiveTab] = useState('home'); 
-  const [authRole, setAuthRole] = useState(''); 
+  const [activeTab, setActiveTab] = useState('home'); // 'home', 'teacher', 'admin'
+  const [authRole, setAuthRole] = useState(''); // '', 'teacher', 'admin'
   
   // 数据状态
   const [students, setStudents] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
   const [logs, setLogs] = useState([]);
-  const [schoolReports, setSchoolReports] = useState([]); // 新增学校报告状态
+  const [schoolReports, setSchoolReports] = useState([]); 
+  const [adminNotes, setAdminNotes] = useState([]); // 新增 Admin 私密备注状态
   
   // 弹窗与加载状态
   const [isLoading, setIsLoading] = useState(true);
   const [modalMessage, setModalMessage] = useState(null);
 
   useEffect(() => {
-    // 设置 Favicon
     const faviconSvg = encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="#9333ea"/><g transform="translate(20, 20) scale(2.5)" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></g></svg>');
     let iconLink = document.querySelector("link[rel~='icon']");
     if (!iconLink) {
@@ -162,11 +163,17 @@ export default function App() {
       setLogs(data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)));
     }, handleFirestoreError);
 
-    // 新增：抓取学校官方报告数据
     const reportsRef = collection(db, getCollectionPath('schoolReports'));
     const unsubscribeReports = onSnapshot(query(reportsRef), (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setSchoolReports(data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)));
+    }, handleFirestoreError);
+
+    // 新增：抓取 Admin 私密备注
+    const notesRef = collection(db, getCollectionPath('adminNotes'));
+    const unsubscribeNotes = onSnapshot(query(notesRef), (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setAdminNotes(data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)));
     }, handleFirestoreError);
 
     return () => {
@@ -174,6 +181,7 @@ export default function App() {
       unsubscribeAnnouncements();
       unsubscribeLogs();
       unsubscribeReports();
+      unsubscribeNotes();
     };
   }, [user]);
 
@@ -206,7 +214,7 @@ export default function App() {
       }
     } else if (activeTab === 'admin') {
       if (authRole === 'admin') {
-        return <AdminPortal students={students} announcements={announcements} logs={logs} schoolReports={schoolReports} db={db} getCollectionPath={getCollectionPath} showMessage={showMessage} />;
+        return <AdminPortal students={students} announcements={announcements} logs={logs} schoolReports={schoolReports} adminNotes={adminNotes} db={db} getCollectionPath={getCollectionPath} showMessage={showMessage} />;
       } else {
         return <LoginView roleTarget="admin" setAuthRole={setAuthRole} showMessage={showMessage} />;
       }
@@ -389,7 +397,7 @@ function HomeView({ students, announcements, schoolReports, setActiveTab }) {
         )}
       </section>
 
-      {/* 新增：学校报告和使用率展示区 */}
+      {/* 学校报告和使用率展示区 */}
       {schoolReports.length > 0 && (
         <section className="animate-slide-up">
           <h2 className="text-2xl md:text-3xl font-extrabold text-blue-800 mb-6 flex items-center gap-3 pl-4 border-l-8 border-blue-500 rounded-l-md">
@@ -417,7 +425,7 @@ function HomeView({ students, announcements, schoolReports, setActiveTab }) {
                   
                   {/* 使用率进度条 */}
                   {(rep.studentUsage || rep.teacherUsage) && (
-                    <div className="bg-blue-50/50 p-5 rounded-2xl border border-blue-100 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-blue-50/50 p-5 rounded-2xl border border-blue-100 grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                       {rep.studentUsage && (
                         <div>
                           <div className="flex justify-between text-sm font-bold text-gray-700 mb-2">
@@ -442,6 +450,11 @@ function HomeView({ students, announcements, schoolReports, setActiveTab }) {
                       )}
                     </div>
                   )}
+                  
+                  {/* 新增：最后更新时间提示 */}
+                  <div className="text-xs text-gray-400 font-medium text-right mt-2 border-t border-gray-100 pt-3">
+                    Tarikh Kemaskini: {new Date(rep.timestamp).toLocaleString()}
+                  </div>
                 </div>
               </div>
             ))}
@@ -705,11 +718,10 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
 }
 
 // ==========================================
-// 6. 管理员后台 (Admin Portal) 全新整合布局
+// 6. 管理员后台 (Admin Portal) 包含4个标签页
 // ==========================================
-function AdminPortal({ students, announcements, logs, schoolReports, db, getCollectionPath, showMessage }) {
-  // 3个主要标签: 'students_mgmt', 'ann_logs', 'school_reports'
-  const [adminMainTab, setAdminMainTab] = useState('students_mgmt'); 
+function AdminPortal({ students, announcements, logs, schoolReports, adminNotes, db, getCollectionPath, showMessage }) {
+  const [adminMainTab, setAdminMainTab] = useState('students_mgmt'); // 'students_mgmt', 'ann_logs', 'school_reports', 'admin_notes'
   const [confirmModal, setConfirmModal] = useState(null);
   
   // ---------- 数据压缩转换函数 (共用) ----------
@@ -734,7 +746,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, db, getColl
     reader.readAsDataURL(file);
   };
 
-  // ---------- 标签 1：学生综合管理 (学生列表, 导入, 升学) ----------
+  // ---------- 标签 1：学生综合管理 ----------
   const [editStudent, setEditStudent] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [promoMode, setPromoMode] = useState('auto'); 
@@ -867,7 +879,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, db, getColl
     const wb = window.XLSX.utils.book_new(); window.XLSX.utils.book_append_sheet(wb, ws, "Logs"); window.XLSX.writeFile(wb, `Logs_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
-  // ---------- 标签 3：学校报告与数据管理 (新增) ----------
+  // ---------- 标签 3：学校报告与数据管理 ----------
   const [reportForm, setReportForm] = useState({ title: '', content: '', image: '', studentUsage: '', teacherUsage: '' });
   const handleReportImage = (e) => compressImage(e.target.files[0], (data) => setReportForm({...reportForm, image: data}));
   
@@ -892,6 +904,29 @@ function AdminPortal({ students, announcements, logs, schoolReports, db, getColl
     setConfirmModal({ message: "确定要删除这篇官方报告吗？首页将不再显示。", onConfirm: async () => { setConfirmModal(null); await deleteDoc(doc(db, getCollectionPath('schoolReports'), id)); } });
   };
 
+  // ---------- 标签 4：Admin 备注记录 (新增、私密) ----------
+  const [noteForm, setNoteForm] = useState({ title: '', content: '', link: '', image: '' });
+  const handleNoteImage = (e) => compressImage(e.target.files[0], (data) => setNoteForm({...noteForm, image: data}));
+
+  const handleAddNote = async (e) => {
+    e.preventDefault();
+    try {
+      const newRef = doc(collection(db, getCollectionPath('adminNotes')));
+      await setDoc(newRef, { 
+        ...noteForm, 
+        date: new Date().toISOString().split('T')[0],
+        timestamp: new Date().toISOString()
+      });
+      showMessage("成功", "私密备注已保存。");
+      setNoteForm({ title: '', content: '', link: '', image: '' });
+      const f = document.getElementById('note-image-upload'); if (f) f.value = '';
+    } catch (err) { showMessage("错误", "保存失败: " + err.message); }
+  };
+
+  const promptDeleteNote = (id) => {
+    setConfirmModal({ message: "确定要删除这条私密备注吗？", onConfirm: async () => { setConfirmModal(null); await deleteDoc(doc(db, getCollectionPath('adminNotes'), id)); } });
+  };
+
   return (
     <div className="bg-white rounded-3xl p-6 md:p-10 shadow-xl border-t-8 border-purple-800 animate-fade-in relative">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
@@ -903,7 +938,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, db, getColl
         </div>
       </div>
       
-      {/* 顶部主导航菜单：分为3大模块 */}
+      {/* 顶部主导航菜单：分为4大模块 */}
       <div className="flex flex-wrap gap-3 mb-8 border-b-2 border-gray-100 pb-4">
         <button onClick={() => setAdminMainTab('students_mgmt')} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${adminMainTab === 'students_mgmt' ? 'bg-purple-600 text-white shadow-md' : 'bg-gray-50 text-gray-600 hover:bg-purple-100'}`}>
           <UserCheck size={18} /> 学生综合管理
@@ -913,6 +948,9 @@ function AdminPortal({ students, announcements, logs, schoolReports, db, getColl
         </button>
         <button onClick={() => setAdminMainTab('school_reports')} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${adminMainTab === 'school_reports' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-50 text-gray-600 hover:bg-blue-100'}`}>
           <BarChart size={18} /> 学校报告与数据
+        </button>
+        <button onClick={() => setAdminMainTab('admin_notes')} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${adminMainTab === 'admin_notes' ? 'bg-red-600 text-white shadow-md' : 'bg-gray-50 text-gray-600 hover:bg-red-100'}`}>
+          <ClipboardList size={18} /> Admin 备注记录
         </button>
       </div>
 
@@ -1066,7 +1104,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, db, getColl
         </div>
       )}
 
-      {/* ======================= 模块 3：学校重要信息与数据 (新增) ======================= */}
+      {/* ======================= 模块 3：学校重要信息与数据 ======================= */}
       {adminMainTab === 'school_reports' && (
         <div className="space-y-8 animate-slide-up">
           <div className="bg-blue-50/50 p-6 md:p-8 rounded-2xl border border-blue-200 grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -1108,6 +1146,50 @@ function AdminPortal({ students, announcements, logs, schoolReports, db, getColl
                   </div>
                 ))}
                 {schoolReports.length === 0 && <p className="text-center text-gray-400 mt-10">暂无学校报告记录。</p>}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================= 模块 4：Admin 备注记录 (新增，私密) ======================= */}
+      {adminMainTab === 'admin_notes' && (
+        <div className="space-y-8 animate-slide-up">
+          <div className="bg-red-50/30 p-6 md:p-8 rounded-2xl border border-red-100 grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div>
+              <h3 className="text-xl md:text-2xl font-bold text-red-800 mb-2 flex items-center gap-2"><ClipboardList size={24} /> Admin 专属私密备注 (Nota Peribadi)</h3>
+              <p className="text-sm text-gray-600 mb-6">这里的内容绝对不会显示在首页。仅供管理员个人记录重要事项、网址或存底照片。</p>
+              
+              <form onSubmit={handleAddNote} className="space-y-4">
+                <input required type="text" placeholder="备注标题..." value={noteForm.title} onChange={e=>setNoteForm({...noteForm, title: e.target.value})} className="w-full p-3 border border-red-200 rounded-xl text-sm outline-none focus:border-red-400" />
+                <textarea required rows="5" placeholder="写下重要记录或备忘录..." value={noteForm.content} onChange={e=>setNoteForm({...noteForm, content: e.target.value})} className="w-full p-3 border border-red-200 rounded-xl text-sm outline-none focus:border-red-400"></textarea>
+                <input type="url" placeholder="保存重要网址 (可选)..." value={noteForm.link} onChange={e=>setNoteForm({...noteForm, link: e.target.value})} className="w-full p-3 border border-red-200 rounded-xl text-sm outline-none focus:border-red-400" />
+                
+                <div>
+                  <label className="flex items-center justify-center gap-2 p-3 border-2 border-red-200 border-dashed rounded-xl bg-white cursor-pointer text-sm text-red-500 hover:bg-red-50 transition-colors font-bold"><ImageIcon size={18} /> 存底照片<input type="file" id="note-image-upload" accept="image/*" onChange={handleNoteImage} className="hidden" /></label>
+                  {noteForm.image && <div className="relative mt-3"><img src={noteForm.image} alt="预览" className="h-32 w-auto object-contain rounded-lg border border-red-100 bg-white" /><button type="button" onClick={() => {setNoteForm({...noteForm, image: ''}); document.getElementById('note-image-upload').value='';}} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5"><Trash2 size={14}/></button></div>}
+                </div>
+                
+                <button type="submit" className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3.5 rounded-xl text-lg mt-4 transition-colors shadow-md">保存私密备注</button>
+              </form>
+            </div>
+
+            <div className="bg-white border border-red-100 p-6 rounded-2xl shadow-sm h-[550px] overflow-y-auto">
+              <h3 className="text-lg font-bold text-red-800 mb-5">我的备忘录档案</h3>
+              <div className="space-y-4">
+                {adminNotes.map(note => (
+                  <div key={note.id} className="p-5 rounded-xl border border-red-100 bg-red-50/50 shadow-sm relative overflow-hidden group">
+                    <button onClick={() => promptDeleteNote(note.id)} className="absolute top-2 right-2 text-red-500 bg-white p-1.5 rounded-lg shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={16} /></button>
+                    <h4 className="font-bold text-red-900 text-lg mb-2 pr-8">{note.title}</h4>
+                    <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line mb-3">{note.content}</p>
+                    {note.link && <a href={note.link} target="_blank" rel="noreferrer" className="text-sm text-blue-600 hover:underline block mb-3 break-all">{note.link}</a>}
+                    {note.image && <img src={note.image} alt="note" className="w-full h-auto max-h-48 object-cover rounded-md mb-2" />}
+                    <div className="text-xs text-gray-400 font-medium text-right mt-3 border-t border-red-100 pt-2">
+                      {new Date(note.timestamp).toLocaleString()}
+                    </div>
+                  </div>
+                ))}
+                {adminNotes.length === 0 && <p className="text-center text-gray-400 mt-10">暂无任何私密备注。</p>}
               </div>
             </div>
           </div>
