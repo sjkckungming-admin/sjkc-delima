@@ -23,6 +23,9 @@ const ImageIcon = ({ size = 20, className = "" }) => (<svg width={size} height={
 const Users = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>);
 const FileText = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>);
 const BarChart = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>);
+const CreditCard = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>);
+const CheckCircle = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>);
+const Undo = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg>);
 
 // ==========================================
 // 1. Firebase 设定与初始化
@@ -56,8 +59,8 @@ const getCollectionPath = (collectionName) => {
 // ==========================================
 export default function App() {
   const [user, setUser] = useState(null);
-  const [activeTab, setActiveTab] = useState('home'); // 'home', 'teacher', 'admin'
-  const [authRole, setAuthRole] = useState(''); // '', 'teacher', 'admin'
+  const [activeTab, setActiveTab] = useState('home'); 
+  const [authRole, setAuthRole] = useState(''); 
   
   // 数据状态
   const [students, setStudents] = useState([]);
@@ -65,6 +68,7 @@ export default function App() {
   const [logs, setLogs] = useState([]);
   const [schoolReports, setSchoolReports] = useState([]); 
   const [adminNotes, setAdminNotes] = useState([]); 
+  const [cardRequests, setCardRequests] = useState([]); // 新增：制卡申请数据
   
   // 弹窗与加载状态
   const [isLoading, setIsLoading] = useState(true);
@@ -175,12 +179,19 @@ export default function App() {
       setAdminNotes(data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)));
     }, handleFirestoreError);
 
+    const cardsRef = collection(db, getCollectionPath('cardRequests'));
+    const unsubscribeCards = onSnapshot(query(cardsRef), (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setCardRequests(data.sort((a, b) => new Date(b.requestedAt) - new Date(a.requestedAt)));
+    }, handleFirestoreError);
+
     return () => {
       unsubscribeStudents();
       unsubscribeAnnouncements();
       unsubscribeLogs();
       unsubscribeReports();
       unsubscribeNotes();
+      unsubscribeCards();
     };
   }, [user]);
 
@@ -213,7 +224,7 @@ export default function App() {
       }
     } else if (activeTab === 'admin') {
       if (authRole === 'admin') {
-        return <AdminPortal students={students} announcements={announcements} logs={logs} schoolReports={schoolReports} adminNotes={adminNotes} db={db} getCollectionPath={getCollectionPath} showMessage={showMessage} />;
+        return <AdminPortal students={students} announcements={announcements} logs={logs} schoolReports={schoolReports} adminNotes={adminNotes} cardRequests={cardRequests} db={db} getCollectionPath={getCollectionPath} showMessage={showMessage} />;
       } else {
         return <LoginView roleTarget="admin" setAuthRole={setAuthRole} showMessage={showMessage} />;
       }
@@ -598,12 +609,18 @@ function LoginView({ roleTarget, setAuthRole, showMessage }) {
 }
 
 // ==========================================
-// 5. 教师控制台
+// 5. 教师控制台 (增加批量申请制卡功能)
 // ==========================================
 function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
   const [selectedYear, setSelectedYear] = useState('1');
   const [selectedColor, setSelectedColor] = useState('H');
   const [transferModal, setTransferModal] = useState(null);
+  
+  const [selectedForCardReq, setSelectedForCardReq] = useState([]);
+  const [cardReqModal, setCardReqModal] = useState(false);
+  const [cardReqReason, setCardReqReason] = useState('遗失 (Hilang)');
+
+  const reasonOptions = ['遗失 (Hilang)', '替换 (Ganti)', '修改 (Pindaan)', '损坏 (Rosak)', '更新 (Kemas Kini)', '新生 (Murid Baru)', '其他 (Lain-lain)'];
 
   const years = [
     { val: '1', label: '一年级 (Tahun 1)' },
@@ -652,6 +669,48 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
     } catch (error) { showMessage("错误", "更新失败: " + error.message); }
   };
 
+  const toggleStudentCardSelect = (s) => {
+    if (selectedForCardReq.find(sel => sel.ic === s.ic)) {
+      setSelectedForCardReq(selectedForCardReq.filter(sel => sel.ic !== s.ic));
+    } else {
+      setSelectedForCardReq([...selectedForCardReq, s]);
+    }
+  };
+
+  const toggleAllCardSelect = () => {
+    if (selectedForCardReq.length === classStudents.length) {
+      setSelectedForCardReq([]);
+    } else {
+      setSelectedForCardReq([...classStudents]);
+    }
+  };
+
+  const submitCardRequests = async () => {
+    setCardReqModal(false);
+    try {
+      let count = 0;
+      for (const s of selectedForCardReq) {
+        const newRef = doc(collection(db, getCollectionPath('cardRequests')));
+        await setDoc(newRef, {
+          studentIc: s.ic,
+          studentName: s.name,
+          classYear: s.classYear,
+          classColor: s.classColor,
+          reason: cardReqReason,
+          status: 'pending',
+          requestedAt: new Date().toISOString(),
+        });
+        count++;
+      }
+      showMessage("成功", `已成功提交 ${count} 位学生的制卡申请至 Admin 后台。`);
+      if (window.logSystemAction) window.logSystemAction('teacher', '申请制卡', `教师批量申请了 ${count} 张 DELIMA 卡 (原因: ${cardReqReason})`);
+      setSelectedForCardReq([]);
+      setCardReqReason('遗失 (Hilang)');
+    } catch(err) {
+      showMessage("错误", "申请提交失败: " + err.message);
+    }
+  };
+
   return (
     <div className="bg-white rounded-3xl p-6 md:p-8 shadow-lg border border-purple-50 animate-fade-in">
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-6 border-b border-purple-100 pb-6">
@@ -671,21 +730,40 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
         </div>
       </div>
 
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
         <h3 className="text-xl font-bold text-gray-800">学生列表 ({classStudents.length} 人)</h3>
-        <button onClick={exportToExcel} className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-5 py-2 rounded-xl font-bold text-sm shadow-sm transition-all"><Download size={18} /> 导出 Excel</button>
+        <div className="flex gap-2">
+          {selectedForCardReq.length > 0 && (
+            <button onClick={() => setCardReqModal(true)} className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-2 rounded-xl font-bold text-sm shadow-sm transition-all">
+              <CreditCard size={18} /> 申请制卡 ({selectedForCardReq.length})
+            </button>
+          )}
+          <button onClick={exportToExcel} className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-5 py-2 rounded-xl font-bold text-sm shadow-sm transition-all"><Download size={18} /> 导出 Excel</button>
+        </div>
       </div>
 
       <div className="hidden md:block overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow-sm">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-gray-50 text-gray-600 text-sm border-b border-gray-200">
+              <th className="p-4 w-12 text-center">
+                <input type="checkbox" className="w-4 h-4 cursor-pointer" 
+                  checked={classStudents.length > 0 && selectedForCardReq.length === classStudents.length} 
+                  onChange={toggleAllCardSelect} 
+                />
+              </th>
               <th className="p-4 font-semibold">姓名</th><th className="p-4 font-semibold">IC 号码</th><th className="p-4 font-semibold">DELIMA ID</th><th className="p-4 font-semibold">密码</th><th className="p-4 font-semibold text-center">操作</th>
             </tr>
           </thead>
           <tbody>
             {classStudents.map((s, idx) => (
               <tr key={s.id} className={`text-sm border-b border-gray-100 ${idx % 2 === 0 ? 'bg-white' : 'bg-[#fafafa]'} hover:bg-purple-50 transition-colors`}>
+                <td className="p-4 text-center">
+                  <input type="checkbox" className="w-4 h-4 cursor-pointer" 
+                    checked={!!selectedForCardReq.find(sel => sel.ic === s.ic)} 
+                    onChange={() => toggleStudentCardSelect(s)} 
+                  />
+                </td>
                 <td className="p-4 font-bold text-gray-800">{s.name}</td><td className="p-4 font-mono text-gray-600">{s.ic}</td><td className="p-4 font-mono text-purple-600">{s.delimaId}</td><td className="p-4 font-mono text-gray-600">{s.password}</td>
                 <td className="p-4 text-center">
                   {selectedYear !== '19' && selectedYear !== '20' && (
@@ -694,15 +772,18 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
                 </td>
               </tr>
             ))}
-            {classStudents.length === 0 && (<tr><td colSpan="5" className="p-8 text-center text-gray-500 text-base">该班级暂无学生数据。</td></tr>)}
+            {classStudents.length === 0 && (<tr><td colSpan="6" className="p-8 text-center text-gray-500 text-base">该班级暂无学生数据。</td></tr>)}
           </tbody>
         </table>
       </div>
 
       <div className="md:hidden space-y-4">
         {classStudents.map(s => (
-          <div key={s.id} className="bg-white border border-gray-200 p-5 rounded-2xl shadow-sm">
-            <h4 className="text-lg font-bold text-gray-800 mb-2">{s.name}</h4>
+          <div key={s.id} className="bg-white border border-gray-200 p-5 rounded-2xl shadow-sm relative">
+            <div className="absolute top-5 right-5">
+               <input type="checkbox" className="w-5 h-5 cursor-pointer" checked={!!selectedForCardReq.find(sel => sel.ic === s.ic)} onChange={() => toggleStudentCardSelect(s)} />
+            </div>
+            <h4 className="text-lg font-bold text-gray-800 mb-2 pr-8">{s.name}</h4>
             <div className="space-y-1 text-sm text-gray-600 mb-4"><p>IC: <span className="font-mono text-gray-800">{s.ic}</span></p><p>DELIMA: <span className="font-mono text-purple-600 font-bold">{s.delimaId}</span></p><p>Pwd: <span className="font-mono text-gray-800">{s.password}</span></p></div>
             {selectedYear !== '19' && selectedYear !== '20' && (<button onClick={() => setTransferModal(s)} className="w-full bg-amber-50 border border-amber-200 text-amber-700 py-2.5 rounded-xl font-bold text-sm transition-colors">标为转校 (Pindah Sekolah)</button>)}
           </div>
@@ -726,6 +807,32 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
           </div>
         </div>
       )}
+
+      {cardReqModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl animate-slide-up">
+            <h3 className="text-2xl font-bold text-indigo-600 mb-2 flex items-center gap-2"><CreditCard size={24}/> 批量申请制卡</h3>
+            <p className="text-sm text-gray-600 mb-6">您已选择了 <strong className="text-indigo-600 text-lg">{selectedForCardReq.length}</strong> 位学生，请选择制卡原因并提交给 Admin 处理。</p>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">制卡原因 (Sebab Mohon Kad)</label>
+                <select 
+                  className="w-full p-3 border border-gray-300 rounded-xl text-base focus:border-indigo-500 focus:outline-none"
+                  value={cardReqReason}
+                  onChange={(e) => setCardReqReason(e.target.value)}
+                >
+                  {reasonOptions.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+              <div className="flex gap-4 mt-8">
+                <button onClick={() => setCardReqModal(false)} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 rounded-xl text-base transition-colors">取消</button>
+                <button onClick={submitCardRequests} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl text-base transition-colors">提交申请</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -733,8 +840,8 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
 // ==========================================
 // 6. 管理员后台 (Admin Portal)
 // ==========================================
-function AdminPortal({ students, announcements, logs, schoolReports, adminNotes, db, getCollectionPath, showMessage }) {
-  const [adminMainTab, setAdminMainTab] = useState('students_mgmt'); 
+function AdminPortal({ students, announcements, logs, schoolReports, adminNotes, cardRequests, db, getCollectionPath, showMessage }) {
+  const [adminMainTab, setAdminMainTab] = useState('card_requests'); 
   const [confirmModal, setConfirmModal] = useState(null);
   
   const compressImage = (file, callback) => {
@@ -874,7 +981,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
 
   // ---------- 标签 2：通告与活动管理 ----------
   const [annForm, setAnnForm] = useState({ title: '', content: '', type: 'App', link: '', image: '' });
-  const [editAnn, setEditAnn] = useState(null); // 新增：用于编辑通告
+  const [editAnn, setEditAnn] = useState(null); 
 
   const handleAnnImage = (e) => compressImage(e.target.files[0], (data) => setAnnForm({...annForm, image: data}));
   const handleEditAnnImage = (e) => compressImage(e.target.files[0], (data) => setEditAnn({...editAnn, image: data}));
@@ -911,7 +1018,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
 
   // ---------- 标签 3：访客与系统日志 ----------
   const exportLogsToExcel = () => {
-    if (typeof window.XLSX === 'undefined') { showMessage("错误", "Excel导出工具尚未加载，请稍等或刷新页面。"); return; }
+    if (typeof window.XLSX === 'undefined') { showMessage("错误", "Excel导出工具尚未加载，请稍等。"); return; }
     const exportData = logs.map(l => ({
       "时间 (Masa)": new Date(l.timestamp).toLocaleString(),
       "身份 (Peranan)": l.role === 'admin' ? '管理员 (Admin)' : l.role === 'teacher' ? '教师 (Guru)' : '访客/家长 (Pelawat)',
@@ -1002,6 +1109,100 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
     setConfirmModal({ message: "确定要删除这条私密备注吗？", onConfirm: async () => { setConfirmModal(null); await deleteDoc(doc(db, getCollectionPath('adminNotes'), id)); } });
   };
 
+  // ---------- 新增标签：DELIMA 制卡申请管理 ----------
+  const reasonOptions = ['遗失 (Hilang)', '替换 (Ganti)', '修改 (Pindaan)', '损坏 (Rosak)', '更新 (Kemas Kini)', '新生 (Murid Baru)', '其他 (Lain-lain)'];
+  const [cardReason, setCardReason] = useState(reasonOptions[0]);
+  const [cardSearchTerm, setCardSearchTerm] = useState('');
+  const [selectedForCard, setSelectedForCard] = useState([]);
+
+  const cardStudentOptions = useMemo(() => {
+    if (!cardSearchTerm) return [];
+    const lower = cardSearchTerm.toLowerCase();
+    return students.filter(s => 
+      (s.name.toLowerCase().includes(lower) || s.ic.toLowerCase().includes(lower)) 
+      && !selectedForCard.find(sel => sel.ic === s.ic)
+    ).slice(0, 5); 
+  }, [students, cardSearchTerm, selectedForCard]);
+
+  const handleSelectForCard = (student) => {
+    setSelectedForCard([...selectedForCard, student]);
+    setCardSearchTerm('');
+  };
+
+  const handleRemoveFromCard = (ic) => {
+    setSelectedForCard(selectedForCard.filter(s => s.ic !== ic));
+  };
+
+  const handleAddCardRequests = async (e) => {
+    e.preventDefault();
+    if (selectedForCard.length === 0) return showMessage("提示", "请先在上方搜索并选择需要制卡的学生。");
+    try {
+      let count = 0;
+      for (const s of selectedForCard) {
+        const newRef = doc(collection(db, getCollectionPath('cardRequests')));
+        await setDoc(newRef, {
+          studentIc: s.ic,
+          studentName: s.name,
+          classYear: s.classYear,
+          classColor: s.classColor,
+          reason: cardReason,
+          status: 'pending',
+          requestedAt: new Date().toISOString(),
+        });
+        count++;
+      }
+      showMessage("成功", `已成功加入 ${count} 位学生的制卡要求。`);
+      if (window.logSystemAction) window.logSystemAction('admin', '新增制卡', `批量加入了 ${count} 个制卡申请`);
+      setSelectedForCard([]);
+      setCardReason(reasonOptions[0]);
+    } catch(err) {
+      showMessage("错误", "添加失败: " + err.message);
+    }
+  };
+
+  const toggleCardStatus = async (id, currentStatus) => {
+    try {
+      const newStatus = currentStatus === 'pending' ? 'completed' : 'pending';
+      const updateData = { status: newStatus };
+      if (newStatus === 'completed') updateData.completedAt = new Date().toISOString();
+      else updateData.completedAt = null;
+      await updateDoc(doc(db, getCollectionPath('cardRequests'), id), updateData);
+    } catch(err) {
+      showMessage("错误", "状态更新失败: " + err.message);
+    }
+  };
+
+  const deleteCardRequest = (id) => {
+    setConfirmModal({
+      message: "确定要彻底删除这条制卡记录吗？",
+      onConfirm: async () => {
+        setConfirmModal(null);
+        try {
+          await deleteDoc(doc(db, getCollectionPath('cardRequests'), id));
+        } catch(err) {
+          showMessage("错误", "删除失败: " + err.message);
+        }
+      }
+    });
+  };
+
+  const exportCardRequestsToExcel = () => {
+    if (typeof window.XLSX === 'undefined') return showMessage("错误", "组件未加载");
+    const exportData = cardRequests.map(r => ({
+      "状态 (Status)": r.status === 'completed' ? '已完成 (Selesai)' : '待处理 (Menunggu)',
+      "要求时间 (Tarikh Mohon)": new Date(r.requestedAt).toLocaleString(),
+      "完成时间 (Tarikh Selesai)": r.completedAt ? new Date(r.completedAt).toLocaleString() : '-',
+      "姓名 (Nama)": r.studentName,
+      "班级 (Kelas)": formatSimpleClassName(r.classYear, r.classColor),
+      "IC (No K/P)": r.studentIc,
+      "原因 (Sebab)": r.reason
+    }));
+    const ws = window.XLSX.utils.json_to_sheet(exportData);
+    const wb = window.XLSX.utils.book_new();
+    window.XLSX.utils.book_append_sheet(wb, ws, "Card_Requests");
+    window.XLSX.writeFile(wb, `Rekod_Kad_Delima_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
   return (
     <div className="bg-white rounded-3xl p-6 md:p-10 shadow-xl border-t-8 border-purple-800 animate-fade-in relative">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
@@ -1021,16 +1222,139 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         <button onClick={() => setAdminMainTab('announcements')} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${adminMainTab === 'announcements' ? 'bg-purple-600 text-white shadow-md' : 'bg-gray-50 text-gray-600 hover:bg-purple-100'}`}>
           <BookOpen size={18} /> 通告与活动管理
         </button>
-        <button onClick={() => setAdminMainTab('sys_logs')} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${adminMainTab === 'sys_logs' ? 'bg-green-600 text-white shadow-md' : 'bg-gray-50 text-gray-600 hover:bg-green-100'}`}>
-          <ClipboardList size={18} /> 访客与系统日志
+        <button onClick={() => setAdminMainTab('card_requests')} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${adminMainTab === 'card_requests' ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-50 text-gray-600 hover:bg-indigo-100'}`}>
+          <CreditCard size={18} /> DELIMA 制卡管理
         </button>
         <button onClick={() => setAdminMainTab('school_reports')} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${adminMainTab === 'school_reports' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-50 text-gray-600 hover:bg-blue-100'}`}>
           <BarChart size={18} /> 学校报告与数据
         </button>
+        <button onClick={() => setAdminMainTab('sys_logs')} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${adminMainTab === 'sys_logs' ? 'bg-green-600 text-white shadow-md' : 'bg-gray-50 text-gray-600 hover:bg-green-100'}`}>
+          <ClipboardList size={18} /> 访客与系统日志
+        </button>
         <button onClick={() => setAdminMainTab('admin_notes')} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${adminMainTab === 'admin_notes' ? 'bg-red-600 text-white shadow-md' : 'bg-gray-50 text-gray-600 hover:bg-red-100'}`}>
-          <Edit size={18} /> Admin 备注记录
+          <Edit size={18} /> Admin 备注
         </button>
       </div>
+
+      {/* ======================= 新增模块：DELIMA 制卡申请管理 ======================= */}
+      {adminMainTab === 'card_requests' && (
+        <div className="space-y-8 animate-slide-up">
+          {/* Admin 批量添加区 */}
+          <div className="bg-indigo-50/50 border border-indigo-100 p-6 md:p-8 rounded-2xl shadow-sm">
+            <h3 className="text-xl font-bold text-indigo-900 mb-2 flex items-center gap-2"><CreditCard size={24}/> 新增制卡申请</h3>
+            <p className="text-sm text-gray-600 mb-6">可同时搜索并选择多位学生，选定原因后一键加入待处理列表。（教师端提交的申请也会显示在下方）</p>
+            
+            <form onSubmit={handleAddCardRequests} className="space-y-5">
+              <div className="relative z-20">
+                <label className="block text-sm font-bold text-gray-700 mb-2">1. 搜索并选择学生 (可多选)</label>
+                <div className="relative">
+                  <input type="text" placeholder="输入姓名或 IC..." value={cardSearchTerm} onChange={(e) => setCardSearchTerm(e.target.value)} className="w-full p-3 pl-10 border border-indigo-200 rounded-xl text-sm outline-none focus:border-indigo-500" />
+                  <Search size={18} className="absolute left-3 top-3.5 text-gray-400" />
+                </div>
+                {cardStudentOptions.length > 0 && (
+                  <div className="absolute w-full mt-1 bg-white border border-gray-200 shadow-xl rounded-xl overflow-hidden">
+                    {cardStudentOptions.map(s => (
+                      <div key={s.id} onClick={() => handleSelectForCard(s)} className="p-3 hover:bg-indigo-50 cursor-pointer border-b last:border-b-0 text-sm flex justify-between">
+                        <span className="font-bold">{s.name}</span>
+                        <span className="text-gray-500">{formatSimpleClassName(s.classYear, s.classColor)} | {s.ic}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              {selectedForCard.length > 0 && (
+                <div className="flex flex-wrap gap-2 p-3 bg-white border border-indigo-100 rounded-xl min-h-[60px]">
+                  {selectedForCard.map(s => (
+                    <div key={s.ic} className="bg-indigo-100 text-indigo-800 px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 font-semibold shadow-sm">
+                      {s.name} ({formatSimpleClassName(s.classYear, s.classColor)})
+                      <button type="button" onClick={() => handleRemoveFromCard(s.ic)} className="text-indigo-400 hover:text-red-500"><Trash2 size={14}/></button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex flex-col md:flex-row gap-4 items-end">
+                <div className="w-full md:w-1/2">
+                  <label className="block text-sm font-bold text-gray-700 mb-2">2. 选择制卡原因</label>
+                  <select value={cardReason} onChange={(e) => setCardReason(e.target.value)} className="w-full p-3 border border-indigo-200 rounded-xl text-base outline-none focus:border-indigo-500 bg-white">
+                    {reasonOptions.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                </div>
+                <button type="submit" className="w-full md:w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl transition-colors shadow-md">
+                  3. 提交制卡申请
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div className="flex justify-end">
+            <button onClick={exportCardRequestsToExcel} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-md transition-all">
+              <Download size={18} /> 导出所有制卡记录为 Excel
+            </button>
+          </div>
+
+          {/* 待处理列表 */}
+          <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm">
+            <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded-lg text-sm">待处理 (Menunggu)</span>
+            </h3>
+            <div className="overflow-x-auto rounded-xl border border-gray-200">
+              <table className="w-full text-left border-collapse min-w-max">
+                <thead className="bg-gray-50"><tr className="text-gray-600 text-sm border-b"><th className="p-3 w-16 text-center">完成</th><th className="p-3">要求时间</th><th className="p-3">姓名</th><th className="p-3">班级</th><th className="p-3">IC</th><th className="p-3">原因</th><th className="p-3 text-center">操作</th></tr></thead>
+                <tbody>
+                  {cardRequests.filter(r => r.status === 'pending').map((r, idx) => (
+                    <tr key={r.id} className={`text-sm border-b ${idx % 2 === 0 ? 'bg-white' : 'bg-[#fafafa]'}`}>
+                      <td className="p-3 text-center">
+                        <button onClick={() => toggleCardStatus(r.id, r.status)} className="text-gray-300 hover:text-green-500 transition-colors" title="打钩标记为已完成">
+                          <CheckCircle size={28} />
+                        </button>
+                      </td>
+                      <td className="p-3 text-gray-500">{new Date(r.requestedAt).toLocaleString()}</td>
+                      <td className="p-3 font-bold">{r.studentName}</td>
+                      <td className="p-3">{formatClassName(r.classYear, r.classColor)}</td>
+                      <td className="p-3 font-mono">{r.studentIc}</td>
+                      <td className="p-3"><span className="bg-gray-100 text-gray-700 px-2 py-1 rounded font-semibold text-xs">{r.reason}</span></td>
+                      <td className="p-3 text-center"><button onClick={() => deleteCardRequest(r.id)} className="text-red-500 p-1 hover:bg-red-50 rounded"><Trash2 size={16}/></button></td>
+                    </tr>
+                  ))}
+                  {cardRequests.filter(r => r.status === 'pending').length === 0 && <tr><td colSpan="7" className="p-6 text-center text-gray-500">目前没有待处理的制卡申请。</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* 已完成列表 */}
+          <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm">
+            <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <span className="bg-green-100 text-green-700 px-2 py-1 rounded-lg text-sm">已完成 (Selesai)</span>
+            </h3>
+            <div className="overflow-x-auto rounded-xl border border-gray-200">
+              <table className="w-full text-left border-collapse min-w-max">
+                <thead className="bg-gray-50"><tr className="text-gray-600 text-sm border-b"><th className="p-3 w-16 text-center">撤销</th><th className="p-3">完成时间</th><th className="p-3">姓名</th><th className="p-3">班级</th><th className="p-3">IC</th><th className="p-3">原因</th><th className="p-3 text-center">操作</th></tr></thead>
+                <tbody>
+                  {cardRequests.filter(r => r.status === 'completed').map((r, idx) => (
+                    <tr key={r.id} className={`text-sm border-b ${idx % 2 === 0 ? 'bg-white' : 'bg-[#fafafa]'}`}>
+                      <td className="p-3 text-center">
+                        <button onClick={() => toggleCardStatus(r.id, r.status)} className="text-amber-500 hover:text-amber-700 transition-colors" title="撤销回待处理状态">
+                          <Undo size={20} />
+                        </button>
+                      </td>
+                      <td className="p-3 text-green-600 font-semibold">{r.completedAt ? new Date(r.completedAt).toLocaleString() : '-'}</td>
+                      <td className="p-3 font-bold">{r.studentName}</td>
+                      <td className="p-3">{formatClassName(r.classYear, r.classColor)}</td>
+                      <td className="p-3 font-mono">{r.studentIc}</td>
+                      <td className="p-3 text-gray-500">{r.reason}</td>
+                      <td className="p-3 text-center"><button onClick={() => deleteCardRequest(r.id)} className="text-red-500 p-1 hover:bg-red-50 rounded"><Trash2 size={16}/></button></td>
+                    </tr>
+                  ))}
+                  {cardRequests.filter(r => r.status === 'completed').length === 0 && <tr><td colSpan="7" className="p-6 text-center text-gray-500">目前没有已完成的制卡记录。</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ======================= 模块 1：学生综合管理 ======================= */}
       {adminMainTab === 'students_mgmt' && (
@@ -1144,7 +1468,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         </div>
       )}
 
-      {/* ======================= 新增模块：访客与系统操作记录 ======================= */}
+      {/* ======================= 模块 3：访客与系统操作记录 ======================= */}
       {adminMainTab === 'sys_logs' && (
         <div className="space-y-8 animate-slide-up">
           <div className="bg-white border border-gray-200 p-6 md:p-8 rounded-2xl shadow-sm">
@@ -1260,7 +1584,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         <div className="space-y-8 animate-slide-up">
           <div className="bg-red-50/30 p-6 md:p-8 rounded-2xl border border-red-100 grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div>
-              <h3 className="text-xl md:text-2xl font-bold text-red-800 mb-2 flex items-center gap-2"><ClipboardList size={24} /> Admin 专属私密备注 (Nota Peribadi)</h3>
+              <h3 className="text-xl md:text-2xl font-bold text-red-800 mb-2 flex items-center gap-2"><Edit size={24} /> Admin 专属私密备注 (Nota Peribadi)</h3>
               <p className="text-sm text-gray-600 mb-6">这里的内容绝对不会显示在首页。仅供管理员个人记录重要事项、网址或存底照片。</p>
               
               <form onSubmit={handleAddNote} className="space-y-4">
