@@ -1186,21 +1186,43 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
     });
   };
 
-  const exportCardRequestsToExcel = () => {
+  const exportCardRequestsToExcel = (statusFilter) => {
     if (typeof window.XLSX === 'undefined') return showMessage("错误", "组件未加载");
-    const exportData = cardRequests.map(r => ({
-      "状态 (Status)": r.status === 'completed' ? '已完成 (Selesai)' : '待处理 (Menunggu)',
-      "要求时间 (Tarikh Mohon)": new Date(r.requestedAt).toLocaleString(),
-      "完成时间 (Tarikh Selesai)": r.completedAt ? new Date(r.completedAt).toLocaleString() : '-',
-      "姓名 (Nama)": r.studentName,
-      "班级 (Kelas)": formatSimpleClassName(r.classYear, r.classColor),
-      "IC (No K/P)": r.studentIc,
-      "原因 (Sebab)": r.reason
-    }));
+    
+    const filteredRequests = statusFilter ? cardRequests.filter(r => r.status === statusFilter) : cardRequests;
+    
+    if (filteredRequests.length === 0) {
+      return showMessage("提示", "当前没有符合条件的数据可供导出。");
+    }
+
+    const exportData = filteredRequests.map(r => {
+      const studentInfo = students.find(s => s.ic === r.studentIc) || {};
+      const malayName = studentInfo.name?.includes('(') ? studentInfo.name.split('(')[0].trim() : (studentInfo.name || r.studentName);
+      const chineseName = studentInfo.name?.includes('(') ? studentInfo.name.split('(')[1].replace(')', '').trim() : '';
+
+      return {
+        "NO": formatSimpleClassName(studentInfo.classYear || r.classYear, studentInfo.classColor || r.classColor),
+        "NO.RUJ IDME": studentInfo.idme || '',
+        "NO RUJ SEK": studentInfo.studentId || '',
+        "NAMA MURID": malayName,
+        "姓名": chineseName,
+        "性别": studentInfo.gender || '',
+        "RUMAH SUKAN": studentInfo.sportsHouse || '',
+        "SURAT BERANAK": studentInfo.birthCert || '',
+        "TARIKH LAHIR": studentInfo.dob || '',
+        "IC": r.studentIc,
+        "EMAL DELIMA": studentInfo.delimaId || '',
+        "PASSWORD": studentInfo.password || ''
+      };
+    });
+
     const ws = window.XLSX.utils.json_to_sheet(exportData);
     const wb = window.XLSX.utils.book_new();
-    window.XLSX.utils.book_append_sheet(wb, ws, "Card_Requests");
-    window.XLSX.writeFile(wb, `Rekod_Kad_Delima_${new Date().toISOString().split('T')[0]}.xlsx`);
+    window.XLSX.utils.book_append_sheet(wb, ws, "MailMergeData");
+    const fileNameStatus = statusFilter === 'pending' ? 'Menunggu' : (statusFilter === 'completed' ? 'Selesai' : 'Semua');
+    window.XLSX.writeFile(wb, `MailMerge_Kad_${fileNameStatus}_${new Date().toISOString().split('T')[0]}.xlsx`);
+    
+    showMessage("导出成功", `Excel 文件已下载！\n\n此 Excel 格式已完全适配您的 TEMPLETE.docx。\n\n请打开 Word 文档，点击顶部的【邮件(Mailings)】->【选择收件人(Select Recipients)】->【使用现有列表(Use an Existing List)】，然后载入此 Excel，即可一键完成 Mail Merge 制卡！`);
   };
 
   return (
@@ -1288,9 +1310,12 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
             </form>
           </div>
 
-          <div className="flex justify-end">
-            <button onClick={exportCardRequestsToExcel} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-md transition-all">
-              <Download size={18} /> 导出所有制卡记录为 Excel
+          <div className="flex flex-col md:flex-row justify-end gap-3 mb-2 mt-4">
+            <button onClick={() => exportCardRequestsToExcel('pending')} className="flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md transition-all">
+              <Download size={18} /> 导出待处理 (用于 Mail Merge 制卡)
+            </button>
+            <button onClick={() => exportCardRequestsToExcel('completed')} className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md transition-all">
+              <Download size={18} /> 导出已完成 (存档备份)
             </button>
           </div>
 
