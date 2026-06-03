@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, query, onSnapshot, doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
@@ -14,7 +14,7 @@ const Trash2 = ({ size = 20, className = "" }) => (<svg width={size} height={siz
 const Edit = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>);
 const ChevronRight = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="9 18 15 12 9 6"/></svg>);
 const UserCheck = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>);
-const Settings = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>);
+const Settings = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>);
 const BookOpen = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>);
 const AlertCircle = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>);
 const RefreshCw = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>);
@@ -26,9 +26,10 @@ const BarChart = ({ size = 20, className = "" }) => (<svg width={size} height={s
 const CreditCard = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>);
 const CheckCircle = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>);
 const Undo = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg>);
+
+// 新增点赞与留言图标
 const Heart = ({ size = 20, className = "", filled = false }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>);
 const MessageCircle = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>);
-
 
 // ==========================================
 // 1. Firebase 设定与初始化
@@ -71,14 +72,11 @@ export default function App() {
   const [logs, setLogs] = useState([]);
   const [schoolReports, setSchoolReports] = useState([]); 
   const [adminNotes, setAdminNotes] = useState([]); 
-  const [cardRequests, setCardRequests] = useState([]); 
+  const [cardRequests, setCardRequests] = useState([]);
   
   // 弹窗与加载状态
   const [isLoading, setIsLoading] = useState(true);
   const [modalMessage, setModalMessage] = useState(null);
-
-  // 记录家长身份 (用于点赞留言验证)
-  const [currentVisitor, setCurrentVisitor] = useState(null);
 
   useEffect(() => {
     const faviconSvg = encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="#9333ea"/><g transform="translate(20, 20) scale(2.5)" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></g></svg>');
@@ -209,13 +207,6 @@ export default function App() {
     showMessage("成功", "已安全退出账户。");
   };
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Selamat Pagi! 早上好 ✨";
-    if (hour < 18) return "Selamat Petang! 下午好 ☀️";
-    return "Selamat Malam! 晚上好 🌙";
-  };
-
   const renderContent = () => {
     if (isLoading) {
       return (
@@ -227,7 +218,7 @@ export default function App() {
     }
 
     if (activeTab === 'home') {
-      return <HomeView students={students} announcements={announcements} schoolReports={schoolReports} db={db} getCollectionPath={getCollectionPath} showMessage={showMessage} currentVisitor={currentVisitor} setCurrentVisitor={setCurrentVisitor} getGreeting={getGreeting} authRole={authRole} />;
+      return <HomeView students={students} announcements={announcements} schoolReports={schoolReports} db={db} getCollectionPath={getCollectionPath} showMessage={showMessage} authRole={authRole} currentUser={user} setActiveTab={setActiveTab} />;
     } else if (activeTab === 'teacher') {
       if (authRole === 'teacher' || authRole === 'admin') {
         return <TeacherPortal students={students} db={db} getCollectionPath={getCollectionPath} showMessage={showMessage} />;
@@ -322,15 +313,16 @@ export default function App() {
 }
 
 // ==========================================
-// 3. 首页视图 (Home View)
+// 3. 首页视图
 // ==========================================
-function HomeView({ students, announcements, schoolReports, db, getCollectionPath, showMessage, currentVisitor, setCurrentVisitor, getGreeting, authRole }) {
+function HomeView({ students, announcements, schoolReports, db, getCollectionPath, showMessage, authRole, currentUser, setActiveTab }) {
   const [icNumber, setIcNumber] = useState('');
   const [result, setResult] = useState(null);
   const [searched, setSearched] = useState(false);
 
   // 留言相关状态
   const [commentInput, setCommentInput] = useState('');
+  const [commentName, setCommentName] = useState('');
   const [activeCommentId, setActiveCommentId] = useState(null);
   const [editCommentText, setEditCommentText] = useState('');
 
@@ -349,24 +341,16 @@ function HomeView({ students, announcements, schoolReports, db, getCollectionPat
     setResult(student || null);
     setSearched(true);
 
-    if (student) {
-      setCurrentVisitor({ name: student.name, ic: student.ic });
-    } else {
-      setCurrentVisitor(null);
-    }
-
     if (window.logSystemAction) {
       if (student) window.logSystemAction('visitor', '成功查询资料', `家长/学生成功进入，输入的身份证/报生纸: ${icNumber} (学生: ${student.name}, 班级: ${student.classYear}${student.classColor})`);
       else window.logSystemAction('visitor', '查询失败', `家长/学生尝试进入但失败，输入的号码: ${icNumber}`);
     }
   };
 
+  // ----- 点赞与留言交互逻辑 (无需登录) -----
   const handleLike = async (item, collectionName) => {
-    if (!currentVisitor && !authRole) {
-      showMessage("提示 (Perhatian)", "Sila buat semakan maklumat murid terlebih dahulu untuk 'Like' laporan ini.\n请先查询学生资料以验证身份，然后再点赞。");
-      return;
-    }
-    const visitorId = authRole ? 'admin_or_teacher' : currentVisitor.ic;
+    // 采用 firebase 的匿名 UID 来防止重复点赞，无需绑定家长身份
+    const visitorId = authRole ? `role_${authRole}` : (currentUser?.uid || 'anonymous');
     const isLiked = (item.likes || []).includes(visitorId);
     let newLikes = item.likes || [];
     
@@ -385,17 +369,19 @@ function HomeView({ students, announcements, schoolReports, db, getCollectionPat
 
   const handleAddComment = async (item, collectionName, e) => {
     e.preventDefault();
-    if (!currentVisitor && !authRole) {
-      showMessage("提示 (Perhatian)", "Sila buat semakan maklumat murid terlebih dahulu untuk meninggalkan komen.\n请先查询学生资料以验证身份，然后再留言。");
+    if (!commentInput.trim()) return;
+    if (!authRole && !commentName.trim()) {
+      showMessage("提示 (Perhatian)", "Sila masukkan nama anda.\n请输入您的名字。");
       return;
     }
-    if (!commentInput.trim()) return;
+
+    const finalName = authRole === 'admin' ? 'Admin' : (authRole === 'teacher' ? 'Cikgu (老师)' : commentName.trim());
 
     const newComment = {
       id: Date.now().toString(),
       text: commentInput,
-      authorId: authRole ? 'admin' : currentVisitor.ic,
-      authorName: authRole ? 'Admin' : `Waris/Pelajar ${currentVisitor.name}`,
+      authorId: authRole ? `role_${authRole}` : (currentUser?.uid || 'anonymous'),
+      authorName: finalName,
       timestamp: new Date().toISOString()
     };
 
@@ -404,6 +390,7 @@ function HomeView({ students, announcements, schoolReports, db, getCollectionPat
     try {
       await updateDoc(doc(db, getCollectionPath(collectionName), item.id), { comments: newComments });
       setCommentInput('');
+      setCommentName('');
       setActiveCommentId(null);
       showMessage("成功 (Berjaya)", "Komen anda telah dihantar.\n您的留言已发布！");
     } catch (err) {
@@ -413,14 +400,7 @@ function HomeView({ students, announcements, schoolReports, db, getCollectionPat
 
   const handleEditComment = async (item, collectionName, commentId) => {
     if (!editCommentText.trim()) return;
-    
-    const updatedComments = item.comments.map(c => {
-      if (c.id === commentId) {
-        return { ...c, text: editCommentText, edited: true };
-      }
-      return c;
-    });
-
+    const updatedComments = item.comments.map(c => c.id === commentId ? { ...c, text: editCommentText, edited: true } : c);
     try {
       await updateDoc(doc(db, getCollectionPath(collectionName), item.id), { comments: updatedComments });
       setActiveCommentId(null);
@@ -432,7 +412,6 @@ function HomeView({ students, announcements, schoolReports, db, getCollectionPat
 
   const handleDeleteComment = async (item, collectionName, commentId) => {
     if (!window.confirm("Adakah anda pasti untuk memadam komen ini?\n确定要删除这条留言吗？")) return;
-    
     const updatedComments = item.comments.filter(c => c.id !== commentId);
     try {
       await updateDoc(doc(db, getCollectionPath(collectionName), item.id), { comments: updatedComments });
@@ -443,25 +422,27 @@ function HomeView({ students, announcements, schoolReports, db, getCollectionPat
 
   const canEditOrDelete = (comment) => {
     if (authRole === 'admin') return true;
-    if (!currentVisitor || comment.authorId !== currentVisitor.ic) return false;
+    const currentId = authRole ? `role_${authRole}` : (currentUser?.uid || 'anonymous');
+    if (comment.authorId !== currentId) return false;
     const commentDate = new Date(comment.timestamp);
     const now = new Date();
     const hoursDiff = (now - commentDate) / (1000 * 60 * 60);
-    return hoursDiff <= 24;
+    return hoursDiff <= 24; // 24小时内可修改
   };
 
-  // 渲染交互区域 (点赞与留言)
+  // ----- 渲染交互区 (点赞与留言) -----
   const renderInteractionArea = (item, collectionName) => {
-    const isLiked = currentVisitor ? (item.likes || []).includes(currentVisitor.ic) : (authRole ? (item.likes || []).includes('admin_or_teacher') : false);
+    const visitorId = authRole ? `role_${authRole}` : (currentUser?.uid || 'anonymous');
+    const isLiked = (item.likes || []).includes(visitorId);
     
     return (
-      <div className="mt-4 pt-4 border-t border-gray-100">
+      <div className="mt-5 pt-4 border-t border-gray-100">
         <div className="flex items-center gap-4 mb-4">
           <button 
             onClick={(e) => { e.preventDefault(); handleLike(item, collectionName); }}
             className={`flex items-center gap-1.5 text-sm font-bold transition-colors ${isLiked ? 'text-red-500 hover:text-red-600' : 'text-gray-500 hover:text-red-500'}`}
           >
-            <Heart size={18} filled={isLiked} /> 
+            <Heart size={20} filled={isLiked} /> 
             <span>Like ({item.likes?.length || 0})</span>
           </button>
           <button 
@@ -471,16 +452,16 @@ function HomeView({ students, announcements, schoolReports, db, getCollectionPat
             }}
             className="flex items-center gap-1.5 text-sm font-bold text-gray-500 hover:text-blue-500 transition-colors"
           >
-            <MessageCircle size={18} />
+            <MessageCircle size={20} />
             <span>Komen ({(item.comments || []).length})</span>
           </button>
         </div>
 
         {/* 留言列表 */}
         {(item.comments || []).length > 0 && (
-          <div className="space-y-3 mb-4 max-h-48 overflow-y-auto pr-2 bg-gray-50/50 p-3 rounded-xl border border-gray-100">
+          <div className="space-y-3 mb-4 max-h-48 overflow-y-auto pr-2 bg-gray-50/50 p-3 rounded-2xl border border-gray-100">
             {item.comments.map(c => (
-              <div key={c.id} className="bg-white p-3 rounded-lg shadow-sm border border-gray-100 text-sm">
+              <div key={c.id} className="bg-white p-3 rounded-xl shadow-sm border border-gray-100 text-sm">
                 <div className="flex justify-between items-start mb-1">
                   <span className="font-bold text-gray-800">{c.authorName}</span>
                   <span className="text-xs text-gray-400">{new Date(c.timestamp).toLocaleString()} {c.edited && '(Edited)'}</span>
@@ -489,7 +470,7 @@ function HomeView({ students, announcements, schoolReports, db, getCollectionPat
                 {activeCommentId === c.id ? (
                   <div className="mt-2">
                     <textarea 
-                      className="w-full p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-blue-400"
+                      className="w-full p-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-400"
                       value={editCommentText}
                       onChange={(e) => setEditCommentText(e.target.value)}
                       rows="2"
@@ -500,7 +481,7 @@ function HomeView({ students, announcements, schoolReports, db, getCollectionPat
                     </div>
                   </div>
                 ) : (
-                  <p className="text-gray-700 whitespace-pre-wrap">{c.text}</p>
+                  <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{c.text}</p>
                 )}
 
                 {canEditOrDelete(c) && activeCommentId !== c.id && (
@@ -516,22 +497,33 @@ function HomeView({ students, announcements, schoolReports, db, getCollectionPat
 
         {/* 发表留言框 */}
         {activeCommentId === `new-${item.id}` && (
-          <form onSubmit={(e) => handleAddComment(item, collectionName, e)} className="flex gap-2 mt-2 relative z-20">
-            <input 
-              type="text" 
-              placeholder={currentVisitor || authRole ? "Tulis komen anda... (写下您的留言...)" : "Sila semak maklumat murid dahulu (请先查询资料)"}
-              className="flex-1 p-2.5 border border-gray-300 rounded-xl text-sm outline-none focus:border-blue-500 shadow-inner"
+          <form onSubmit={(e) => handleAddComment(item, collectionName, e)} className="flex flex-col gap-2 mt-2 relative z-20">
+            <textarea 
+              placeholder="Tulis komen anda... (写下您的留言...)"
+              className="w-full p-3 border border-gray-300 rounded-2xl text-sm outline-none focus:border-blue-500 shadow-inner resize-none"
               value={commentInput}
               onChange={(e) => setCommentInput(e.target.value)}
-              disabled={!currentVisitor && !authRole}
+              rows="2"
+              required
             />
-            <button 
-              type="submit" 
-              disabled={!currentVisitor && !authRole}
-              className={`px-4 rounded-xl font-bold text-sm text-white transition-colors ${currentVisitor || authRole ? 'bg-blue-500 hover:bg-blue-600 shadow-md' : 'bg-gray-300 cursor-not-allowed'}`}
-            >
-              Hantar
-            </button>
+            <div className="flex gap-2">
+              {!authRole && (
+                <input 
+                  type="text" 
+                  placeholder="Nama Anda (您的名字)"
+                  className="flex-1 p-3 border border-gray-300 rounded-2xl text-sm outline-none focus:border-blue-500 shadow-inner"
+                  value={commentName}
+                  onChange={(e) => setCommentName(e.target.value)}
+                  required
+                />
+              )}
+              <button 
+                type="submit" 
+                className="px-6 py-2 rounded-2xl font-bold text-sm text-white transition-colors bg-blue-500 hover:bg-blue-600 shadow-md"
+              >
+                Hantar
+              </button>
+            </div>
           </form>
         )}
       </div>
@@ -544,20 +536,14 @@ function HomeView({ students, announcements, schoolReports, db, getCollectionPat
       <section className="bg-white rounded-3xl p-6 md:p-10 shadow-lg border border-purple-50 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-purple-100 rounded-full blur-3xl opacity-50 -translate-y-1/2 translate-x-1/2"></div>
         
-        <div className="mb-6 relative z-10 flex items-start gap-3">
-          <Search size={32} className="text-purple-600 shrink-0 mt-1" />
-          <div>
-            <p className="text-sm font-bold text-gray-500 mb-1">{getGreeting()}</p>
-            <h2 className="text-2xl md:text-3xl font-extrabold text-purple-800">
-              查询学生 Delima 资料
-            </h2>
-            <h3 className="text-lg md:text-xl font-bold text-purple-600 mt-1">
-              Semakan email Delima Murid-murid
-            </h3>
-            <p className="text-sm md:text-base text-gray-600 mt-2 font-medium">
-              Sila masukkan No. K/P atau Surat Beranak Murid untuk menyemak emel Delima Murid.
-            </p>
-          </div>
+        <div className="mb-6 relative z-10">
+          <h2 className="text-2xl md:text-3xl font-extrabold text-purple-800 flex items-center flex-wrap gap-2">
+            <Search size={28} className="text-purple-600" /> 
+            <span>查询学生 Delima 资料 <span className="text-lg md:text-xl text-purple-600 font-bold ml-1 inline-block">Semakan email Delima Murid-murid</span></span>
+          </h2>
+          <p className="text-sm md:text-base text-gray-600 mt-2 font-medium">
+            Sila masukkan No. K/P atau Surat Beranak Murid untuk menyemak emel Delima Murid.
+          </p>
         </div>
 
         <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4 relative z-10">
@@ -568,19 +554,13 @@ function HomeView({ students, announcements, schoolReports, db, getCollectionPat
             value={icNumber}
             onChange={(e) => setIcNumber(e.target.value)}
           />
-          <button type="submit" className="flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white font-bold text-lg px-8 py-4 rounded-2xl shadow-md transition-transform active:scale-95">
-            <Search size={20} /> 查询 (Cari)
+          <button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-lg px-8 py-4 rounded-2xl shadow-md transition-transform active:scale-95">
+            查询 (Cari)
           </button>
         </form>
 
-        {!searched && (
-          <div className="mt-6 text-center text-sm text-gray-400 relative z-10">
-            👋 欢迎使用系统！在这里输入学生的 IC 或报生纸号码即可获取相关资料。
-          </div>
-        )}
-
         {searched && (
-          <div className="mt-8 border-t-2 border-purple-50 pt-8 animate-slide-up relative z-10">
+          <div className="mt-8 border-t-2 border-purple-50 pt-8 animate-slide-up">
             {result ? (
               <div className="bg-purple-50 rounded-2xl p-6 md:p-8 border border-purple-200 shadow-sm">
                 <h3 className="text-2xl font-bold text-purple-900 mb-6 border-b-2 border-purple-200 pb-3">学生资料 (Maklumat Murid)</h3>
@@ -627,16 +607,15 @@ function HomeView({ students, announcements, schoolReports, db, getCollectionPat
         )}
       </section>
 
-      {/* 学校报告和使用率展示区 - 仅显示最新一条 */}
+      {/* 学校报告和使用率展示区 */}
       {schoolReports.length > 0 && (
         <section className="animate-slide-up">
           <h2 className="text-2xl md:text-3xl font-extrabold text-blue-800 mb-6 flex items-center gap-3 pl-4 border-l-8 border-blue-500 rounded-l-md">
             <FileText size={28} className="text-blue-500" /> Laporan & Penggunaan Sekolah (学校重要信息与使用率)
           </h2>
           <div className="space-y-6">
-            {/* 只取数组里的第 0 个元素 (即最新发布的) */}
-            {[schoolReports[0]].map(rep => (
-              <div key={rep.id} className="bg-white rounded-3xl overflow-hidden shadow-lg border border-blue-100 relative">
+            {schoolReports.slice(0, 1).map(rep => (
+              <div key={rep.id} className="bg-white rounded-3xl overflow-hidden shadow-lg border border-blue-100">
                 {rep.image && (
                   <div className="w-full bg-gray-50 flex justify-center border-b border-gray-100">
                     <img src={rep.image} alt={rep.title} className="w-full h-auto max-h-[400px] object-contain" />
@@ -644,8 +623,8 @@ function HomeView({ students, announcements, schoolReports, db, getCollectionPat
                 )}
                 <div className="p-6 md:p-8">
                   <div className="flex justify-between items-start mb-4">
-                    <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold tracking-wider flex items-center gap-1">
-                      🌟 Laporan Terkini (最新通告)
+                    <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold tracking-wider">
+                      Laporan Rasmi (官方通告)
                     </span>
                     <span className="text-gray-400 text-sm">{rep.date}</span>
                   </div>
@@ -719,15 +698,15 @@ function HomeView({ students, announcements, schoolReports, db, getCollectionPat
         <h2 className="text-2xl md:text-3xl font-extrabold text-purple-800 mb-6 flex items-center gap-3 pl-4 border-l-8 border-amber-400 rounded-l-md">
           <BookOpen size={28} className="text-amber-500" /> Hebahan & Aktiviti DELIMA (最新活动)
         </h2>
-        <div className="grid grid-cols-1 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {announcements.length === 0 ? (
-            <p className="text-base text-gray-500 p-8 text-center bg-white rounded-2xl shadow-sm border border-purple-50">暂无最新活动公告。</p>
+            <p className="text-base text-gray-500 p-8 col-span-2 text-center bg-white rounded-2xl shadow-sm border border-purple-50">暂无最新活动公告。</p>
           ) : (
             announcements.map((ann) => (
-              <div key={ann.id} className="bg-white rounded-2xl p-6 md:p-8 shadow-md hover:shadow-lg transition-all border border-purple-50 flex flex-col justify-between overflow-hidden">
+              <div key={ann.id} className="bg-white rounded-2xl p-6 md:p-8 shadow-sm hover:shadow-md transition-all border border-purple-50 flex flex-col justify-between overflow-hidden">
                 {ann.image && (
                   <div className="-mx-6 md:-mx-8 -mt-6 md:-mt-8 mb-6 bg-gray-50 flex items-center justify-center border-b border-gray-100">
-                    <img src={ann.image} alt={ann.title} className="w-full h-auto max-h-96 object-contain" />
+                    <img src={ann.image} alt={ann.title} className="w-full h-auto max-h-80 object-contain" />
                   </div>
                 )}
                 <div>
@@ -816,7 +795,7 @@ function LoginView({ roleTarget, setAuthRole, showMessage }) {
 }
 
 // ==========================================
-// 5. 教师控制台 (增加批量申请制卡功能)
+// 5. 教师控制台
 // ==========================================
 function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
   const [selectedYear, setSelectedYear] = useState('1');
@@ -1811,7 +1790,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         </div>
       )}
 
-      {/* ======================= 模块 5：Admin 备注记录 (新增，私密) ======================= */}
+      {/* ======================= 模块 5：Admin 备注记录 (私密) ======================= */}
       {adminMainTab === 'admin_notes' && (
         <div className="space-y-8 animate-slide-up">
           <div className="bg-red-50/30 p-6 md:p-8 rounded-2xl border border-red-100 grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -1878,62 +1857,6 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
                 <div><label className="block text-sm font-bold text-gray-700 mb-1">运动队伍 (RUMAH SUKAN)</label><input type="text" value={editStudent.sportsHouse} onChange={(e) => setEditStudent({...editStudent, sportsHouse: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
               </div>
               <div className="flex gap-4 mt-8"><button type="button" onClick={() => setEditStudent(null)} className="flex-1 bg-gray-100 font-bold py-3 rounded-xl">取消</button><button type="submit" className="flex-1 bg-purple-600 text-white font-bold py-3 rounded-xl">保存修改</button></div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* 编辑通告的独立弹窗 (针对模块 2) */}
-      {editAnn && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[105]">
-          <div className="bg-white rounded-3xl p-8 w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl animate-slide-up">
-            <h3 className="text-2xl font-bold text-purple-900 mb-6 flex items-center gap-2"><Edit size={24} /> 编辑通告内容</h3>
-            <form onSubmit={handleUpdateAnnouncement} className="space-y-4">
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">标题</label>
-                <input required type="text" value={editAnn.title} onChange={e=>setEditAnn({...editAnn, title: e.target.value})} className="w-full p-2.5 border border-purple-200 rounded-lg text-sm outline-none focus:border-purple-500" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">类型</label>
-                  <select value={editAnn.type} onChange={e=>setEditAnn({...editAnn, type: e.target.value})} className="w-full p-2.5 border border-purple-200 rounded-lg text-sm outline-none focus:border-purple-500">
-                    <option value="App">App 推荐</option><option value="Activity">活动通告</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">附加链接 (可选)</label>
-                  <input type="url" value={editAnn.link} onChange={e=>setEditAnn({...editAnn, link: e.target.value})} className="w-full p-2.5 border border-purple-200 rounded-lg text-sm outline-none focus:border-purple-500" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">内容描述</label>
-                <textarea required rows="4" value={editAnn.content} onChange={e=>setEditAnn({...editAnn, content: e.target.value})} className="w-full p-2.5 border border-purple-200 rounded-lg text-sm outline-none focus:border-purple-500"></textarea>
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">更换宣传照片</label>
-                <div className="flex items-center gap-4">
-                  <label className="flex-1 flex items-center justify-center gap-2 p-2.5 border border-purple-200 border-dashed rounded-lg bg-purple-50 hover:bg-purple-100 cursor-pointer transition-colors text-sm text-purple-700 font-bold">
-                    <ImageIcon size={18} /> 上传新照片
-                    <input type="file" accept="image/*" onChange={handleEditAnnImage} className="hidden" />
-                  </label>
-                </div>
-                {editAnn.image && (
-                  <div className="relative inline-block mt-3">
-                    <img src={editAnn.image} alt="预览" className="h-32 w-auto object-contain rounded-lg border border-purple-100 bg-white" />
-                    <button 
-                      type="button" 
-                      onClick={() => setEditAnn({...editAnn, image: ''})} 
-                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 shadow-md hover:bg-red-600"
-                    >
-                       <Trash2 size={14} />
-                    </button>
-                  </div>
-                )}
-              </div>
-              <div className="flex gap-4 mt-8">
-                <button type="button" onClick={() => setEditAnn(null)} className="flex-1 bg-gray-100 font-bold py-3 rounded-xl">取消</button>
-                <button type="submit" className="flex-1 bg-purple-600 text-white font-bold py-3 rounded-xl">保存修改</button>
-              </div>
             </form>
           </div>
         </div>
