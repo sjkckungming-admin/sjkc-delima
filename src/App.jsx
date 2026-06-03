@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, collection, query, onSnapshot, doc, setDoc, deleteDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { getFirestore, collection, query, onSnapshot, doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 
 // ==========================================
 // 内置 SVG 图标
@@ -14,7 +14,7 @@ const Trash2 = ({ size = 20, className = "" }) => (<svg width={size} height={siz
 const Edit = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>);
 const ChevronRight = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="9 18 15 12 9 6"/></svg>);
 const UserCheck = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>);
-const Settings = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>);
+const Settings = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>);
 const BookOpen = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>);
 const AlertCircle = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>);
 const RefreshCw = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>);
@@ -26,8 +26,7 @@ const BarChart = ({ size = 20, className = "" }) => (<svg width={size} height={s
 const CreditCard = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>);
 const CheckCircle = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>);
 const Undo = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg>);
-// 新增 Heart 和 MessageCircle 图标
-const Heart = ({ size = 20, className = "", fill = "none" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>);
+const Heart = ({ size = 20, className = "", filled = false }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>);
 const MessageCircle = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>);
 
 
@@ -72,14 +71,14 @@ export default function App() {
   const [logs, setLogs] = useState([]);
   const [schoolReports, setSchoolReports] = useState([]); 
   const [adminNotes, setAdminNotes] = useState([]); 
-  const [cardRequests, setCardRequests] = useState([]);
+  const [cardRequests, setCardRequests] = useState([]); 
   
-  // 保存当前查询成功的学生资料（作为家长发帖的身份）
-  const [currentStudentIdentity, setCurrentStudentIdentity] = useState(null);
-
   // 弹窗与加载状态
   const [isLoading, setIsLoading] = useState(true);
   const [modalMessage, setModalMessage] = useState(null);
+
+  // 记录家长身份 (用于点赞留言验证)
+  const [currentVisitor, setCurrentVisitor] = useState(null);
 
   useEffect(() => {
     const faviconSvg = encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="#9333ea"/><g transform="translate(20, 20) scale(2.5)" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></g></svg>');
@@ -210,6 +209,13 @@ export default function App() {
     showMessage("成功", "已安全退出账户。");
   };
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Selamat Pagi! 早上好 ✨";
+    if (hour < 18) return "Selamat Petang! 下午好 ☀️";
+    return "Selamat Malam! 晚上好 🌙";
+  };
+
   const renderContent = () => {
     if (isLoading) {
       return (
@@ -221,18 +227,7 @@ export default function App() {
     }
 
     if (activeTab === 'home') {
-      return <HomeView 
-                students={students} 
-                announcements={announcements} 
-                schoolReports={schoolReports} 
-                setActiveTab={setActiveTab} 
-                db={db} 
-                getCollectionPath={getCollectionPath} 
-                showMessage={showMessage}
-                currentStudentIdentity={currentStudentIdentity}
-                setCurrentStudentIdentity={setCurrentStudentIdentity}
-                authRole={authRole}
-              />;
+      return <HomeView students={students} announcements={announcements} schoolReports={schoolReports} db={db} getCollectionPath={getCollectionPath} showMessage={showMessage} currentVisitor={currentVisitor} setCurrentVisitor={setCurrentVisitor} getGreeting={getGreeting} authRole={authRole} />;
     } else if (activeTab === 'teacher') {
       if (authRole === 'teacher' || authRole === 'admin') {
         return <TeacherPortal students={students} db={db} getCollectionPath={getCollectionPath} showMessage={showMessage} />;
@@ -327,21 +322,17 @@ export default function App() {
 }
 
 // ==========================================
-// 3. 首页视图
+// 3. 首页视图 (Home View)
 // ==========================================
-function HomeView({ students, announcements, schoolReports, setActiveTab, db, getCollectionPath, showMessage, currentStudentIdentity, setCurrentStudentIdentity, authRole }) {
+function HomeView({ students, announcements, schoolReports, db, getCollectionPath, showMessage, currentVisitor, setCurrentVisitor, getGreeting, authRole }) {
   const [icNumber, setIcNumber] = useState('');
   const [result, setResult] = useState(null);
   const [searched, setSearched] = useState(false);
 
-  // 动态亲切问候语
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return { text: "Selamat Pagi! 早上好~", icon: "🌅" };
-    if (hour < 18) return { text: "Selamat Petang! 下午好~", icon: "☕" };
-    return { text: "Selamat Malam! 晚上好~", icon: "🌙" };
-  };
-  const greeting = getGreeting();
+  // 留言相关状态
+  const [commentInput, setCommentInput] = useState('');
+  const [activeCommentId, setActiveCommentId] = useState(null);
+  const [editCommentText, setEditCommentText] = useState('');
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -359,7 +350,9 @@ function HomeView({ students, announcements, schoolReports, setActiveTab, db, ge
     setSearched(true);
 
     if (student) {
-      setCurrentStudentIdentity(student); // 保存当前用户身份，用于点赞/留言
+      setCurrentVisitor({ name: student.name, ic: student.ic });
+    } else {
+      setCurrentVisitor(null);
     }
 
     if (window.logSystemAction) {
@@ -368,90 +361,181 @@ function HomeView({ students, announcements, schoolReports, setActiveTab, db, ge
     }
   };
 
-  // 处理点赞
-  const handleLike = async (annId, currentLikes = []) => {
-    if (!currentStudentIdentity && authRole !== 'admin' && authRole !== 'teacher') {
-      showMessage("提示", "请先在上方输入学生的 IC 或报生纸查询资料，以验证您的家长身份，之后才能点赞或留言哦！");
+  const handleLike = async (item, collectionName) => {
+    if (!currentVisitor && !authRole) {
+      showMessage("提示 (Perhatian)", "Sila buat semakan maklumat murid terlebih dahulu untuk 'Like' laporan ini.\n请先查询学生资料以验证身份，然后再点赞。");
       return;
     }
+    const visitorId = authRole ? 'admin_or_teacher' : currentVisitor.ic;
+    const isLiked = (item.likes || []).includes(visitorId);
+    let newLikes = item.likes || [];
     
-    // 确定身份标识
-    const identityId = authRole ? `admin_${authRole}` : currentStudentIdentity.ic;
-    const identityName = authRole ? (authRole === 'admin' ? '管理员' : '老师') : currentStudentIdentity.name;
-    
-    const hasLiked = currentLikes.some(like => like.id === identityId);
-    
+    if (isLiked) {
+      newLikes = newLikes.filter(id => id !== visitorId);
+    } else {
+      newLikes.push(visitorId);
+    }
+
     try {
-      const annRef = doc(db, getCollectionPath('announcements'), annId);
-      if (hasLiked) {
-        // 取消点赞
-        const likeToRemove = currentLikes.find(like => like.id === identityId);
-        await updateDoc(annRef, {
-          likes: arrayRemove(likeToRemove)
-        });
-      } else {
-        // 添加点赞
-        await updateDoc(annRef, {
-          likes: arrayUnion({ id: identityId, name: identityName })
-        });
-      }
+      await updateDoc(doc(db, getCollectionPath(collectionName), item.id), { likes: newLikes });
     } catch (err) {
-      console.error("Like error:", err);
-      showMessage("错误", "点赞失败，请稍后再试。");
+      console.error("Like failed", err);
     }
   };
 
-  // 处理提交留言
-  const submitComment = async (annId, text, setText) => {
-    if (!text.trim()) return;
-    if (!currentStudentIdentity && authRole !== 'admin' && authRole !== 'teacher') {
-      showMessage("提示", "请先在上方输入学生的 IC 或报生纸查询资料，以验证您的家长身份，之后才能发表留言哦！");
+  const handleAddComment = async (item, collectionName, e) => {
+    e.preventDefault();
+    if (!currentVisitor && !authRole) {
+      showMessage("提示 (Perhatian)", "Sila buat semakan maklumat murid terlebih dahulu untuk meninggalkan komen.\n请先查询学生资料以验证身份，然后再留言。");
       return;
     }
+    if (!commentInput.trim()) return;
 
-    const identityId = authRole ? `admin_${authRole}` : currentStudentIdentity.ic;
-    const identityName = authRole ? (authRole === 'admin' ? '管理员' : '老师') : currentStudentIdentity.name;
     const newComment = {
-      commentId: Date.now().toString(), // 简单生成唯一ID
-      userId: identityId,
-      userName: identityName,
-      text: text.trim(),
+      id: Date.now().toString(),
+      text: commentInput,
+      authorId: authRole ? 'admin' : currentVisitor.ic,
+      authorName: authRole ? 'Admin' : `Waris/Pelajar ${currentVisitor.name}`,
       timestamp: new Date().toISOString()
     };
 
+    const newComments = [...(item.comments || []), newComment];
+
     try {
-      const annRef = doc(db, getCollectionPath('announcements'), annId);
-      await updateDoc(annRef, {
-        comments: arrayUnion(newComment)
-      });
-      setText(''); // 清空输入框
+      await updateDoc(doc(db, getCollectionPath(collectionName), item.id), { comments: newComments });
+      setCommentInput('');
+      setActiveCommentId(null);
+      showMessage("成功 (Berjaya)", "Komen anda telah dihantar.\n您的留言已发布！");
     } catch (err) {
-      console.error("Comment error:", err);
-      showMessage("错误", "留言失败，请稍后再试。");
+      showMessage("错误 (Ralat)", "Gagal menghantar komen: " + err.message);
     }
   };
 
-  // 处理删除留言
-  const deleteComment = async (annId, comment, currentComments) => {
-    const isOwner = (authRole ? `admin_${authRole}` : currentStudentIdentity?.ic) === comment.userId;
-    const isAdmin = authRole === 'admin';
-    const isWithin24Hours = (new Date() - new Date(comment.timestamp)) < 24 * 60 * 60 * 1000;
-
-    if (!isAdmin && (!isOwner || !isWithin24Hours)) {
-      showMessage("提示", "您只能在发布留言后的 24 小时内删除它。如需协助，请联系管理员。");
-      return;
-    }
-
-    if (window.confirm("确定要删除这条留言吗？")) {
-      try {
-        const annRef = doc(db, getCollectionPath('announcements'), annId);
-        await updateDoc(annRef, {
-          comments: arrayRemove(comment)
-        });
-      } catch (err) {
-        showMessage("错误", "删除留言失败。");
+  const handleEditComment = async (item, collectionName, commentId) => {
+    if (!editCommentText.trim()) return;
+    
+    const updatedComments = item.comments.map(c => {
+      if (c.id === commentId) {
+        return { ...c, text: editCommentText, edited: true };
       }
+      return c;
+    });
+
+    try {
+      await updateDoc(doc(db, getCollectionPath(collectionName), item.id), { comments: updatedComments });
+      setActiveCommentId(null);
+      setEditCommentText('');
+    } catch (err) {
+      showMessage("错误 (Ralat)", "Gagal mengemas kini komen: " + err.message);
     }
+  };
+
+  const handleDeleteComment = async (item, collectionName, commentId) => {
+    if (!window.confirm("Adakah anda pasti untuk memadam komen ini?\n确定要删除这条留言吗？")) return;
+    
+    const updatedComments = item.comments.filter(c => c.id !== commentId);
+    try {
+      await updateDoc(doc(db, getCollectionPath(collectionName), item.id), { comments: updatedComments });
+    } catch (err) {
+      showMessage("错误 (Ralat)", "Gagal memadam komen: " + err.message);
+    }
+  };
+
+  const canEditOrDelete = (comment) => {
+    if (authRole === 'admin') return true;
+    if (!currentVisitor || comment.authorId !== currentVisitor.ic) return false;
+    const commentDate = new Date(comment.timestamp);
+    const now = new Date();
+    const hoursDiff = (now - commentDate) / (1000 * 60 * 60);
+    return hoursDiff <= 24;
+  };
+
+  // 渲染交互区域 (点赞与留言)
+  const renderInteractionArea = (item, collectionName) => {
+    const isLiked = currentVisitor ? (item.likes || []).includes(currentVisitor.ic) : (authRole ? (item.likes || []).includes('admin_or_teacher') : false);
+    
+    return (
+      <div className="mt-4 pt-4 border-t border-gray-100">
+        <div className="flex items-center gap-4 mb-4">
+          <button 
+            onClick={(e) => { e.preventDefault(); handleLike(item, collectionName); }}
+            className={`flex items-center gap-1.5 text-sm font-bold transition-colors ${isLiked ? 'text-red-500 hover:text-red-600' : 'text-gray-500 hover:text-red-500'}`}
+          >
+            <Heart size={18} filled={isLiked} /> 
+            <span>Like ({item.likes?.length || 0})</span>
+          </button>
+          <button 
+            onClick={(e) => { 
+              e.preventDefault(); 
+              setActiveCommentId(activeCommentId === `new-${item.id}` ? null : `new-${item.id}`); 
+            }}
+            className="flex items-center gap-1.5 text-sm font-bold text-gray-500 hover:text-blue-500 transition-colors"
+          >
+            <MessageCircle size={18} />
+            <span>Komen ({(item.comments || []).length})</span>
+          </button>
+        </div>
+
+        {/* 留言列表 */}
+        {(item.comments || []).length > 0 && (
+          <div className="space-y-3 mb-4 max-h-48 overflow-y-auto pr-2 bg-gray-50/50 p-3 rounded-xl border border-gray-100">
+            {item.comments.map(c => (
+              <div key={c.id} className="bg-white p-3 rounded-lg shadow-sm border border-gray-100 text-sm">
+                <div className="flex justify-between items-start mb-1">
+                  <span className="font-bold text-gray-800">{c.authorName}</span>
+                  <span className="text-xs text-gray-400">{new Date(c.timestamp).toLocaleString()} {c.edited && '(Edited)'}</span>
+                </div>
+                
+                {activeCommentId === c.id ? (
+                  <div className="mt-2">
+                    <textarea 
+                      className="w-full p-2 border border-gray-300 rounded-md text-sm outline-none focus:border-blue-400"
+                      value={editCommentText}
+                      onChange={(e) => setEditCommentText(e.target.value)}
+                      rows="2"
+                    />
+                    <div className="flex gap-2 mt-2 justify-end">
+                      <button onClick={(e) => {e.preventDefault(); setActiveCommentId(null);}} className="text-xs text-gray-500 hover:text-gray-700 font-bold px-2 py-1">Batal (取消)</button>
+                      <button onClick={(e) => {e.preventDefault(); handleEditComment(item, collectionName, c.id);}} className="text-xs bg-blue-500 text-white rounded px-3 py-1 font-bold hover:bg-blue-600">Simpan (保存)</button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-gray-700 whitespace-pre-wrap">{c.text}</p>
+                )}
+
+                {canEditOrDelete(c) && activeCommentId !== c.id && (
+                  <div className="flex justify-end gap-3 mt-2 text-xs font-bold">
+                    <button onClick={(e) => {e.preventDefault(); setEditCommentText(c.text); setActiveCommentId(c.id);}} className="text-blue-500 hover:text-blue-600 flex items-center gap-1"><Edit size={12}/> Edit</button>
+                    <button onClick={(e) => {e.preventDefault(); handleDeleteComment(item, collectionName, c.id);}} className="text-red-500 hover:text-red-600 flex items-center gap-1"><Trash2 size={12}/> Padam</button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 发表留言框 */}
+        {activeCommentId === `new-${item.id}` && (
+          <form onSubmit={(e) => handleAddComment(item, collectionName, e)} className="flex gap-2 mt-2 relative z-20">
+            <input 
+              type="text" 
+              placeholder={currentVisitor || authRole ? "Tulis komen anda... (写下您的留言...)" : "Sila semak maklumat murid dahulu (请先查询资料)"}
+              className="flex-1 p-2.5 border border-gray-300 rounded-xl text-sm outline-none focus:border-blue-500 shadow-inner"
+              value={commentInput}
+              onChange={(e) => setCommentInput(e.target.value)}
+              disabled={!currentVisitor && !authRole}
+            />
+            <button 
+              type="submit" 
+              disabled={!currentVisitor && !authRole}
+              className={`px-4 rounded-xl font-bold text-sm text-white transition-colors ${currentVisitor || authRole ? 'bg-blue-500 hover:bg-blue-600 shadow-md' : 'bg-gray-300 cursor-not-allowed'}`}
+            >
+              Hantar
+            </button>
+          </form>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -460,23 +544,19 @@ function HomeView({ students, announcements, schoolReports, setActiveTab, db, ge
       <section className="bg-white rounded-3xl p-6 md:p-10 shadow-lg border border-purple-50 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-purple-100 rounded-full blur-3xl opacity-50 -translate-y-1/2 translate-x-1/2"></div>
         
-        <div className="mb-6 relative z-10 flex flex-col items-start gap-1">
-          <div className="inline-flex items-center gap-2 bg-purple-50 text-purple-700 px-4 py-1.5 rounded-full font-bold text-sm mb-3">
-             {greeting.icon} {greeting.text} 欢迎来到保佛公民小学查询系统 ✨
-          </div>
-          <div className="flex items-start gap-3">
-            <Search size={32} className="text-purple-600 shrink-0 mt-1" />
-            <div>
-              <h2 className="text-2xl md:text-3xl font-extrabold text-purple-800">
-                查询学生 Delima 资料
-              </h2>
-              <h3 className="text-lg md:text-xl font-bold text-purple-600 mt-1">
-                Semakan email Delima Murid-murid
-              </h3>
-              <p className="text-sm md:text-base text-gray-600 mt-2 font-medium">
-                Sila masukkan No. K/P atau Surat Beranak Murid untuk menyemak emel Delima Murid.
-              </p>
-            </div>
+        <div className="mb-6 relative z-10 flex items-start gap-3">
+          <Search size={32} className="text-purple-600 shrink-0 mt-1" />
+          <div>
+            <p className="text-sm font-bold text-gray-500 mb-1">{getGreeting()}</p>
+            <h2 className="text-2xl md:text-3xl font-extrabold text-purple-800">
+              查询学生 Delima 资料
+            </h2>
+            <h3 className="text-lg md:text-xl font-bold text-purple-600 mt-1">
+              Semakan email Delima Murid-murid
+            </h3>
+            <p className="text-sm md:text-base text-gray-600 mt-2 font-medium">
+              Sila masukkan No. K/P atau Surat Beranak Murid untuk menyemak emel Delima Murid.
+            </p>
           </div>
         </div>
 
@@ -488,27 +568,27 @@ function HomeView({ students, announcements, schoolReports, setActiveTab, db, ge
             value={icNumber}
             onChange={(e) => setIcNumber(e.target.value)}
           />
-          <button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-lg px-8 py-4 rounded-2xl shadow-md transition-transform active:scale-95 flex items-center justify-center gap-2">
+          <button type="submit" className="flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white font-bold text-lg px-8 py-4 rounded-2xl shadow-md transition-transform active:scale-95">
             <Search size={20} /> 查询 (Cari)
           </button>
         </form>
 
-        {!searched ? (
-          <div className="mt-6 text-center text-gray-400 text-sm italic relative z-10">
-            * Sila hubungi pihak sekolah jika anda menghadapi sebarang masalah teknikal.
+        {!searched && (
+          <div className="mt-6 text-center text-sm text-gray-400 relative z-10">
+            👋 欢迎使用系统！在这里输入学生的 IC 或报生纸号码即可获取相关资料。
           </div>
-        ) : (
-          <div className="mt-8 border-t-2 border-purple-50 pt-8 animate-slide-up">
+        )}
+
+        {searched && (
+          <div className="mt-8 border-t-2 border-purple-50 pt-8 animate-slide-up relative z-10">
             {result ? (
               <div className="bg-purple-50 rounded-2xl p-6 md:p-8 border border-purple-200 shadow-sm">
                 <h3 className="text-2xl font-bold text-purple-900 mb-6 border-b-2 border-purple-200 pb-3">学生资料 (Maklumat Murid)</h3>
-                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-y-5 gap-x-6">
                   <InfoItem label="姓名 (NAMA MURID)" value={result.name} />
                   <InfoItem label="班级 (KELAS)" value={formatSimpleClassName(result.classYear, result.classColor)} />
                   <InfoItem label="IC 号码 (IC MURID)" value={result.ic} />
                   <InfoItem label="性别 (JANTINA)" value={result.gender} />
-                  
                   <InfoItem label="DELIMA ID (EMAIL)" value={result.delimaId} isHighlight />
                   
                   <div className="flex flex-col">
@@ -547,15 +627,16 @@ function HomeView({ students, announcements, schoolReports, setActiveTab, db, ge
         )}
       </section>
 
-      {/* 学校报告和使用率展示区 - 仅显示最新的一条 */}
+      {/* 学校报告和使用率展示区 - 仅显示最新一条 */}
       {schoolReports.length > 0 && (
         <section className="animate-slide-up">
           <h2 className="text-2xl md:text-3xl font-extrabold text-blue-800 mb-6 flex items-center gap-3 pl-4 border-l-8 border-blue-500 rounded-l-md">
             <FileText size={28} className="text-blue-500" /> Laporan & Penggunaan Sekolah (学校重要信息与使用率)
           </h2>
           <div className="space-y-6">
-            {schoolReports.slice(0, 1).map(rep => (
-              <div key={rep.id} className="bg-white rounded-3xl overflow-hidden shadow-lg border border-blue-100">
+            {/* 只取数组里的第 0 个元素 (即最新发布的) */}
+            {[schoolReports[0]].map(rep => (
+              <div key={rep.id} className="bg-white rounded-3xl overflow-hidden shadow-lg border border-blue-100 relative">
                 {rep.image && (
                   <div className="w-full bg-gray-50 flex justify-center border-b border-gray-100">
                     <img src={rep.image} alt={rep.title} className="w-full h-auto max-h-[400px] object-contain" />
@@ -604,6 +685,9 @@ function HomeView({ students, announcements, schoolReports, setActiveTab, db, ge
                   <div className="text-xs text-gray-400 font-medium text-right mt-2 border-t border-gray-100 pt-3">
                     Tarikh Kemaskini: {new Date(rep.timestamp).toLocaleString()}
                   </div>
+
+                  {/* 交互区：点赞与留言 */}
+                  {renderInteractionArea(rep, 'schoolReports')}
                 </div>
               </div>
             ))}
@@ -630,7 +714,7 @@ function HomeView({ students, announcements, schoolReports, setActiveTab, db, ge
         </a>
       </section>
 
-      {/* 公告区 (含点赞和留言) */}
+      {/* 公告区 */}
       <section>
         <h2 className="text-2xl md:text-3xl font-extrabold text-purple-800 mb-6 flex items-center gap-3 pl-4 border-l-8 border-amber-400 rounded-l-md">
           <BookOpen size={28} className="text-amber-500" /> Hebahan & Aktiviti DELIMA (最新活动)
@@ -640,159 +724,35 @@ function HomeView({ students, announcements, schoolReports, setActiveTab, db, ge
             <p className="text-base text-gray-500 p-8 text-center bg-white rounded-2xl shadow-sm border border-purple-50">暂无最新活动公告。</p>
           ) : (
             announcements.map((ann) => (
-              <AnnouncementCard 
-                key={ann.id} 
-                ann={ann} 
-                handleLike={handleLike}
-                submitComment={submitComment}
-                deleteComment={deleteComment}
-                currentIdentity={authRole ? { id: `admin_${authRole}` } : currentStudentIdentity ? { id: currentStudentIdentity.ic } : null}
-                isAdmin={authRole === 'admin'}
-              />
+              <div key={ann.id} className="bg-white rounded-2xl p-6 md:p-8 shadow-md hover:shadow-lg transition-all border border-purple-50 flex flex-col justify-between overflow-hidden">
+                {ann.image && (
+                  <div className="-mx-6 md:-mx-8 -mt-6 md:-mt-8 mb-6 bg-gray-50 flex items-center justify-center border-b border-gray-100">
+                    <img src={ann.image} alt={ann.title} className="w-full h-auto max-h-96 object-contain" />
+                  </div>
+                )}
+                <div>
+                  <div className="flex justify-between items-start mb-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wider ${ann.type === 'App' ? 'bg-purple-100 text-purple-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {ann.type}
+                    </span>
+                    <span className="text-gray-400 text-sm">{ann.date}</span>
+                  </div>
+                  <h3 className="text-xl md:text-2xl font-bold text-gray-800 mb-2">{ann.title}</h3>
+                  <p className="text-sm md:text-base text-gray-600 leading-relaxed whitespace-pre-line">{ann.content}</p>
+                </div>
+                {ann.link && (
+                  <a href={ann.link} target="_blank" rel="noreferrer" className="mt-4 flex items-center text-purple-600 font-bold text-sm hover:translate-x-2 transition-transform w-fit">
+                    点击前往 (Klik Sini) <ChevronRight size={18} />
+                  </a>
+                )}
+                
+                {/* 交互区：点赞与留言 */}
+                {renderInteractionArea(ann, 'announcements')}
+              </div>
             ))
           )}
         </div>
       </section>
-    </div>
-  );
-}
-
-// 独立的公告卡片组件 (包含点赞和留言状态)
-function AnnouncementCard({ ann, handleLike, submitComment, deleteComment, currentIdentity, isAdmin }) {
-  const [showComments, setShowComments] = useState(false);
-  const [commentText, setCommentText] = useState('');
-  
-  const likes = ann.likes || [];
-  const comments = ann.comments || [];
-  
-  const hasLiked = currentIdentity && likes.some(l => l.id === currentIdentity.id);
-  
-  return (
-    <div className="bg-white rounded-3xl shadow-md hover:shadow-xl transition-shadow border border-purple-50 overflow-hidden flex flex-col">
-      {/* 链接包装上半部分，点击跳转 (如果有链接) */}
-      <div className="relative group">
-        {ann.link ? (
-          <a href={ann.link} target="_blank" rel="noreferrer" className="block relative z-10 cursor-pointer">
-            {ann.image && (
-              <div className="w-full bg-gray-50 flex items-center justify-center border-b border-gray-100 overflow-hidden">
-                <img src={ann.image} alt={ann.title} className="w-full h-auto object-cover max-h-[500px] group-hover:scale-105 transition-transform duration-500" />
-              </div>
-            )}
-            <div className="p-6 md:p-8 pb-4">
-              <div className="flex justify-between items-start mb-4">
-                <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wider ${ann.type === 'App' ? 'bg-purple-100 text-purple-700' : 'bg-amber-100 text-amber-700'}`}>
-                  {ann.type}
-                </span>
-                <span className="text-gray-400 text-sm">{ann.date}</span>
-              </div>
-              <h3 className="text-xl md:text-2xl font-bold text-gray-800 mb-3 group-hover:text-purple-600 transition-colors">{ann.title}</h3>
-              <p className="text-sm md:text-base text-gray-600 leading-relaxed whitespace-pre-line">{ann.content}</p>
-              
-              <div className="mt-4 flex items-center text-purple-600 font-bold text-sm group-hover:translate-x-2 transition-transform">
-                点击前往 (Klik Sini) <ChevronRight size={18} />
-              </div>
-            </div>
-          </a>
-        ) : (
-          <div className="block relative z-10">
-            {ann.image && (
-              <div className="w-full bg-gray-50 flex items-center justify-center border-b border-gray-100 overflow-hidden">
-                <img src={ann.image} alt={ann.title} className="w-full h-auto object-cover max-h-[500px] hover:scale-105 transition-transform duration-500" />
-              </div>
-            )}
-            <div className="p-6 md:p-8 pb-4">
-              <div className="flex justify-between items-start mb-4">
-                <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wider ${ann.type === 'App' ? 'bg-purple-100 text-purple-700' : 'bg-amber-100 text-amber-700'}`}>
-                  {ann.type}
-                </span>
-                <span className="text-gray-400 text-sm">{ann.date}</span>
-              </div>
-              <h3 className="text-xl md:text-2xl font-bold text-gray-800 mb-3">{ann.title}</h3>
-              <p className="text-sm md:text-base text-gray-600 leading-relaxed whitespace-pre-line">{ann.content}</p>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* 底部交互区：点赞和留言 */}
-      <div className="px-6 md:px-8 pb-6 border-t border-gray-50 pt-4 bg-gray-50/50 mt-auto">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => handleLike(ann.id, likes)}
-              className={`flex items-center gap-1.5 transition-colors ${hasLiked ? 'text-pink-500' : 'text-gray-500 hover:text-pink-500'}`}
-            >
-              <Heart size={22} fill={hasLiked ? "currentColor" : "none"} className={hasLiked ? "animate-bounce-in" : ""} />
-              <span className="font-bold text-sm">{likes.length > 0 ? likes.length : '点赞'}</span>
-            </button>
-            <button 
-              onClick={() => setShowComments(!showComments)}
-              className="flex items-center gap-1.5 text-gray-500 hover:text-blue-500 transition-colors"
-            >
-              <MessageCircle size={22} />
-              <span className="font-bold text-sm">{comments.length > 0 ? comments.length : '留言'}</span>
-            </button>
-          </div>
-          
-          {/* 显示最近点赞的人 */}
-          {likes.length > 0 && (
-            <div className="text-xs text-gray-400 truncate max-w-[50%] md:max-w-[70%] text-right">
-              {likes.slice(-2).map(l => l.name.split('(')[0]).join(', ')} {likes.length > 2 && '等'} 觉得很赞
-            </div>
-          )}
-        </div>
-
-        {/* 留言展示区 */}
-        {showComments && (
-          <div className="space-y-4 animate-fade-in mt-4">
-            {comments.map((c, i) => {
-              const isOwner = currentIdentity && currentIdentity.id === c.userId;
-              const isWithin24h = (new Date() - new Date(c.timestamp)) < 24 * 60 * 60 * 1000;
-              const canDelete = isAdmin || (isOwner && isWithin24h);
-
-              return (
-                <div key={i} className="bg-white p-3 md:p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-start group">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-bold text-sm text-gray-800">{c.userName}</span>
-                      <span className="text-xs text-gray-400">{new Date(c.timestamp).toLocaleString()}</span>
-                    </div>
-                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{c.text}</p>
-                  </div>
-                  {canDelete && (
-                    <button 
-                      onClick={() => deleteComment(ann.id, c, comments)}
-                      className="text-red-400 hover:text-red-600 p-1 md:opacity-0 group-hover:opacity-100 transition-opacity"
-                      title={isAdmin ? "管理员删除" : "撤回留言"}
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-
-            {/* 留言输入框 */}
-            <div className="flex gap-2 pt-2">
-              <input 
-                type="text" 
-                placeholder="写下您的留言..." 
-                className="flex-1 p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-purple-400 transition-colors bg-white shadow-inner"
-                value={commentText}
-                onChange={(e) => setCommentText(e.target.value)}
-                onKeyDown={(e) => { if(e.key === 'Enter') submitComment(ann.id, commentText, setCommentText); }}
-              />
-              <button 
-                onClick={() => submitComment(ann.id, commentText, setCommentText)}
-                className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 py-2 rounded-xl text-sm shadow-md transition-colors"
-              >
-                发送
-              </button>
-            </div>
-            <div className="text-[10px] text-gray-400 pl-1">* 留言后 24 小时内可撤回。</div>
-          </div>
-        )}
-      </div>
     </div>
   );
 }
@@ -856,7 +816,7 @@ function LoginView({ roleTarget, setAuthRole, showMessage }) {
 }
 
 // ==========================================
-// 5. 教师控制台
+// 5. 教师控制台 (增加批量申请制卡功能)
 // ==========================================
 function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
   const [selectedYear, setSelectedYear] = useState('1');
@@ -1088,7 +1048,7 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
 // 6. 管理员后台 (Admin Portal)
 // ==========================================
 function AdminPortal({ students, announcements, logs, schoolReports, adminNotes, cardRequests, db, getCollectionPath, showMessage }) {
-  const [adminMainTab, setAdminMainTab] = useState('students_mgmt'); 
+  const [adminMainTab, setAdminMainTab] = useState('card_requests'); 
   const [confirmModal, setConfirmModal] = useState(null);
   
   const compressImage = (file, callback) => {
@@ -1356,7 +1316,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
     setConfirmModal({ message: "确定要删除这条私密备注吗？", onConfirm: async () => { setConfirmModal(null); await deleteDoc(doc(db, getCollectionPath('adminNotes'), id)); } });
   };
 
-  // ---------- 新增标签：DELIMA 制卡申请管理 ----------
+  // ---------- 标签 6：DELIMA 制卡申请管理 ----------
   const reasonOptions = ['遗失 (Hilang)', '替换 (Ganti)', '修改 (Pindaan)', '损坏 (Rosak)', '更新 (Kemas Kini)', '新生 (Murid Baru)', '其他 (Lain-lain)'];
   const [cardReason, setCardReason] = useState(reasonOptions[0]);
   const [cardSearchTerm, setCardSearchTerm] = useState('');
@@ -1505,6 +1465,129 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         </button>
       </div>
 
+      {/* ======================= 新增模块：DELIMA 制卡申请管理 ======================= */}
+      {adminMainTab === 'card_requests' && (
+        <div className="space-y-8 animate-slide-up">
+          {/* Admin 批量添加区 */}
+          <div className="bg-indigo-50/50 border border-indigo-100 p-6 md:p-8 rounded-2xl shadow-sm">
+            <h3 className="text-xl font-bold text-indigo-900 mb-2 flex items-center gap-2"><CreditCard size={24}/> 新增制卡申请</h3>
+            <p className="text-sm text-gray-600 mb-6">可同时搜索并选择多位学生，选定原因后一键加入待处理列表。（教师端提交的申请也会显示在下方）</p>
+            
+            <form onSubmit={handleAddCardRequests} className="space-y-5">
+              <div className="relative z-20">
+                <label className="block text-sm font-bold text-gray-700 mb-2">1. 搜索并选择学生 (可多选)</label>
+                <div className="relative">
+                  <input type="text" placeholder="输入姓名或 IC..." value={cardSearchTerm} onChange={(e) => setCardSearchTerm(e.target.value)} className="w-full p-3 pl-10 border border-indigo-200 rounded-xl text-sm outline-none focus:border-indigo-500" />
+                  <Search size={18} className="absolute left-3 top-3.5 text-gray-400" />
+                </div>
+                {cardStudentOptions.length > 0 && (
+                  <div className="absolute w-full mt-1 bg-white border border-gray-200 shadow-xl rounded-xl overflow-hidden">
+                    {cardStudentOptions.map(s => (
+                      <div key={s.id} onClick={() => handleSelectForCard(s)} className="p-3 hover:bg-indigo-50 cursor-pointer border-b last:border-b-0 text-sm flex justify-between">
+                        <span className="font-bold">{s.name}</span>
+                        <span className="text-gray-500">{formatSimpleClassName(s.classYear, s.classColor)} | {s.ic}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              {selectedForCard.length > 0 && (
+                <div className="flex flex-wrap gap-2 p-3 bg-white border border-indigo-100 rounded-xl min-h-[60px]">
+                  {selectedForCard.map(s => (
+                    <div key={s.ic} className="bg-indigo-100 text-indigo-800 px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 font-semibold shadow-sm">
+                      {s.name} ({formatSimpleClassName(s.classYear, s.classColor)})
+                      <button type="button" onClick={() => handleRemoveFromCard(s.ic)} className="text-indigo-400 hover:text-red-500"><Trash2 size={14}/></button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex flex-col md:flex-row gap-4 items-end">
+                <div className="w-full md:w-1/2">
+                  <label className="block text-sm font-bold text-gray-700 mb-2">2. 选择制卡原因</label>
+                  <select value={cardReason} onChange={(e) => setCardReason(e.target.value)} className="w-full p-3 border border-indigo-200 rounded-xl text-base outline-none focus:border-indigo-500 bg-white">
+                    {reasonOptions.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                </div>
+                <button type="submit" className="w-full md:w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl transition-colors shadow-md">
+                  3. 提交制卡申请
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div className="flex flex-col md:flex-row justify-end gap-3 mb-2 mt-4">
+            <button onClick={() => exportCardRequestsToExcel('pending')} className="flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md transition-all">
+              <Download size={18} /> 导出待处理 (用于 Mail Merge 制卡)
+            </button>
+            <button onClick={() => exportCardRequestsToExcel('completed')} className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md transition-all">
+              <Download size={18} /> 导出已完成 (存档备份)
+            </button>
+          </div>
+
+          {/* 待处理列表 */}
+          <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm">
+            <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded-lg text-sm">待处理 (Menunggu)</span>
+            </h3>
+            <div className="overflow-x-auto rounded-xl border border-gray-200">
+              <table className="w-full text-left border-collapse min-w-max">
+                <thead className="bg-gray-50"><tr className="text-gray-600 text-sm border-b"><th className="p-3 w-16 text-center">完成</th><th className="p-3">要求时间</th><th className="p-3">姓名</th><th className="p-3">班级</th><th className="p-3">IC</th><th className="p-3">原因</th><th className="p-3 text-center">操作</th></tr></thead>
+                <tbody>
+                  {cardRequests.filter(r => r.status === 'pending').map((r, idx) => (
+                    <tr key={r.id} className={`text-sm border-b ${idx % 2 === 0 ? 'bg-white' : 'bg-[#fafafa]'}`}>
+                      <td className="p-3 text-center">
+                        <button onClick={() => toggleCardStatus(r.id, r.status)} className="text-gray-300 hover:text-green-500 transition-colors" title="打钩标记为已完成">
+                          <CheckCircle size={28} />
+                        </button>
+                      </td>
+                      <td className="p-3 text-gray-500">{new Date(r.requestedAt).toLocaleString()}</td>
+                      <td className="p-3 font-bold">{r.studentName}</td>
+                      <td className="p-3">{formatClassName(r.classYear, r.classColor)}</td>
+                      <td className="p-3 font-mono">{r.studentIc}</td>
+                      <td className="p-3"><span className="bg-gray-100 text-gray-700 px-2 py-1 rounded font-semibold text-xs">{r.reason}</span></td>
+                      <td className="p-3 text-center"><button onClick={() => deleteCardRequest(r.id)} className="text-red-500 p-1 hover:bg-red-50 rounded"><Trash2 size={16}/></button></td>
+                    </tr>
+                  ))}
+                  {cardRequests.filter(r => r.status === 'pending').length === 0 && <tr><td colSpan="7" className="p-6 text-center text-gray-500">目前没有待处理的制卡申请。</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* 已完成列表 */}
+          <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm">
+            <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <span className="bg-green-100 text-green-700 px-2 py-1 rounded-lg text-sm">已完成 (Selesai)</span>
+            </h3>
+            <div className="overflow-x-auto rounded-xl border border-gray-200">
+              <table className="w-full text-left border-collapse min-w-max">
+                <thead className="bg-gray-50"><tr className="text-gray-600 text-sm border-b"><th className="p-3 w-16 text-center">撤销</th><th className="p-3">完成时间</th><th className="p-3">姓名</th><th className="p-3">班级</th><th className="p-3">IC</th><th className="p-3">原因</th><th className="p-3 text-center">操作</th></tr></thead>
+                <tbody>
+                  {cardRequests.filter(r => r.status === 'completed').map((r, idx) => (
+                    <tr key={r.id} className={`text-sm border-b ${idx % 2 === 0 ? 'bg-white' : 'bg-[#fafafa]'}`}>
+                      <td className="p-3 text-center">
+                        <button onClick={() => toggleCardStatus(r.id, r.status)} className="text-amber-500 hover:text-amber-700 transition-colors" title="撤销回待处理状态">
+                          <Undo size={20} />
+                        </button>
+                      </td>
+                      <td className="p-3 text-green-600 font-semibold">{r.completedAt ? new Date(r.completedAt).toLocaleString() : '-'}</td>
+                      <td className="p-3 font-bold">{r.studentName}</td>
+                      <td className="p-3">{formatClassName(r.classYear, r.classColor)}</td>
+                      <td className="p-3 font-mono">{r.studentIc}</td>
+                      <td className="p-3 text-gray-500">{r.reason}</td>
+                      <td className="p-3 text-center"><button onClick={() => deleteCardRequest(r.id)} className="text-red-500 p-1 hover:bg-red-50 rounded"><Trash2 size={16}/></button></td>
+                    </tr>
+                  ))}
+                  {cardRequests.filter(r => r.status === 'completed').length === 0 && <tr><td colSpan="7" className="p-6 text-center text-gray-500">目前没有已完成的制卡记录。</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ======================= 模块 1：学生综合管理 ======================= */}
       {adminMainTab === 'students_mgmt' && (
         <div className="space-y-12 animate-slide-up">
@@ -1575,126 +1658,6 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
                 </div>
               </div>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* ======================= 新增模块：DELIMA 制卡申请管理 ======================= */}
-      {adminMainTab === 'card_requests' && (
-        <div className="space-y-8 animate-slide-up">
-          <div className="bg-indigo-50/50 border border-indigo-100 p-6 md:p-8 rounded-2xl shadow-sm">
-            <h3 className="text-xl font-bold text-indigo-900 mb-2 flex items-center gap-2"><CreditCard size={24}/> 新增制卡申请</h3>
-            <p className="text-sm text-gray-600 mb-6">可同时搜索并选择多位学生，选定原因后一键加入待处理列表。（教师端提交的申请也会显示在下方）</p>
-            
-            <form onSubmit={handleAddCardRequests} className="space-y-5">
-              <div className="relative z-20">
-                <label className="block text-sm font-bold text-gray-700 mb-2">1. 搜索并选择学生 (可多选)</label>
-                <div className="relative">
-                  <input type="text" placeholder="输入姓名或 IC..." value={cardSearchTerm} onChange={(e) => setCardSearchTerm(e.target.value)} className="w-full p-3 pl-10 border border-indigo-200 rounded-xl text-sm outline-none focus:border-indigo-500" />
-                  <Search size={18} className="absolute left-3 top-3.5 text-gray-400" />
-                </div>
-                {cardStudentOptions.length > 0 && (
-                  <div className="absolute w-full mt-1 bg-white border border-gray-200 shadow-xl rounded-xl overflow-hidden">
-                    {cardStudentOptions.map(s => (
-                      <div key={s.id} onClick={() => handleSelectForCard(s)} className="p-3 hover:bg-indigo-50 cursor-pointer border-b last:border-b-0 text-sm flex justify-between">
-                        <span className="font-bold">{s.name}</span>
-                        <span className="text-gray-500">{formatSimpleClassName(s.classYear, s.classColor)} | {s.ic}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              
-              {selectedForCard.length > 0 && (
-                <div className="flex flex-wrap gap-2 p-3 bg-white border border-indigo-100 rounded-xl min-h-[60px]">
-                  {selectedForCard.map(s => (
-                    <div key={s.ic} className="bg-indigo-100 text-indigo-800 px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 font-semibold shadow-sm">
-                      {s.name} ({formatSimpleClassName(s.classYear, s.classColor)})
-                      <button type="button" onClick={() => handleRemoveFromCard(s.ic)} className="text-indigo-400 hover:text-red-500"><Trash2 size={14}/></button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="flex flex-col md:flex-row gap-4 items-end">
-                <div className="w-full md:w-1/2">
-                  <label className="block text-sm font-bold text-gray-700 mb-2">2. 选择制卡原因</label>
-                  <select value={cardReason} onChange={(e) => setCardReason(e.target.value)} className="w-full p-3 border border-indigo-200 rounded-xl text-base outline-none focus:border-indigo-500 bg-white">
-                    {reasonOptions.map(r => <option key={r} value={r}>{r}</option>)}
-                  </select>
-                </div>
-                <button type="submit" className="w-full md:w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl transition-colors shadow-md">
-                  3. 提交制卡申请
-                </button>
-              </div>
-            </form>
-          </div>
-
-          <div className="flex flex-col md:flex-row justify-end gap-3 mb-2 mt-4">
-            <button onClick={() => exportCardRequestsToExcel('pending')} className="flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md transition-all">
-              <Download size={18} /> 导出待处理 (用于 Mail Merge 制卡)
-            </button>
-            <button onClick={() => exportCardRequestsToExcel('completed')} className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md transition-all">
-              <Download size={18} /> 导出已完成 (存档备份)
-            </button>
-          </div>
-
-          <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm">
-            <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded-lg text-sm">待处理 (Menunggu)</span>
-            </h3>
-            <div className="overflow-x-auto rounded-xl border border-gray-200">
-              <table className="w-full text-left border-collapse min-w-max">
-                <thead className="bg-gray-50"><tr className="text-gray-600 text-sm border-b"><th className="p-3 w-16 text-center">完成</th><th className="p-3">要求时间</th><th className="p-3">姓名</th><th className="p-3">班级</th><th className="p-3">IC</th><th className="p-3">原因</th><th className="p-3 text-center">操作</th></tr></thead>
-                <tbody>
-                  {cardRequests.filter(r => r.status === 'pending').map((r, idx) => (
-                    <tr key={r.id} className={`text-sm border-b ${idx % 2 === 0 ? 'bg-white' : 'bg-[#fafafa]'}`}>
-                      <td className="p-3 text-center">
-                        <button onClick={() => toggleCardStatus(r.id, r.status)} className="text-gray-300 hover:text-green-500 transition-colors" title="打钩标记为已完成">
-                          <CheckCircle size={28} />
-                        </button>
-                      </td>
-                      <td className="p-3 text-gray-500">{new Date(r.requestedAt).toLocaleString()}</td>
-                      <td className="p-3 font-bold">{r.studentName}</td>
-                      <td className="p-3">{formatClassName(r.classYear, r.classColor)}</td>
-                      <td className="p-3 font-mono">{r.studentIc}</td>
-                      <td className="p-3"><span className="bg-gray-100 text-gray-700 px-2 py-1 rounded font-semibold text-xs">{r.reason}</span></td>
-                      <td className="p-3 text-center"><button onClick={() => deleteCardRequest(r.id)} className="text-red-500 p-1 hover:bg-red-50 rounded"><Trash2 size={16}/></button></td>
-                    </tr>
-                  ))}
-                  {cardRequests.filter(r => r.status === 'pending').length === 0 && <tr><td colSpan="7" className="p-6 text-center text-gray-500">目前没有待处理的制卡申请。</td></tr>}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm">
-            <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <span className="bg-green-100 text-green-700 px-2 py-1 rounded-lg text-sm">已完成 (Selesai)</span>
-            </h3>
-            <div className="overflow-x-auto rounded-xl border border-gray-200">
-              <table className="w-full text-left border-collapse min-w-max">
-                <thead className="bg-gray-50"><tr className="text-gray-600 text-sm border-b"><th className="p-3 w-16 text-center">撤销</th><th className="p-3">完成时间</th><th className="p-3">姓名</th><th className="p-3">班级</th><th className="p-3">IC</th><th className="p-3">原因</th><th className="p-3 text-center">操作</th></tr></thead>
-                <tbody>
-                  {cardRequests.filter(r => r.status === 'completed').map((r, idx) => (
-                    <tr key={r.id} className={`text-sm border-b ${idx % 2 === 0 ? 'bg-white' : 'bg-[#fafafa]'}`}>
-                      <td className="p-3 text-center">
-                        <button onClick={() => toggleCardStatus(r.id, r.status)} className="text-amber-500 hover:text-amber-700 transition-colors" title="撤销回待处理状态">
-                          <Undo size={20} />
-                        </button>
-                      </td>
-                      <td className="p-3 text-green-600 font-semibold">{r.completedAt ? new Date(r.completedAt).toLocaleString() : '-'}</td>
-                      <td className="p-3 font-bold">{r.studentName}</td>
-                      <td className="p-3">{formatClassName(r.classYear, r.classColor)}</td>
-                      <td className="p-3 font-mono">{r.studentIc}</td>
-                      <td className="p-3 text-gray-500">{r.reason}</td>
-                      <td className="p-3 text-center"><button onClick={() => deleteCardRequest(r.id)} className="text-red-500 p-1 hover:bg-red-50 rounded"><Trash2 size={16}/></button></td>
-                    </tr>
-                  ))}
-                  {cardRequests.filter(r => r.status === 'completed').length === 0 && <tr><td colSpan="7" className="p-6 text-center text-gray-500">目前没有已完成的制卡记录。</td></tr>}
-                </tbody>
-              </table>
-            </div>
           </div>
         </div>
       )}
@@ -1848,7 +1811,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         </div>
       )}
 
-      {/* ======================= 模块 5：Admin 备注记录 (私密) ======================= */}
+      {/* ======================= 模块 5：Admin 备注记录 (新增，私密) ======================= */}
       {adminMainTab === 'admin_notes' && (
         <div className="space-y-8 animate-slide-up">
           <div className="bg-red-50/30 p-6 md:p-8 rounded-2xl border border-red-100 grid grid-cols-1 lg:grid-cols-2 gap-8">
