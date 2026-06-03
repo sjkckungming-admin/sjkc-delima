@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, collection, query, onSnapshot, doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { getFirestore, collection, query, onSnapshot, doc, setDoc, deleteDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 
 // ==========================================
 // 内置 SVG 图标
@@ -26,6 +26,10 @@ const BarChart = ({ size = 20, className = "" }) => (<svg width={size} height={s
 const CreditCard = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>);
 const CheckCircle = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>);
 const Undo = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg>);
+// 新增 Heart 和 MessageCircle 图标
+const Heart = ({ size = 20, className = "", fill = "none" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>);
+const MessageCircle = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>);
+
 
 // ==========================================
 // 1. Firebase 设定与初始化
@@ -62,13 +66,18 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('home'); 
   const [authRole, setAuthRole] = useState(''); 
   
+  // 数据状态
   const [students, setStudents] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
   const [logs, setLogs] = useState([]);
   const [schoolReports, setSchoolReports] = useState([]); 
   const [adminNotes, setAdminNotes] = useState([]); 
-  const [cardRequests, setCardRequests] = useState([]); 
+  const [cardRequests, setCardRequests] = useState([]);
   
+  // 保存当前查询成功的学生资料（作为家长发帖的身份）
+  const [currentStudentIdentity, setCurrentStudentIdentity] = useState(null);
+
+  // 弹窗与加载状态
   const [isLoading, setIsLoading] = useState(true);
   const [modalMessage, setModalMessage] = useState(null);
 
@@ -136,6 +145,7 @@ export default function App() {
     };
   }, []);
 
+  // 抓取数据
   useEffect(() => {
     if (!user) return;
 
@@ -211,7 +221,18 @@ export default function App() {
     }
 
     if (activeTab === 'home') {
-      return <HomeView students={students} announcements={announcements} schoolReports={schoolReports} setActiveTab={setActiveTab} />;
+      return <HomeView 
+                students={students} 
+                announcements={announcements} 
+                schoolReports={schoolReports} 
+                setActiveTab={setActiveTab} 
+                db={db} 
+                getCollectionPath={getCollectionPath} 
+                showMessage={showMessage}
+                currentStudentIdentity={currentStudentIdentity}
+                setCurrentStudentIdentity={setCurrentStudentIdentity}
+                authRole={authRole}
+              />;
     } else if (activeTab === 'teacher') {
       if (authRole === 'teacher' || authRole === 'admin') {
         return <TeacherPortal students={students} db={db} getCollectionPath={getCollectionPath} showMessage={showMessage} />;
@@ -308,7 +329,7 @@ export default function App() {
 // ==========================================
 // 3. 首页视图
 // ==========================================
-function HomeView({ students, announcements, schoolReports, setActiveTab }) {
+function HomeView({ students, announcements, schoolReports, setActiveTab, db, getCollectionPath, showMessage, currentStudentIdentity, setCurrentStudentIdentity, authRole }) {
   const [icNumber, setIcNumber] = useState('');
   const [result, setResult] = useState(null);
   const [searched, setSearched] = useState(false);
@@ -337,9 +358,99 @@ function HomeView({ students, announcements, schoolReports, setActiveTab }) {
     setResult(student || null);
     setSearched(true);
 
+    if (student) {
+      setCurrentStudentIdentity(student); // 保存当前用户身份，用于点赞/留言
+    }
+
     if (window.logSystemAction) {
       if (student) window.logSystemAction('visitor', '成功查询资料', `家长/学生成功进入，输入的身份证/报生纸: ${icNumber} (学生: ${student.name}, 班级: ${student.classYear}${student.classColor})`);
       else window.logSystemAction('visitor', '查询失败', `家长/学生尝试进入但失败，输入的号码: ${icNumber}`);
+    }
+  };
+
+  // 处理点赞
+  const handleLike = async (annId, currentLikes = []) => {
+    if (!currentStudentIdentity && authRole !== 'admin' && authRole !== 'teacher') {
+      showMessage("提示", "请先在上方输入学生的 IC 或报生纸查询资料，以验证您的家长身份，之后才能点赞或留言哦！");
+      return;
+    }
+    
+    // 确定身份标识
+    const identityId = authRole ? `admin_${authRole}` : currentStudentIdentity.ic;
+    const identityName = authRole ? (authRole === 'admin' ? '管理员' : '老师') : currentStudentIdentity.name;
+    
+    const hasLiked = currentLikes.some(like => like.id === identityId);
+    
+    try {
+      const annRef = doc(db, getCollectionPath('announcements'), annId);
+      if (hasLiked) {
+        // 取消点赞
+        const likeToRemove = currentLikes.find(like => like.id === identityId);
+        await updateDoc(annRef, {
+          likes: arrayRemove(likeToRemove)
+        });
+      } else {
+        // 添加点赞
+        await updateDoc(annRef, {
+          likes: arrayUnion({ id: identityId, name: identityName })
+        });
+      }
+    } catch (err) {
+      console.error("Like error:", err);
+      showMessage("错误", "点赞失败，请稍后再试。");
+    }
+  };
+
+  // 处理提交留言
+  const submitComment = async (annId, text, setText) => {
+    if (!text.trim()) return;
+    if (!currentStudentIdentity && authRole !== 'admin' && authRole !== 'teacher') {
+      showMessage("提示", "请先在上方输入学生的 IC 或报生纸查询资料，以验证您的家长身份，之后才能发表留言哦！");
+      return;
+    }
+
+    const identityId = authRole ? `admin_${authRole}` : currentStudentIdentity.ic;
+    const identityName = authRole ? (authRole === 'admin' ? '管理员' : '老师') : currentStudentIdentity.name;
+    const newComment = {
+      commentId: Date.now().toString(), // 简单生成唯一ID
+      userId: identityId,
+      userName: identityName,
+      text: text.trim(),
+      timestamp: new Date().toISOString()
+    };
+
+    try {
+      const annRef = doc(db, getCollectionPath('announcements'), annId);
+      await updateDoc(annRef, {
+        comments: arrayUnion(newComment)
+      });
+      setText(''); // 清空输入框
+    } catch (err) {
+      console.error("Comment error:", err);
+      showMessage("错误", "留言失败，请稍后再试。");
+    }
+  };
+
+  // 处理删除留言
+  const deleteComment = async (annId, comment, currentComments) => {
+    const isOwner = (authRole ? `admin_${authRole}` : currentStudentIdentity?.ic) === comment.userId;
+    const isAdmin = authRole === 'admin';
+    const isWithin24Hours = (new Date() - new Date(comment.timestamp)) < 24 * 60 * 60 * 1000;
+
+    if (!isAdmin && (!isOwner || !isWithin24Hours)) {
+      showMessage("提示", "您只能在发布留言后的 24 小时内删除它。如需协助，请联系管理员。");
+      return;
+    }
+
+    if (window.confirm("确定要删除这条留言吗？")) {
+      try {
+        const annRef = doc(db, getCollectionPath('announcements'), annId);
+        await updateDoc(annRef, {
+          comments: arrayRemove(comment)
+        });
+      } catch (err) {
+        showMessage("错误", "删除留言失败。");
+      }
     }
   };
 
@@ -391,11 +502,13 @@ function HomeView({ students, announcements, schoolReports, setActiveTab }) {
             {result ? (
               <div className="bg-purple-50 rounded-2xl p-6 md:p-8 border border-purple-200 shadow-sm">
                 <h3 className="text-2xl font-bold text-purple-900 mb-6 border-b-2 border-purple-200 pb-3">学生资料 (Maklumat Murid)</h3>
+                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-y-5 gap-x-6">
                   <InfoItem label="姓名 (NAMA MURID)" value={result.name} />
                   <InfoItem label="班级 (KELAS)" value={formatSimpleClassName(result.classYear, result.classColor)} />
                   <InfoItem label="IC 号码 (IC MURID)" value={result.ic} />
                   <InfoItem label="性别 (JANTINA)" value={result.gender} />
+                  
                   <InfoItem label="DELIMA ID (EMAIL)" value={result.delimaId} isHighlight />
                   
                   <div className="flex flex-col">
@@ -450,7 +563,7 @@ function HomeView({ students, announcements, schoolReports, setActiveTab }) {
                 )}
                 <div className="p-6 md:p-8">
                   <div className="flex justify-between items-start mb-4">
-                    <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold tracking-wider">
+                    <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold tracking-wider flex items-center gap-1">
                       🌟 Laporan Terkini (最新通告)
                     </span>
                     <span className="text-gray-400 text-sm">{rep.date}</span>
@@ -517,49 +630,169 @@ function HomeView({ students, announcements, schoolReports, setActiveTab }) {
         </a>
       </section>
 
-      {/* 公告区 */}
+      {/* 公告区 (含点赞和留言) */}
       <section>
         <h2 className="text-2xl md:text-3xl font-extrabold text-purple-800 mb-6 flex items-center gap-3 pl-4 border-l-8 border-amber-400 rounded-l-md">
           <BookOpen size={28} className="text-amber-500" /> Hebahan & Aktiviti DELIMA (最新活动)
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-8">
           {announcements.length === 0 ? (
-            <p className="text-base text-gray-500 p-8 col-span-2 text-center bg-white rounded-2xl shadow-sm border border-purple-50">暂无最新活动公告。</p>
+            <p className="text-base text-gray-500 p-8 text-center bg-white rounded-2xl shadow-sm border border-purple-50">暂无最新活动公告。</p>
           ) : (
             announcements.map((ann) => (
-              <a 
+              <AnnouncementCard 
                 key={ann.id} 
-                href={ann.link || '#'} 
-                target={ann.link ? "_blank" : "_self"}
-                rel="noreferrer"
-                className="bg-white rounded-2xl p-6 md:p-8 shadow-sm hover:shadow-md transition-all border border-purple-50 group flex flex-col justify-between overflow-hidden"
-              >
-                {/* 完整显示照片，不裁剪 */}
-                {ann.image && (
-                  <div className="-mx-6 md:-mx-8 -mt-6 md:-mt-8 mb-6 bg-gray-50 flex items-center justify-center border-b border-gray-100">
-                    <img src={ann.image} alt={ann.title} className="w-full h-auto max-h-80 object-contain" />
-                  </div>
-                )}
-                <div>
-                  <div className="flex justify-between items-start mb-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wider ${ann.type === 'App' ? 'bg-purple-100 text-purple-700' : 'bg-amber-100 text-amber-700'}`}>
-                      {ann.type}
-                    </span>
-                    <span className="text-gray-400 text-sm">{ann.date}</span>
-                  </div>
-                  <h3 className="text-xl md:text-2xl font-bold text-gray-800 mb-2 group-hover:text-purple-600 transition-colors">{ann.title}</h3>
-                  <p className="text-sm md:text-base text-gray-600 leading-relaxed line-clamp-3">{ann.content}</p>
-                </div>
-                {ann.link && (
-                  <div className="mt-4 flex items-center text-purple-600 font-bold text-sm group-hover:translate-x-2 transition-transform">
-                    点击前往 (Klik Sini) <ChevronRight size={18} />
-                  </div>
-                )}
-              </a>
+                ann={ann} 
+                handleLike={handleLike}
+                submitComment={submitComment}
+                deleteComment={deleteComment}
+                currentIdentity={authRole ? { id: `admin_${authRole}` } : currentStudentIdentity ? { id: currentStudentIdentity.ic } : null}
+                isAdmin={authRole === 'admin'}
+              />
             ))
           )}
         </div>
       </section>
+    </div>
+  );
+}
+
+// 独立的公告卡片组件 (包含点赞和留言状态)
+function AnnouncementCard({ ann, handleLike, submitComment, deleteComment, currentIdentity, isAdmin }) {
+  const [showComments, setShowComments] = useState(false);
+  const [commentText, setCommentText] = useState('');
+  
+  const likes = ann.likes || [];
+  const comments = ann.comments || [];
+  
+  const hasLiked = currentIdentity && likes.some(l => l.id === currentIdentity.id);
+  
+  return (
+    <div className="bg-white rounded-3xl shadow-md hover:shadow-xl transition-shadow border border-purple-50 overflow-hidden flex flex-col">
+      {/* 链接包装上半部分，点击跳转 (如果有链接) */}
+      <div className="relative group">
+        {ann.link ? (
+          <a href={ann.link} target="_blank" rel="noreferrer" className="block relative z-10 cursor-pointer">
+            {ann.image && (
+              <div className="w-full bg-gray-50 flex items-center justify-center border-b border-gray-100 overflow-hidden">
+                <img src={ann.image} alt={ann.title} className="w-full h-auto object-cover max-h-[500px] group-hover:scale-105 transition-transform duration-500" />
+              </div>
+            )}
+            <div className="p-6 md:p-8 pb-4">
+              <div className="flex justify-between items-start mb-4">
+                <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wider ${ann.type === 'App' ? 'bg-purple-100 text-purple-700' : 'bg-amber-100 text-amber-700'}`}>
+                  {ann.type}
+                </span>
+                <span className="text-gray-400 text-sm">{ann.date}</span>
+              </div>
+              <h3 className="text-xl md:text-2xl font-bold text-gray-800 mb-3 group-hover:text-purple-600 transition-colors">{ann.title}</h3>
+              <p className="text-sm md:text-base text-gray-600 leading-relaxed whitespace-pre-line">{ann.content}</p>
+              
+              <div className="mt-4 flex items-center text-purple-600 font-bold text-sm group-hover:translate-x-2 transition-transform">
+                点击前往 (Klik Sini) <ChevronRight size={18} />
+              </div>
+            </div>
+          </a>
+        ) : (
+          <div className="block relative z-10">
+            {ann.image && (
+              <div className="w-full bg-gray-50 flex items-center justify-center border-b border-gray-100 overflow-hidden">
+                <img src={ann.image} alt={ann.title} className="w-full h-auto object-cover max-h-[500px] hover:scale-105 transition-transform duration-500" />
+              </div>
+            )}
+            <div className="p-6 md:p-8 pb-4">
+              <div className="flex justify-between items-start mb-4">
+                <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wider ${ann.type === 'App' ? 'bg-purple-100 text-purple-700' : 'bg-amber-100 text-amber-700'}`}>
+                  {ann.type}
+                </span>
+                <span className="text-gray-400 text-sm">{ann.date}</span>
+              </div>
+              <h3 className="text-xl md:text-2xl font-bold text-gray-800 mb-3">{ann.title}</h3>
+              <p className="text-sm md:text-base text-gray-600 leading-relaxed whitespace-pre-line">{ann.content}</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 底部交互区：点赞和留言 */}
+      <div className="px-6 md:px-8 pb-6 border-t border-gray-50 pt-4 bg-gray-50/50 mt-auto">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => handleLike(ann.id, likes)}
+              className={`flex items-center gap-1.5 transition-colors ${hasLiked ? 'text-pink-500' : 'text-gray-500 hover:text-pink-500'}`}
+            >
+              <Heart size={22} fill={hasLiked ? "currentColor" : "none"} className={hasLiked ? "animate-bounce-in" : ""} />
+              <span className="font-bold text-sm">{likes.length > 0 ? likes.length : '点赞'}</span>
+            </button>
+            <button 
+              onClick={() => setShowComments(!showComments)}
+              className="flex items-center gap-1.5 text-gray-500 hover:text-blue-500 transition-colors"
+            >
+              <MessageCircle size={22} />
+              <span className="font-bold text-sm">{comments.length > 0 ? comments.length : '留言'}</span>
+            </button>
+          </div>
+          
+          {/* 显示最近点赞的人 */}
+          {likes.length > 0 && (
+            <div className="text-xs text-gray-400 truncate max-w-[50%] md:max-w-[70%] text-right">
+              {likes.slice(-2).map(l => l.name.split('(')[0]).join(', ')} {likes.length > 2 && '等'} 觉得很赞
+            </div>
+          )}
+        </div>
+
+        {/* 留言展示区 */}
+        {showComments && (
+          <div className="space-y-4 animate-fade-in mt-4">
+            {comments.map((c, i) => {
+              const isOwner = currentIdentity && currentIdentity.id === c.userId;
+              const isWithin24h = (new Date() - new Date(c.timestamp)) < 24 * 60 * 60 * 1000;
+              const canDelete = isAdmin || (isOwner && isWithin24h);
+
+              return (
+                <div key={i} className="bg-white p-3 md:p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-start group">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-bold text-sm text-gray-800">{c.userName}</span>
+                      <span className="text-xs text-gray-400">{new Date(c.timestamp).toLocaleString()}</span>
+                    </div>
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{c.text}</p>
+                  </div>
+                  {canDelete && (
+                    <button 
+                      onClick={() => deleteComment(ann.id, c, comments)}
+                      className="text-red-400 hover:text-red-600 p-1 md:opacity-0 group-hover:opacity-100 transition-opacity"
+                      title={isAdmin ? "管理员删除" : "撤回留言"}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* 留言输入框 */}
+            <div className="flex gap-2 pt-2">
+              <input 
+                type="text" 
+                placeholder="写下您的留言..." 
+                className="flex-1 p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-purple-400 transition-colors bg-white shadow-inner"
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                onKeyDown={(e) => { if(e.key === 'Enter') submitComment(ann.id, commentText, setCommentText); }}
+              />
+              <button 
+                onClick={() => submitComment(ann.id, commentText, setCommentText)}
+                className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 py-2 rounded-xl text-sm shadow-md transition-colors"
+              >
+                发送
+              </button>
+            </div>
+            <div className="text-[10px] text-gray-400 pl-1">* 留言后 24 小时内可撤回。</div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -749,7 +982,7 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
         <div className="flex gap-2">
           {selectedForCardReq.length > 0 && (
             <button onClick={() => setCardReqModal(true)} className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-2 rounded-xl font-bold text-sm shadow-sm transition-all">
-              申请制卡 ({selectedForCardReq.length})
+              <CreditCard size={18} /> 申请制卡 ({selectedForCardReq.length})
             </button>
           )}
           <button onClick={exportToExcel} className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-5 py-2 rounded-xl font-bold text-sm shadow-sm transition-all"><Download size={18} /> 导出 Excel</button>
@@ -825,7 +1058,7 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
       {cardReqModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl animate-slide-up">
-            <h3 className="text-2xl font-bold text-indigo-600 mb-2">批量申请制卡</h3>
+            <h3 className="text-2xl font-bold text-indigo-600 mb-2 flex items-center gap-2"><CreditCard size={24}/> 批量申请制卡</h3>
             <p className="text-sm text-gray-600 mb-6">您已选择了 <strong className="text-indigo-600 text-lg">{selectedForCardReq.length}</strong> 位学生，请选择制卡原因并提交给 Admin 处理。</p>
             
             <div className="space-y-4">
@@ -920,9 +1153,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
     reader.onload = async (evt) => {
       try {
         const wb = window.XLSX.read(evt.target.result, { type: 'binary' });
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const data = window.XLSX.utils.sheet_to_json(ws, { raw: false });
-        
+        const data = window.XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { raw: false });
         let successCount = 0;
         for (const row of data) {
           let sName = String(row['NAMA MURID'] || '').trim();
@@ -993,122 +1224,6 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
     e.preventDefault();
     try { await updateDoc(doc(db, getCollectionPath('students'), editStudent.id), editStudent); showMessage("成功", "更新成功。"); setEditStudent(null); } 
     catch (err) { showMessage("错误", err.message); }
-  };
-
-  // ---------- 新增标签：DELIMA 制卡申请管理 ----------
-  const reasonOptions = ['遗失 (Hilang)', '替换 (Ganti)', '修改 (Pindaan)', '损坏 (Rosak)', '更新 (Kemas Kini)', '新生 (Murid Baru)', '其他 (Lain-lain)'];
-  const [cardReason, setCardReason] = useState(reasonOptions[0]);
-  const [cardSearchTerm, setCardSearchTerm] = useState('');
-  const [selectedForCard, setSelectedForCard] = useState([]);
-
-  const cardStudentOptions = useMemo(() => {
-    if (!cardSearchTerm) return [];
-    const lower = cardSearchTerm.toLowerCase();
-    return students.filter(s => 
-      (s.name.toLowerCase().includes(lower) || s.ic.toLowerCase().includes(lower)) 
-      && !selectedForCard.find(sel => sel.ic === s.ic)
-    ).slice(0, 5); 
-  }, [students, cardSearchTerm, selectedForCard]);
-
-  const handleSelectForCard = (student) => {
-    setSelectedForCard([...selectedForCard, student]);
-    setCardSearchTerm('');
-  };
-
-  const handleRemoveFromCard = (ic) => {
-    setSelectedForCard(selectedForCard.filter(s => s.ic !== ic));
-  };
-
-  const handleAddCardRequests = async (e) => {
-    e.preventDefault();
-    if (selectedForCard.length === 0) return showMessage("提示", "请先在上方搜索并选择需要制卡的学生。");
-    try {
-      let count = 0;
-      for (const s of selectedForCard) {
-        const newRef = doc(collection(db, getCollectionPath('cardRequests')));
-        await setDoc(newRef, {
-          studentIc: s.ic,
-          studentName: s.name,
-          classYear: s.classYear,
-          classColor: s.classColor,
-          reason: cardReason,
-          status: 'pending',
-          requestedAt: new Date().toISOString(),
-        });
-        count++;
-      }
-      showMessage("成功", `已成功加入 ${count} 位学生的制卡要求。`);
-      if (window.logSystemAction) window.logSystemAction('admin', '新增制卡', `批量加入了 ${count} 个制卡申请`);
-      setSelectedForCard([]);
-      setCardReason(reasonOptions[0]);
-    } catch(err) {
-      showMessage("错误", "添加失败: " + err.message);
-    }
-  };
-
-  const toggleCardStatus = async (id, currentStatus) => {
-    try {
-      const newStatus = currentStatus === 'pending' ? 'completed' : 'pending';
-      const updateData = { status: newStatus };
-      if (newStatus === 'completed') updateData.completedAt = new Date().toISOString();
-      else updateData.completedAt = null;
-      await updateDoc(doc(db, getCollectionPath('cardRequests'), id), updateData);
-    } catch(err) {
-      showMessage("错误", "状态更新失败: " + err.message);
-    }
-  };
-
-  const deleteCardRequest = (id) => {
-    setConfirmModal({
-      message: "确定要彻底删除这条制卡记录吗？",
-      onConfirm: async () => {
-        setConfirmModal(null);
-        try {
-          await deleteDoc(doc(db, getCollectionPath('cardRequests'), id));
-        } catch(err) {
-          showMessage("错误", "删除失败: " + err.message);
-        }
-      }
-    });
-  };
-
-  const exportCardRequestsToExcel = (statusFilter) => {
-    if (typeof window.XLSX === 'undefined') return showMessage("错误", "组件未加载");
-    
-    const filteredRequests = statusFilter ? cardRequests.filter(r => r.status === statusFilter) : cardRequests;
-    
-    if (filteredRequests.length === 0) {
-      return showMessage("提示", "当前没有符合条件的数据可供导出。");
-    }
-
-    const exportData = filteredRequests.map(r => {
-      const studentInfo = students.find(s => s.ic === r.studentIc) || {};
-      const malayName = studentInfo.name?.includes('(') ? studentInfo.name.split('(')[0].trim() : (studentInfo.name || r.studentName);
-      const chineseName = studentInfo.name?.includes('(') ? studentInfo.name.split('(')[1].replace(')', '').trim() : '';
-
-      return {
-        "NO": formatSimpleClassName(studentInfo.classYear || r.classYear, studentInfo.classColor || r.classColor),
-        "NO.RUJ IDME": studentInfo.idme || '',
-        "NO RUJ SEK": studentInfo.studentId || '',
-        "NAMA MURID": malayName,
-        "姓名": chineseName,
-        "性别": studentInfo.gender || '',
-        "RUMAH SUKAN": studentInfo.sportsHouse || '',
-        "SURAT BERANAK": studentInfo.birthCert || '',
-        "TARIKH LAHIR": studentInfo.dob || '',
-        "IC": r.studentIc,
-        "EMAL DELIMA": studentInfo.delimaId || '',
-        "PASSWORD": studentInfo.password || ''
-      };
-    });
-
-    const ws = window.XLSX.utils.json_to_sheet(exportData);
-    const wb = window.XLSX.utils.book_new();
-    window.XLSX.utils.book_append_sheet(wb, ws, "MailMergeData");
-    const fileNameStatus = statusFilter === 'pending' ? 'Menunggu' : (statusFilter === 'completed' ? 'Selesai' : 'Semua');
-    window.XLSX.writeFile(wb, `MailMerge_Kad_${fileNameStatus}_${new Date().toISOString().split('T')[0]}.xlsx`);
-    
-    showMessage("导出成功", `Excel 文件已下载！\n\n此 Excel 格式已完全适配您的 TEMPLETE.docx。\n\n请打开 Word 文档，点击顶部的【邮件(Mailings)】->【选择收件人(Select Recipients)】->【使用现有列表(Use an Existing List)】，然后载入此 Excel，即可一键完成 Mail Merge 制卡！`);
   };
 
   // ---------- 标签 2：通告与活动管理 ----------
@@ -1241,6 +1356,122 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
     setConfirmModal({ message: "确定要删除这条私密备注吗？", onConfirm: async () => { setConfirmModal(null); await deleteDoc(doc(db, getCollectionPath('adminNotes'), id)); } });
   };
 
+  // ---------- 新增标签：DELIMA 制卡申请管理 ----------
+  const reasonOptions = ['遗失 (Hilang)', '替换 (Ganti)', '修改 (Pindaan)', '损坏 (Rosak)', '更新 (Kemas Kini)', '新生 (Murid Baru)', '其他 (Lain-lain)'];
+  const [cardReason, setCardReason] = useState(reasonOptions[0]);
+  const [cardSearchTerm, setCardSearchTerm] = useState('');
+  const [selectedForCard, setSelectedForCard] = useState([]);
+
+  const cardStudentOptions = useMemo(() => {
+    if (!cardSearchTerm) return [];
+    const lower = cardSearchTerm.toLowerCase();
+    return students.filter(s => 
+      (s.name.toLowerCase().includes(lower) || s.ic.toLowerCase().includes(lower)) 
+      && !selectedForCard.find(sel => sel.ic === s.ic)
+    ).slice(0, 5); 
+  }, [students, cardSearchTerm, selectedForCard]);
+
+  const handleSelectForCard = (student) => {
+    setSelectedForCard([...selectedForCard, student]);
+    setCardSearchTerm('');
+  };
+
+  const handleRemoveFromCard = (ic) => {
+    setSelectedForCard(selectedForCard.filter(s => s.ic !== ic));
+  };
+
+  const handleAddCardRequests = async (e) => {
+    e.preventDefault();
+    if (selectedForCard.length === 0) return showMessage("提示", "请先在上方搜索并选择需要制卡的学生。");
+    try {
+      let count = 0;
+      for (const s of selectedForCard) {
+        const newRef = doc(collection(db, getCollectionPath('cardRequests')));
+        await setDoc(newRef, {
+          studentIc: s.ic,
+          studentName: s.name,
+          classYear: s.classYear,
+          classColor: s.classColor,
+          reason: cardReason,
+          status: 'pending',
+          requestedAt: new Date().toISOString(),
+        });
+        count++;
+      }
+      showMessage("成功", `已成功加入 ${count} 位学生的制卡要求。`);
+      if (window.logSystemAction) window.logSystemAction('admin', '新增制卡', `批量加入了 ${count} 个制卡申请`);
+      setSelectedForCard([]);
+      setCardReason(reasonOptions[0]);
+    } catch(err) {
+      showMessage("错误", "添加失败: " + err.message);
+    }
+  };
+
+  const toggleCardStatus = async (id, currentStatus) => {
+    try {
+      const newStatus = currentStatus === 'pending' ? 'completed' : 'pending';
+      const updateData = { status: newStatus };
+      if (newStatus === 'completed') updateData.completedAt = new Date().toISOString();
+      else updateData.completedAt = null;
+      await updateDoc(doc(db, getCollectionPath('cardRequests'), id), updateData);
+    } catch(err) {
+      showMessage("错误", "状态更新失败: " + err.message);
+    }
+  };
+
+  const deleteCardRequest = (id) => {
+    setConfirmModal({
+      message: "确定要彻底删除这条制卡记录吗？",
+      onConfirm: async () => {
+        setConfirmModal(null);
+        try {
+          await deleteDoc(doc(db, getCollectionPath('cardRequests'), id));
+        } catch(err) {
+          showMessage("错误", "删除失败: " + err.message);
+        }
+      }
+    });
+  };
+
+  const exportCardRequestsToExcel = (statusFilter) => {
+    if (typeof window.XLSX === 'undefined') return showMessage("错误", "组件未加载");
+    
+    const filteredRequests = statusFilter ? cardRequests.filter(r => r.status === statusFilter) : cardRequests;
+    
+    if (filteredRequests.length === 0) {
+      return showMessage("提示", "当前没有符合条件的数据可供导出。");
+    }
+
+    const exportData = filteredRequests.map(r => {
+      const studentInfo = students.find(s => s.ic === r.studentIc) || {};
+      const malayName = studentInfo.name?.includes('(') ? studentInfo.name.split('(')[0].trim() : (studentInfo.name || r.studentName);
+      const chineseName = studentInfo.name?.includes('(') ? studentInfo.name.split('(')[1].replace(')', '').trim() : '';
+
+      return {
+        "NO": formatSimpleClassName(studentInfo.classYear || r.classYear, studentInfo.classColor || r.classColor),
+        "NO.RUJ IDME": studentInfo.idme || '',
+        "NO RUJ SEK": studentInfo.studentId || '',
+        "NAMA MURID": malayName,
+        "姓名": chineseName,
+        "性别": studentInfo.gender || '',
+        "RUMAH SUKAN": studentInfo.sportsHouse || '',
+        "SURAT BERANAK": studentInfo.birthCert || '',
+        "TARIKH LAHIR": studentInfo.dob || '',
+        "IC": r.studentIc,
+        "EMAL DELIMA": studentInfo.delimaId || '',
+        "PASSWORD": studentInfo.password || ''
+      };
+    });
+
+    const ws = window.XLSX.utils.json_to_sheet(exportData);
+    const wb = window.XLSX.utils.book_new();
+    window.XLSX.utils.book_append_sheet(wb, ws, "MailMergeData");
+    const fileNameStatus = statusFilter === 'pending' ? 'Menunggu' : (statusFilter === 'completed' ? 'Selesai' : 'Semua');
+    window.XLSX.writeFile(wb, `MailMerge_Kad_${fileNameStatus}_${new Date().toISOString().split('T')[0]}.xlsx`);
+    
+    showMessage("导出成功", `Excel 文件已下载！\n\n此 Excel 格式已完全适配您的 TEMPLETE.docx。\n\n请打开 Word 文档，点击顶部的【邮件(Mailings)】->【选择收件人(Select Recipients)】->【使用现有列表(Use an Existing List)】，然后载入此 Excel，即可一键完成 Mail Merge 制卡！`);
+  };
+
   return (
     <div className="bg-white rounded-3xl p-6 md:p-10 shadow-xl border-t-8 border-purple-800 animate-fade-in relative">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
@@ -1263,11 +1494,11 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         <button onClick={() => setAdminMainTab('card_requests')} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${adminMainTab === 'card_requests' ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-50 text-gray-600 hover:bg-indigo-100'}`}>
           <CreditCard size={18} /> DELIMA 制卡管理
         </button>
-        <button onClick={() => setAdminMainTab('sys_logs')} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${adminMainTab === 'sys_logs' ? 'bg-green-600 text-white shadow-md' : 'bg-gray-50 text-gray-600 hover:bg-green-100'}`}>
-          <ClipboardList size={18} /> 访客与系统日志
-        </button>
         <button onClick={() => setAdminMainTab('school_reports')} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${adminMainTab === 'school_reports' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-50 text-gray-600 hover:bg-blue-100'}`}>
           <BarChart size={18} /> 学校报告与数据
+        </button>
+        <button onClick={() => setAdminMainTab('sys_logs')} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${adminMainTab === 'sys_logs' ? 'bg-green-600 text-white shadow-md' : 'bg-gray-50 text-gray-600 hover:bg-green-100'}`}>
+          <ClipboardList size={18} /> 访客与系统日志
         </button>
         <button onClick={() => setAdminMainTab('admin_notes')} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${adminMainTab === 'admin_notes' ? 'bg-red-600 text-white shadow-md' : 'bg-gray-50 text-gray-600 hover:bg-red-100'}`}>
           <Edit size={18} /> Admin 备注
@@ -1622,7 +1853,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         <div className="space-y-8 animate-slide-up">
           <div className="bg-red-50/30 p-6 md:p-8 rounded-2xl border border-red-100 grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div>
-              <h3 className="text-xl md:text-2xl font-bold text-red-800 mb-2 flex items-center gap-2"><Edit size={24} /> Admin 专属私密备注 (Nota Peribadi)</h3>
+              <h3 className="text-xl md:text-2xl font-bold text-red-800 mb-2 flex items-center gap-2"><ClipboardList size={24} /> Admin 专属私密备注 (Nota Peribadi)</h3>
               <p className="text-sm text-gray-600 mb-6">这里的内容绝对不会显示在首页。仅供管理员个人记录重要事项、网址或存底照片。</p>
               
               <form onSubmit={handleAddNote} className="space-y-4">
