@@ -849,7 +849,7 @@ function LoginView({ roleTarget, setAuthRole, showMessage }) {
 
   const handleLogin = (e) => {
     e.preventDefault();
-    if (roleTarget === 'teacher' && pin === 'xcc6027@km') {
+    if (roleTarget === 'teacher' && pin === 'XCC6027@km') {
       setAuthRole('teacher');
       showMessage("登录成功", "欢迎进入教师控制台。");
       if (window.logSystemAction) window.logSystemAction('teacher', '系统登录', '教师成功登录系统');
