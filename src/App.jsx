@@ -849,11 +849,11 @@ function LoginView({ roleTarget, setAuthRole, showMessage }) {
 
   const handleLogin = (e) => {
     e.preventDefault();
-    if (roleTarget === 'teacher' && pin === 'XCC6027@km') {
+    if (roleTarget === 'teacher' && pin === 'xcc6027@km') {
       setAuthRole('teacher');
       showMessage("登录成功", "欢迎进入教师控制台。");
       if (window.logSystemAction) window.logSystemAction('teacher', '系统登录', '教师成功登录系统');
-    } else if (roleTarget === 'admin' && pin === 'admin888') {
+    } else if (roleTarget === 'admin' && pin === 'XCC6027@km') {
       setAuthRole('admin');
       showMessage("登录成功", "欢迎进入系统后台。");
       if (window.logSystemAction) window.logSystemAction('admin', '系统登录', '管理员成功登录后台');
@@ -896,6 +896,7 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
   const [selectedYear, setSelectedYear] = useState('1');
   const [selectedColor, setSelectedColor] = useState('H');
   const [transferModal, setTransferModal] = useState(null);
+  const [teacherSearchTerm, setTeacherSearchTerm] = useState('');
   
   const [selectedForCardReq, setSelectedForCardReq] = useState([]);
   const [cardReqModal, setCardReqModal] = useState(false);
@@ -926,9 +927,21 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
     });
   }, [students, selectedYear, selectedColor]);
 
+  const displayedStudents = useMemo(() => {
+    if (teacherSearchTerm.trim() !== '') {
+      const lower = teacherSearchTerm.toLowerCase();
+      return students.filter(s =>
+        s.name.toLowerCase().includes(lower) ||
+        (s.ic && s.ic.toLowerCase().includes(lower)) ||
+        formatSimpleClassName(s.classYear, s.classColor).toLowerCase().includes(lower)
+      );
+    }
+    return classStudents;
+  }, [students, classStudents, teacherSearchTerm]);
+
   const exportToExcel = () => {
     if (typeof window.XLSX === 'undefined') { showMessage("错误", "Excel导出工具尚未加载，请稍等。"); return; }
-    const exportData = classStudents.map(s => ({
+    const exportData = displayedStudents.map(s => ({
       "KELAS": `${s.classYear}${s.classColor}`, "TARIKH MASUK": s.admissionDate || '', "NO.RUJ IDME": s.idme || '', "NO RUJ SEK": s.studentId || '', "NAMA MURID": s.name.includes('(') ? s.name.split('(')[0].trim() : s.name, "姓名": s.name.includes('(') ? s.name.split('(')[1].replace(')', '').trim() : '', "JANTINA": s.gender || '', "RUMAH SUKAN": s.sportsHouse || '', "SURAT BERANAK": s.birthCert || '', "TARIKH LAHIR": s.dob || '', "ic": s.rawIc || '', "IC MURID": s.ic, "EMAIL DELIMA": s.delimaId, "PASSWORD": s.password
     }));
     const ws = window.XLSX.utils.json_to_sheet(exportData);
@@ -959,10 +972,10 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
   };
 
   const toggleAllCardSelect = () => {
-    if (selectedForCardReq.length === classStudents.length) {
+    if (selectedForCardReq.length === displayedStudents.length) {
       setSelectedForCardReq([]);
     } else {
-      setSelectedForCardReq([...classStudents]);
+      setSelectedForCardReq([...displayedStudents]);
     }
   };
 
@@ -997,22 +1010,28 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-6 border-b border-purple-100 pb-6">
         <div>
           <h2 className="text-2xl md:text-3xl font-bold text-amber-600 flex items-center gap-3"><UserCheck size={28} /> 教师控制台 (Panel Guru)</h2>
-          <p className="text-sm md:text-base text-gray-500 mt-2">请选择您的班级以查看和整理资料。</p>
+          <p className="text-sm md:text-base text-gray-500 mt-2">请选择您的班级以查看和整理资料，或直接搜索全校学生。</p>
         </div>
-        <div className="flex flex-wrap gap-3 bg-purple-50 p-3 rounded-2xl">
-          <select className="text-base p-2 rounded-xl border border-purple-200 outline-none focus:border-purple-400" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
-            {years.map(y => <option key={y.val} value={y.val}>{y.label}</option>)}
-          </select>
-          {selectedYear !== '19' && selectedYear !== '20' && (
-            <select className="text-base p-2 rounded-xl border border-purple-200 outline-none focus:border-purple-400" value={selectedColor} onChange={(e) => setSelectedColor(e.target.value)}>
-              {colors.map(c => <option key={c} value={c}>{c} 班</option>)}
+        <div className="flex flex-col items-end gap-3 w-full md:w-auto">
+          <div className="relative w-full md:w-64">
+            <input type="text" placeholder="输入姓名或IC搜索全校..." className="w-full p-2.5 pl-10 border border-amber-200 rounded-xl text-sm outline-none focus:border-amber-500" value={teacherSearchTerm} onChange={(e) => setTeacherSearchTerm(e.target.value)} />
+            <Search size={18} className="absolute left-3 top-3 text-gray-400" />
+          </div>
+          <div className="flex flex-wrap gap-3 bg-purple-50 p-3 rounded-2xl w-full justify-end">
+            <select className="text-base p-2 rounded-xl border border-purple-200 outline-none focus:border-purple-400" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
+              {years.map(y => <option key={y.val} value={y.val}>{y.label}</option>)}
             </select>
-          )}
+            {selectedYear !== '19' && selectedYear !== '20' && (
+              <select className="text-base p-2 rounded-xl border border-purple-200 outline-none focus:border-purple-400" value={selectedColor} onChange={(e) => setSelectedColor(e.target.value)}>
+                {colors.map(c => <option key={c} value={c}>{c} 班</option>)}
+              </select>
+            )}
+          </div>
         </div>
       </div>
 
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
-        <h3 className="text-xl font-bold text-gray-800">学生列表 ({classStudents.length} 人)</h3>
+        <h3 className="text-xl font-bold text-gray-800">学生列表 ({displayedStudents.length} 人) {teacherSearchTerm && <span className="text-amber-500 text-sm">(全校搜索结果)</span>}</h3>
         <div className="flex gap-2">
           {selectedForCardReq.length > 0 && (
             <button onClick={() => setCardReqModal(true)} className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-2 rounded-xl font-bold text-sm shadow-sm transition-all">
@@ -1029,15 +1048,15 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
             <tr className="bg-gray-50 text-gray-600 text-sm border-b border-gray-200">
               <th className="p-4 w-12 text-center">
                 <input type="checkbox" className="w-4 h-4 cursor-pointer" 
-                  checked={classStudents.length > 0 && selectedForCardReq.length === classStudents.length} 
+                  checked={displayedStudents.length > 0 && selectedForCardReq.length === displayedStudents.length} 
                   onChange={toggleAllCardSelect} 
                 />
               </th>
-              <th className="p-4 font-semibold">姓名</th><th className="p-4 font-semibold">IC 号码</th><th className="p-4 font-semibold">DELIMA ID</th><th className="p-4 font-semibold">密码</th><th className="p-4 font-semibold text-center">操作</th>
+              <th className="p-4 font-semibold">姓名</th><th className="p-4 font-semibold">班级</th><th className="p-4 font-semibold">IC 号码</th><th className="p-4 font-semibold">DELIMA ID</th><th className="p-4 font-semibold">密码</th><th className="p-4 font-semibold text-center">操作</th>
             </tr>
           </thead>
           <tbody>
-            {classStudents.map((s, idx) => (
+            {displayedStudents.map((s, idx) => (
               <tr key={s.id} className={`text-sm border-b border-gray-100 ${idx % 2 === 0 ? 'bg-white' : 'bg-[#fafafa]'} hover:bg-purple-50 transition-colors`}>
                 <td className="p-4 text-center">
                   <input type="checkbox" className="w-4 h-4 cursor-pointer" 
@@ -1045,7 +1064,7 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
                     onChange={() => toggleStudentCardSelect(s)} 
                   />
                 </td>
-                <td className="p-4 font-bold text-gray-800">{s.name}</td><td className="p-4 font-mono text-gray-600">{s.ic}</td><td className="p-4 font-mono text-purple-600">{s.delimaId}</td><td className="p-4 font-mono text-gray-600">{s.password}</td>
+                <td className="p-4 font-bold text-gray-800">{s.name}</td><td className="p-4 font-semibold text-amber-600">{formatSimpleClassName(s.classYear, s.classColor)}</td><td className="p-4 font-mono text-gray-600">{s.ic}</td><td className="p-4 font-mono text-purple-600">{s.delimaId}</td><td className="p-4 font-mono text-gray-600">{s.password}</td>
                 <td className="p-4 text-center">
                   {selectedYear !== '19' && selectedYear !== '20' && (
                     <button onClick={() => setTransferModal(s)} className="bg-amber-50 text-amber-600 border border-amber-200 hover:bg-amber-100 px-3 py-1.5 rounded-lg font-semibold text-xs transition-colors">标为转校</button>
@@ -1053,23 +1072,24 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
                 </td>
               </tr>
             ))}
-            {classStudents.length === 0 && (<tr><td colSpan="6" className="p-8 text-center text-gray-500 text-base">该班级暂无学生数据。</td></tr>)}
+            {displayedStudents.length === 0 && (<tr><td colSpan="7" className="p-8 text-center text-gray-500 text-base">未找到符合条件的学生数据。</td></tr>)}
           </tbody>
         </table>
       </div>
 
       <div className="md:hidden space-y-4">
-        {classStudents.map(s => (
+        {displayedStudents.map(s => (
           <div key={s.id} className="bg-white border border-gray-200 p-5 rounded-2xl shadow-sm relative">
             <div className="absolute top-5 right-5">
                <input type="checkbox" className="w-5 h-5 cursor-pointer" checked={!!selectedForCardReq.find(sel => sel.ic === s.ic)} onChange={() => toggleStudentCardSelect(s)} />
             </div>
-            <h4 className="text-lg font-bold text-gray-800 mb-2 pr-8">{s.name}</h4>
+            <h4 className="text-lg font-bold text-gray-800 mb-1 pr-8">{s.name}</h4>
+            <div className="text-xs font-bold text-amber-600 mb-2 bg-amber-50 inline-block px-2 py-1 rounded">{formatClassName(s.classYear, s.classColor)}</div>
             <div className="space-y-1 text-sm text-gray-600 mb-4"><p>IC: <span className="font-mono text-gray-800">{s.ic}</span></p><p>DELIMA: <span className="font-mono text-purple-600 font-bold">{s.delimaId}</span></p><p>Pwd: <span className="font-mono text-gray-800">{s.password}</span></p></div>
             {selectedYear !== '19' && selectedYear !== '20' && (<button onClick={() => setTransferModal(s)} className="w-full bg-amber-50 border border-amber-200 text-amber-700 py-2.5 rounded-xl font-bold text-sm transition-colors">标为转校 (Pindah Sekolah)</button>)}
           </div>
         ))}
-        {classStudents.length === 0 && (<div className="p-6 text-center text-gray-500 text-sm border border-gray-200 rounded-2xl">该班级暂无学生数据。</div>)}
+        {displayedStudents.length === 0 && (<div className="p-6 text-center text-gray-500 text-sm border border-gray-200 rounded-2xl">未找到符合条件的学生数据。</div>)}
       </div>
 
       {transferModal && (
@@ -1124,6 +1144,9 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
 function AdminPortal({ students, announcements, logs, schoolReports, adminNotes, cardRequests, db, getCollectionPath, showMessage }) {
   const [adminMainTab, setAdminMainTab] = useState('card_requests'); 
   const [confirmModal, setConfirmModal] = useState(null);
+  
+  const [isAddingStudent, setIsAddingStudent] = useState(false);
+  const [newStudentForm, setNewStudentForm] = useState({ name: '', ic: '', classYear: '1', classColor: 'H', delimaId: '', password: '', gender: 'L', studentId: '', idme: '', birthCert: '', dob: '', sportsHouse: '' });
   
   const compressImage = (file, callback) => {
     if (!file.type.startsWith('image/')) { showMessage("错误", "请上传图片文件"); return; }
@@ -1258,6 +1281,19 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
     e.preventDefault();
     try { await updateDoc(doc(db, getCollectionPath('students'), editStudent.id), editStudent); showMessage("成功", "更新成功。"); setEditStudent(null); } 
     catch (err) { showMessage("错误", err.message); }
+  };
+
+  const handleAddSingleStudent = async (e) => {
+    e.preventDefault();
+    try {
+      if (!newStudentForm.ic || !newStudentForm.name) { showMessage("错误", "姓名和IC号码为必填项。"); return; }
+      const ns = { ...newStudentForm, rawIc: newStudentForm.ic, status: 'Active' };
+      await setDoc(doc(db, getCollectionPath('students'), ns.ic), ns);
+      showMessage("成功", `已成功添加学生 [${ns.name}]。`);
+      if (window.logSystemAction) window.logSystemAction('admin', '手动新增学生', `手动新增了新生 [${ns.name}]`);
+      setIsAddingStudent(false);
+      setNewStudentForm({ name: '', ic: '', classYear: '1', classColor: 'H', delimaId: '', password: '', gender: 'L', studentId: '', idme: '', birthCert: '', dob: '', sportsHouse: '' });
+    } catch (err) { showMessage("错误", err.message); }
   };
 
   // ---------- 标签 2：通告与活动管理 ----------
@@ -1668,9 +1704,14 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
           <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm">
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
               <h3 className="text-lg md:text-xl font-bold text-purple-800">全校学生名单管理</h3>
-              <div className="relative w-full md:w-1/3">
-                <input type="text" placeholder="搜索姓名、IC 或 班级..." className="w-full p-2.5 pl-10 border border-gray-300 rounded-xl text-sm focus:outline-none focus:border-purple-500" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                <Search size={18} className="absolute left-3 top-3 text-gray-400" />
+              <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
+                <button onClick={() => setIsAddingStudent(true)} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-all whitespace-nowrap">
+                  ➕ 新增一位学生
+                </button>
+                <div className="relative w-full md:w-64">
+                  <input type="text" placeholder="搜索姓名、IC 或 班级..." className="w-full p-2.5 pl-10 border border-gray-300 rounded-xl text-sm focus:outline-none focus:border-purple-500" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                  <Search size={18} className="absolute left-3 top-3 text-gray-400" />
+                </div>
               </div>
             </div>
             <div className="overflow-x-auto rounded-xl border border-gray-200 h-[600px] overflow-y-auto">
@@ -1952,6 +1993,32 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
                 <div><label className="block text-sm font-bold text-gray-700 mb-1">运动队伍 (RUMAH SUKAN)</label><input type="text" value={editStudent.sportsHouse} onChange={(e) => setEditStudent({...editStudent, sportsHouse: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
               </div>
               <div className="flex gap-4 mt-8"><button type="button" onClick={() => setEditStudent(null)} className="flex-1 bg-gray-100 font-bold py-3 rounded-xl">取消</button><button type="submit" className="flex-1 bg-purple-600 text-white font-bold py-3 rounded-xl">保存修改</button></div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 新增单名学生的独立弹窗 (针对模块 1) */}
+      {isAddingStudent && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[105]">
+          <div className="bg-white rounded-3xl p-8 w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl animate-slide-up">
+            <h3 className="text-2xl font-bold text-purple-800 mb-6 flex items-center gap-2"><UserCheck size={24} /> 新增一位学生 (Murid Baru)</h3>
+            <form onSubmit={handleAddSingleStudent}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">姓名 (NAMA MURID)</label><input required type="text" value={newStudentForm.name} onChange={(e) => setNewStudentForm({...newStudentForm, name: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" placeholder="如: AHMAD (阿末)" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">IC 号码 (必填)</label><input required type="text" value={newStudentForm.ic} onChange={(e) => setNewStudentForm({...newStudentForm, ic: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm outline-none focus:border-purple-500" placeholder="如: 140101-12-1234" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">年级编号 (1~6 或 19, 20)</label><input required type="text" value={newStudentForm.classYear} onChange={(e) => setNewStudentForm({...newStudentForm, classYear: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">班级 (如 H, M)</label><input type="text" value={newStudentForm.classColor} onChange={(e) => setNewStudentForm({...newStudentForm, classColor: e.target.value.toUpperCase()})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">DELIMA ID</label><input type="text" value={newStudentForm.delimaId} onChange={(e) => setNewStudentForm({...newStudentForm, delimaId: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">密码</label><input type="text" value={newStudentForm.password} onChange={(e) => setNewStudentForm({...newStudentForm, password: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">性别</label><input type="text" value={newStudentForm.gender} onChange={(e) => setNewStudentForm({...newStudentForm, gender: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" placeholder="如: L/P" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">学号 (NO RUJ SEK)</label><input type="text" value={newStudentForm.studentId} onChange={(e) => setNewStudentForm({...newStudentForm, studentId: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">IDME</label><input type="text" value={newStudentForm.idme} onChange={(e) => setNewStudentForm({...newStudentForm, idme: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">报生纸 (SURAT BERANAK)</label><input type="text" value={newStudentForm.birthCert} onChange={(e) => setNewStudentForm({...newStudentForm, birthCert: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">出生日期</label><input type="text" value={newStudentForm.dob} onChange={(e) => setNewStudentForm({...newStudentForm, dob: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" placeholder="如: 01/01/2014" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">运动队伍 (RUMAH SUKAN)</label><input type="text" value={newStudentForm.sportsHouse} onChange={(e) => setNewStudentForm({...newStudentForm, sportsHouse: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+              </div>
+              <div className="flex gap-4 mt-8"><button type="button" onClick={() => setIsAddingStudent(false)} className="flex-1 bg-gray-100 font-bold py-3 rounded-xl">取消</button><button type="submit" className="flex-1 bg-purple-600 text-white font-bold py-3 rounded-xl">确认新增</button></div>
             </form>
           </div>
         </div>
