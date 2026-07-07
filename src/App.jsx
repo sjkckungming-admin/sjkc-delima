@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, collection, query, onSnapshot, doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
+// 引入 signInWithEmailAndPassword 用于安全登录
+import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signInWithEmailAndPassword } from 'firebase/auth';
+// 引入 getDocs 用于首页按需搜索
+import { getFirestore, collection, query, onSnapshot, doc, setDoc, deleteDoc, updateDoc, getDocs } from 'firebase/firestore';
 
 // ==========================================
 // 内置 SVG 图标
@@ -130,20 +132,12 @@ export default function App() {
       setIsLoading(false);
     });
 
-    const script = document.createElement('script');
-    script.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
-    script.async = true;
-    document.body.appendChild(script);
-
     return () => {
       unsubscribe();
-      if (document.body.contains(script)) {
-        document.body.removeChild(script);
-      }
     };
   }, []);
 
-  // 抓取数据
+  // 抓取数据 (性能优化：按需拉取)
   useEffect(() => {
     if (!user) return;
 
@@ -154,21 +148,11 @@ export default function App() {
       }
     };
 
-    const studentsRef = collection(db, getCollectionPath('students'));
-    const unsubscribeStudents = onSnapshot(query(studentsRef), (snapshot) => {
-      setStudents(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    }, handleFirestoreError);
-
+    // 1. 始终拉取公开展示的数据 (公告、学校报告)
     const announcementsRef = collection(db, getCollectionPath('announcements'));
     const unsubscribeAnnouncements = onSnapshot(query(announcementsRef), (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setAnnouncements(data.sort((a, b) => new Date(b.date) - new Date(a.date)));
-    }, handleFirestoreError);
-
-    const logsRef = collection(db, getCollectionPath('logs'));
-    const unsubscribeLogs = onSnapshot(query(logsRef), (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setLogs(data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)));
     }, handleFirestoreError);
 
     const reportsRef = collection(db, getCollectionPath('schoolReports'));
@@ -177,27 +161,49 @@ export default function App() {
       setSchoolReports(data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)));
     }, handleFirestoreError);
 
-    const notesRef = collection(db, getCollectionPath('adminNotes'));
-    const unsubscribeNotes = onSnapshot(query(notesRef), (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setAdminNotes(data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)));
-    }, handleFirestoreError);
+    let unsubscribeStudents = () => {};
+    let unsubscribeCards = () => {};
+    let unsubscribeLogs = () => {};
+    let unsubscribeNotes = () => {};
 
-    const cardsRef = collection(db, getCollectionPath('cardRequests'));
-    const unsubscribeCards = onSnapshot(query(cardsRef), (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setCardRequests(data.sort((a, b) => new Date(b.requestedAt) - new Date(a.requestedAt)));
-    }, handleFirestoreError);
+    // 2. 只有当用户以 教师 或 管理员 登录时，才拉取全校学生和制卡申请
+    if (authRole === 'admin' || authRole === 'teacher') {
+      const studentsRef = collection(db, getCollectionPath('students'));
+      unsubscribeStudents = onSnapshot(query(studentsRef), (snapshot) => {
+        setStudents(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      }, handleFirestoreError);
+
+      const cardsRef = collection(db, getCollectionPath('cardRequests'));
+      unsubscribeCards = onSnapshot(query(cardsRef), (snapshot) => {
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setCardRequests(data.sort((a, b) => new Date(b.requestedAt) - new Date(a.requestedAt)));
+      }, handleFirestoreError);
+    }
+
+    // 3. 只有当用户以 管理员 登录时，才拉取敏感的系统日志和备忘录
+    if (authRole === 'admin') {
+      const logsRef = collection(db, getCollectionPath('logs'));
+      unsubscribeLogs = onSnapshot(query(logsRef), (snapshot) => {
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setLogs(data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)));
+      }, handleFirestoreError);
+
+      const notesRef = collection(db, getCollectionPath('adminNotes'));
+      unsubscribeNotes = onSnapshot(query(notesRef), (snapshot) => {
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setAdminNotes(data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)));
+      }, handleFirestoreError);
+    }
 
     return () => {
-      unsubscribeStudents();
       unsubscribeAnnouncements();
-      unsubscribeLogs();
       unsubscribeReports();
-      unsubscribeNotes();
+      unsubscribeStudents();
       unsubscribeCards();
+      unsubscribeLogs();
+      unsubscribeNotes();
     };
-  }, [user]);
+  }, [user, authRole]);
 
   const showMessage = (title, text) => setModalMessage({ title, text });
 
@@ -219,7 +225,8 @@ export default function App() {
     }
 
     if (activeTab === 'home') {
-      return <HomeView students={students} announcements={announcements} schoolReports={schoolReports} db={db} getCollectionPath={getCollectionPath} showMessage={showMessage} authRole={authRole} currentUser={user} setActiveTab={setActiveTab} />;
+      // 注意：HomeView 不再接收所有 students，而是点击搜索时才向 Firebase 请求数据
+      return <HomeView announcements={announcements} schoolReports={schoolReports} db={db} getCollectionPath={getCollectionPath} showMessage={showMessage} authRole={authRole} currentUser={user} setActiveTab={setActiveTab} />;
     } else if (activeTab === 'teacher') {
       if (authRole === 'teacher' || authRole === 'admin') {
         return <TeacherPortal students={students} db={db} getCollectionPath={getCollectionPath} showMessage={showMessage} />;
@@ -343,17 +350,18 @@ const EmojiPicker = ({ onSelect, onClose }) => {
 // ==========================================
 // 3. 首页视图
 // ==========================================
-function HomeView({ students, announcements, schoolReports, db, getCollectionPath, showMessage, authRole, currentUser, setActiveTab }) {
+function HomeView({ announcements, schoolReports, db, getCollectionPath, showMessage, authRole, currentUser, setActiveTab }) {
   const [icNumber, setIcNumber] = useState('');
   const [result, setResult] = useState(null);
   const [searched, setSearched] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
 
   // 留言相关状态
   const [commentInputs, setCommentInputs] = useState({});
   const [commentNames, setCommentNames] = useState({});
   const [activeCommentId, setActiveCommentId] = useState(null);
   const [editCommentText, setEditCommentText] = useState('');
-  const [showEmojiPicker, setShowEmojiPicker] = useState(null); // 记录哪个项正在显示 emoji 选择器
+  const [showEmojiPicker, setShowEmojiPicker] = useState(null);
 
   // 获取动态问候语
   const getGreeting = () => {
@@ -364,25 +372,38 @@ function HomeView({ students, announcements, schoolReports, db, getCollectionPat
   };
   const greeting = useMemo(() => getGreeting(), []);
 
-  const handleSearch = (e) => {
+  // 修改：点击搜索时按需加载
+  const handleSearch = async (e) => {
     e.preventDefault();
     if (!icNumber.trim()) return;
     
+    setIsSearching(true);
     const cleanInput = icNumber.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
     
-    const student = students.find(s => {
-      const cleanIC = (s.ic || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-      const cleanBC = (s.birthCert || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-      return cleanIC === cleanInput || cleanBC === cleanInput;
-    });
-    
-    setResult(student || null);
-    setSearched(true);
+    try {
+      // 从 Firebase 获取全校名单（仅在点击搜索时执行一次，省流量）
+      const studentsRef = collection(db, getCollectionPath('students'));
+      const querySnapshot = await getDocs(query(studentsRef));
+      const allStudents = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      const student = allStudents.find(s => {
+        const cleanIC = (s.ic || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+        const cleanBC = (s.birthCert || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+        return cleanIC === cleanInput || cleanBC === cleanInput;
+      });
+      
+      setResult(student || null);
+      setSearched(true);
 
-    if (window.logSystemAction) {
-      if (student) window.logSystemAction('visitor', '成功查询资料', `家长/学生成功进入，输入的身份证/报生纸: ${icNumber} (学生: ${student.name}, 班级: ${student.classYear}${student.classColor})`);
-      else window.logSystemAction('visitor', '查询失败', `家长/学生尝试进入但失败，输入的号码: ${icNumber}`);
+      if (window.logSystemAction) {
+        if (student) window.logSystemAction('visitor', '成功查询资料', `家长/学生成功进入，输入的身份证/报生纸: ${icNumber} (学生: ${student.name}, 班级: ${student.classYear}${student.classColor})`);
+        else window.logSystemAction('visitor', '查询失败', `家长/学生尝试进入但失败，输入的号码: ${icNumber}`);
+      }
+    } catch (error) {
+      showMessage("错误", "无法连接数据库进行查询: " + error.message);
     }
+    
+    setIsSearching(false);
   };
 
   // ----- 点赞与留言交互逻辑 (无需登录) -----
@@ -443,7 +464,6 @@ function HomeView({ students, announcements, schoolReports, db, getCollectionPat
 
     try {
       await updateDoc(doc(db, getCollectionPath(collectionName), item.id), { comments: newComments });
-      // 清空当前项的输入状态
       setCommentInputs(prev => { const next = {...prev}; delete next[item.id]; return next; });
       setCommentNames(prev => { const next = {...prev}; delete next[item.id]; return next; });
       setActiveCommentId(null);
@@ -633,8 +653,8 @@ function HomeView({ students, announcements, schoolReports, db, getCollectionPat
             value={icNumber}
             onChange={(e) => setIcNumber(e.target.value)}
           />
-          <button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-lg px-8 py-4 rounded-2xl shadow-md transition-transform active:scale-95 flex items-center justify-center gap-2">
-            查询 (Cari)
+          <button type="submit" disabled={isSearching} className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-lg px-8 py-4 rounded-2xl shadow-md transition-transform active:scale-95 flex items-center justify-center gap-2">
+            {isSearching ? '正在查询...' : '查询 (Cari)'}
           </button>
         </form>
 
@@ -847,17 +867,19 @@ function InfoItem({ label, value, isHighlight, isAlert, className = "" }) {
 function LoginView({ roleTarget, setAuthRole, showMessage }) {
   const [pin, setPin] = useState('');
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    if (roleTarget === 'teacher' && pin === 'xcc6027@km') {
-      setAuthRole('teacher');
-      showMessage("登录成功", "欢迎进入教师控制台。");
-      if (window.logSystemAction) window.logSystemAction('teacher', '系统登录', '教师成功登录系统');
-    } else if (roleTarget === 'admin' && pin === 'XCC6027@km') {
-      setAuthRole('admin');
-      showMessage("登录成功", "欢迎进入系统后台。");
-      if (window.logSystemAction) window.logSystemAction('admin', '系统登录', '管理员成功登录后台');
-    } else {
+    try {
+      // 引入 Firebase 身份验证逻辑，替换硬编码密码
+      const auth = getAuth();
+      const email = roleTarget === 'admin' ? 'admin@kungming.edu.my' : 'teacher@kungming.edu.my';
+      
+      await signInWithEmailAndPassword(auth, email, pin); 
+      
+      setAuthRole(roleTarget);
+      showMessage("登录成功", `欢迎进入${roleTarget === 'admin' ? '系统后台' : '教师控制台'}。`);
+      if (window.logSystemAction) window.logSystemAction(roleTarget, '系统登录', `${roleTarget === 'admin' ? '管理员' : '教师'}成功登录`);
+    } catch (error) {
       showMessage("错误", "密码不正确，请重试。");
       if (window.logSystemAction) window.logSystemAction('visitor', '登录失败', `尝试进入 ${roleTarget === 'admin' ? '管理员' : '教师'} 后台时密码错误`);
       setPin('');
@@ -871,7 +893,7 @@ function LoginView({ roleTarget, setAuthRole, showMessage }) {
       </div>
       <h2 className="text-2xl font-bold text-gray-800 mb-2">安全登录</h2>
       <p className="text-sm text-gray-500 mb-6">
-        {roleTarget === 'admin' ? "请输入管理员密码" : "请输入教师专属密码 (Kata Laluan Guru)"}
+        {roleTarget === 'admin' ? "请输入管理员账号密码" : "请输入教师专属账号密码"}
       </p>
       <form onSubmit={handleLogin} className="space-y-6">
         <input 
@@ -896,7 +918,6 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
   const [selectedYear, setSelectedYear] = useState('1');
   const [selectedColor, setSelectedColor] = useState('H');
   const [transferModal, setTransferModal] = useState(null);
-  const [teacherSearchTerm, setTeacherSearchTerm] = useState('');
   
   const [selectedForCardReq, setSelectedForCardReq] = useState([]);
   const [cardReqModal, setCardReqModal] = useState(false);
@@ -927,21 +948,9 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
     });
   }, [students, selectedYear, selectedColor]);
 
-  const displayedStudents = useMemo(() => {
-    if (teacherSearchTerm.trim() !== '') {
-      const lower = teacherSearchTerm.toLowerCase();
-      return students.filter(s =>
-        s.name.toLowerCase().includes(lower) ||
-        (s.ic && s.ic.toLowerCase().includes(lower)) ||
-        formatSimpleClassName(s.classYear, s.classColor).toLowerCase().includes(lower)
-      );
-    }
-    return classStudents;
-  }, [students, classStudents, teacherSearchTerm]);
-
   const exportToExcel = () => {
     if (typeof window.XLSX === 'undefined') { showMessage("错误", "Excel导出工具尚未加载，请稍等。"); return; }
-    const exportData = displayedStudents.map(s => ({
+    const exportData = classStudents.map(s => ({
       "KELAS": `${s.classYear}${s.classColor}`, "TARIKH MASUK": s.admissionDate || '', "NO.RUJ IDME": s.idme || '', "NO RUJ SEK": s.studentId || '', "NAMA MURID": s.name.includes('(') ? s.name.split('(')[0].trim() : s.name, "姓名": s.name.includes('(') ? s.name.split('(')[1].replace(')', '').trim() : '', "JANTINA": s.gender || '', "RUMAH SUKAN": s.sportsHouse || '', "SURAT BERANAK": s.birthCert || '', "TARIKH LAHIR": s.dob || '', "ic": s.rawIc || '', "IC MURID": s.ic, "EMAIL DELIMA": s.delimaId, "PASSWORD": s.password
     }));
     const ws = window.XLSX.utils.json_to_sheet(exportData);
@@ -972,10 +981,10 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
   };
 
   const toggleAllCardSelect = () => {
-    if (selectedForCardReq.length === displayedStudents.length) {
+    if (selectedForCardReq.length === classStudents.length) {
       setSelectedForCardReq([]);
     } else {
-      setSelectedForCardReq([...displayedStudents]);
+      setSelectedForCardReq([...classStudents]);
     }
   };
 
@@ -1010,28 +1019,22 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-6 border-b border-purple-100 pb-6">
         <div>
           <h2 className="text-2xl md:text-3xl font-bold text-amber-600 flex items-center gap-3"><UserCheck size={28} /> 教师控制台 (Panel Guru)</h2>
-          <p className="text-sm md:text-base text-gray-500 mt-2">请选择您的班级以查看和整理资料，或直接搜索全校学生。</p>
+          <p className="text-sm md:text-base text-gray-500 mt-2">请选择您的班级以查看和整理资料。</p>
         </div>
-        <div className="flex flex-col items-end gap-3 w-full md:w-auto">
-          <div className="relative w-full md:w-64">
-            <input type="text" placeholder="输入姓名或IC搜索全校..." className="w-full p-2.5 pl-10 border border-amber-200 rounded-xl text-sm outline-none focus:border-amber-500" value={teacherSearchTerm} onChange={(e) => setTeacherSearchTerm(e.target.value)} />
-            <Search size={18} className="absolute left-3 top-3 text-gray-400" />
-          </div>
-          <div className="flex flex-wrap gap-3 bg-purple-50 p-3 rounded-2xl w-full justify-end">
-            <select className="text-base p-2 rounded-xl border border-purple-200 outline-none focus:border-purple-400" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
-              {years.map(y => <option key={y.val} value={y.val}>{y.label}</option>)}
+        <div className="flex flex-wrap gap-3 bg-purple-50 p-3 rounded-2xl">
+          <select className="text-base p-2 rounded-xl border border-purple-200 outline-none focus:border-purple-400" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
+            {years.map(y => <option key={y.val} value={y.val}>{y.label}</option>)}
+          </select>
+          {selectedYear !== '19' && selectedYear !== '20' && (
+            <select className="text-base p-2 rounded-xl border border-purple-200 outline-none focus:border-purple-400" value={selectedColor} onChange={(e) => setSelectedColor(e.target.value)}>
+              {colors.map(c => <option key={c} value={c}>{c} 班</option>)}
             </select>
-            {selectedYear !== '19' && selectedYear !== '20' && (
-              <select className="text-base p-2 rounded-xl border border-purple-200 outline-none focus:border-purple-400" value={selectedColor} onChange={(e) => setSelectedColor(e.target.value)}>
-                {colors.map(c => <option key={c} value={c}>{c} 班</option>)}
-              </select>
-            )}
-          </div>
+          )}
         </div>
       </div>
 
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
-        <h3 className="text-xl font-bold text-gray-800">学生列表 ({displayedStudents.length} 人) {teacherSearchTerm && <span className="text-amber-500 text-sm">(全校搜索结果)</span>}</h3>
+        <h3 className="text-xl font-bold text-gray-800">学生列表 ({classStudents.length} 人)</h3>
         <div className="flex gap-2">
           {selectedForCardReq.length > 0 && (
             <button onClick={() => setCardReqModal(true)} className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-2 rounded-xl font-bold text-sm shadow-sm transition-all">
@@ -1048,15 +1051,15 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
             <tr className="bg-gray-50 text-gray-600 text-sm border-b border-gray-200">
               <th className="p-4 w-12 text-center">
                 <input type="checkbox" className="w-4 h-4 cursor-pointer" 
-                  checked={displayedStudents.length > 0 && selectedForCardReq.length === displayedStudents.length} 
+                  checked={classStudents.length > 0 && selectedForCardReq.length === classStudents.length} 
                   onChange={toggleAllCardSelect} 
                 />
               </th>
-              <th className="p-4 font-semibold">姓名</th><th className="p-4 font-semibold">班级</th><th className="p-4 font-semibold">IC 号码</th><th className="p-4 font-semibold">DELIMA ID</th><th className="p-4 font-semibold">密码</th><th className="p-4 font-semibold text-center">操作</th>
+              <th className="p-4 font-semibold">姓名</th><th className="p-4 font-semibold">IC 号码</th><th className="p-4 font-semibold">DELIMA ID</th><th className="p-4 font-semibold">密码</th><th className="p-4 font-semibold text-center">操作</th>
             </tr>
           </thead>
           <tbody>
-            {displayedStudents.map((s, idx) => (
+            {classStudents.map((s, idx) => (
               <tr key={s.id} className={`text-sm border-b border-gray-100 ${idx % 2 === 0 ? 'bg-white' : 'bg-[#fafafa]'} hover:bg-purple-50 transition-colors`}>
                 <td className="p-4 text-center">
                   <input type="checkbox" className="w-4 h-4 cursor-pointer" 
@@ -1064,7 +1067,7 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
                     onChange={() => toggleStudentCardSelect(s)} 
                   />
                 </td>
-                <td className="p-4 font-bold text-gray-800">{s.name}</td><td className="p-4 font-semibold text-amber-600">{formatSimpleClassName(s.classYear, s.classColor)}</td><td className="p-4 font-mono text-gray-600">{s.ic}</td><td className="p-4 font-mono text-purple-600">{s.delimaId}</td><td className="p-4 font-mono text-gray-600">{s.password}</td>
+                <td className="p-4 font-bold text-gray-800">{s.name}</td><td className="p-4 font-mono text-gray-600">{s.ic}</td><td className="p-4 font-mono text-purple-600">{s.delimaId}</td><td className="p-4 font-mono text-gray-600">{s.password}</td>
                 <td className="p-4 text-center">
                   {selectedYear !== '19' && selectedYear !== '20' && (
                     <button onClick={() => setTransferModal(s)} className="bg-amber-50 text-amber-600 border border-amber-200 hover:bg-amber-100 px-3 py-1.5 rounded-lg font-semibold text-xs transition-colors">标为转校</button>
@@ -1072,24 +1075,23 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
                 </td>
               </tr>
             ))}
-            {displayedStudents.length === 0 && (<tr><td colSpan="7" className="p-8 text-center text-gray-500 text-base">未找到符合条件的学生数据。</td></tr>)}
+            {classStudents.length === 0 && (<tr><td colSpan="6" className="p-8 text-center text-gray-500 text-base">该班级暂无学生数据。</td></tr>)}
           </tbody>
         </table>
       </div>
 
       <div className="md:hidden space-y-4">
-        {displayedStudents.map(s => (
+        {classStudents.map(s => (
           <div key={s.id} className="bg-white border border-gray-200 p-5 rounded-2xl shadow-sm relative">
             <div className="absolute top-5 right-5">
                <input type="checkbox" className="w-5 h-5 cursor-pointer" checked={!!selectedForCardReq.find(sel => sel.ic === s.ic)} onChange={() => toggleStudentCardSelect(s)} />
             </div>
-            <h4 className="text-lg font-bold text-gray-800 mb-1 pr-8">{s.name}</h4>
-            <div className="text-xs font-bold text-amber-600 mb-2 bg-amber-50 inline-block px-2 py-1 rounded">{formatClassName(s.classYear, s.classColor)}</div>
+            <h4 className="text-lg font-bold text-gray-800 mb-2 pr-8">{s.name}</h4>
             <div className="space-y-1 text-sm text-gray-600 mb-4"><p>IC: <span className="font-mono text-gray-800">{s.ic}</span></p><p>DELIMA: <span className="font-mono text-purple-600 font-bold">{s.delimaId}</span></p><p>Pwd: <span className="font-mono text-gray-800">{s.password}</span></p></div>
             {selectedYear !== '19' && selectedYear !== '20' && (<button onClick={() => setTransferModal(s)} className="w-full bg-amber-50 border border-amber-200 text-amber-700 py-2.5 rounded-xl font-bold text-sm transition-colors">标为转校 (Pindah Sekolah)</button>)}
           </div>
         ))}
-        {displayedStudents.length === 0 && (<div className="p-6 text-center text-gray-500 text-sm border border-gray-200 rounded-2xl">未找到符合条件的学生数据。</div>)}
+        {classStudents.length === 0 && (<div className="p-6 text-center text-gray-500 text-sm border border-gray-200 rounded-2xl">该班级暂无学生数据。</div>)}
       </div>
 
       {transferModal && (
@@ -1144,9 +1146,6 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
 function AdminPortal({ students, announcements, logs, schoolReports, adminNotes, cardRequests, db, getCollectionPath, showMessage }) {
   const [adminMainTab, setAdminMainTab] = useState('card_requests'); 
   const [confirmModal, setConfirmModal] = useState(null);
-  
-  const [isAddingStudent, setIsAddingStudent] = useState(false);
-  const [newStudentForm, setNewStudentForm] = useState({ name: '', ic: '', classYear: '1', classColor: 'H', delimaId: '', password: '', gender: 'L', studentId: '', idme: '', birthCert: '', dob: '', sportsHouse: '' });
   
   const compressImage = (file, callback) => {
     if (!file.type.startsWith('image/')) { showMessage("错误", "请上传图片文件"); return; }
@@ -1281,19 +1280,6 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
     e.preventDefault();
     try { await updateDoc(doc(db, getCollectionPath('students'), editStudent.id), editStudent); showMessage("成功", "更新成功。"); setEditStudent(null); } 
     catch (err) { showMessage("错误", err.message); }
-  };
-
-  const handleAddSingleStudent = async (e) => {
-    e.preventDefault();
-    try {
-      if (!newStudentForm.ic || !newStudentForm.name) { showMessage("错误", "姓名和IC号码为必填项。"); return; }
-      const ns = { ...newStudentForm, rawIc: newStudentForm.ic, status: 'Active' };
-      await setDoc(doc(db, getCollectionPath('students'), ns.ic), ns);
-      showMessage("成功", `已成功添加学生 [${ns.name}]。`);
-      if (window.logSystemAction) window.logSystemAction('admin', '手动新增学生', `手动新增了新生 [${ns.name}]`);
-      setIsAddingStudent(false);
-      setNewStudentForm({ name: '', ic: '', classYear: '1', classColor: 'H', delimaId: '', password: '', gender: 'L', studentId: '', idme: '', birthCert: '', dob: '', sportsHouse: '' });
-    } catch (err) { showMessage("错误", err.message); }
   };
 
   // ---------- 标签 2：通告与活动管理 ----------
@@ -1704,14 +1690,9 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
           <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm">
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
               <h3 className="text-lg md:text-xl font-bold text-purple-800">全校学生名单管理</h3>
-              <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
-                <button onClick={() => setIsAddingStudent(true)} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-all whitespace-nowrap">
-                  ➕ 新增一位学生
-                </button>
-                <div className="relative w-full md:w-64">
-                  <input type="text" placeholder="搜索姓名、IC 或 班级..." className="w-full p-2.5 pl-10 border border-gray-300 rounded-xl text-sm focus:outline-none focus:border-purple-500" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                  <Search size={18} className="absolute left-3 top-3 text-gray-400" />
-                </div>
+              <div className="relative w-full md:w-1/3">
+                <input type="text" placeholder="搜索姓名、IC 或 班级..." className="w-full p-2.5 pl-10 border border-gray-300 rounded-xl text-sm focus:outline-none focus:border-purple-500" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                <Search size={18} className="absolute left-3 top-3 text-gray-400" />
               </div>
             </div>
             <div className="overflow-x-auto rounded-xl border border-gray-200 h-[600px] overflow-y-auto">
@@ -1993,32 +1974,6 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
                 <div><label className="block text-sm font-bold text-gray-700 mb-1">运动队伍 (RUMAH SUKAN)</label><input type="text" value={editStudent.sportsHouse} onChange={(e) => setEditStudent({...editStudent, sportsHouse: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
               </div>
               <div className="flex gap-4 mt-8"><button type="button" onClick={() => setEditStudent(null)} className="flex-1 bg-gray-100 font-bold py-3 rounded-xl">取消</button><button type="submit" className="flex-1 bg-purple-600 text-white font-bold py-3 rounded-xl">保存修改</button></div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* 新增单名学生的独立弹窗 (针对模块 1) */}
-      {isAddingStudent && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[105]">
-          <div className="bg-white rounded-3xl p-8 w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl animate-slide-up">
-            <h3 className="text-2xl font-bold text-purple-800 mb-6 flex items-center gap-2"><UserCheck size={24} /> 新增一位学生 (Murid Baru)</h3>
-            <form onSubmit={handleAddSingleStudent}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div><label className="block text-sm font-bold text-gray-700 mb-1">姓名 (NAMA MURID)</label><input required type="text" value={newStudentForm.name} onChange={(e) => setNewStudentForm({...newStudentForm, name: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" placeholder="如: AHMAD (阿末)" /></div>
-                <div><label className="block text-sm font-bold text-gray-700 mb-1">IC 号码 (必填)</label><input required type="text" value={newStudentForm.ic} onChange={(e) => setNewStudentForm({...newStudentForm, ic: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm outline-none focus:border-purple-500" placeholder="如: 140101-12-1234" /></div>
-                <div><label className="block text-sm font-bold text-gray-700 mb-1">年级编号 (1~6 或 19, 20)</label><input required type="text" value={newStudentForm.classYear} onChange={(e) => setNewStudentForm({...newStudentForm, classYear: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
-                <div><label className="block text-sm font-bold text-gray-700 mb-1">班级 (如 H, M)</label><input type="text" value={newStudentForm.classColor} onChange={(e) => setNewStudentForm({...newStudentForm, classColor: e.target.value.toUpperCase()})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
-                <div><label className="block text-sm font-bold text-gray-700 mb-1">DELIMA ID</label><input type="text" value={newStudentForm.delimaId} onChange={(e) => setNewStudentForm({...newStudentForm, delimaId: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
-                <div><label className="block text-sm font-bold text-gray-700 mb-1">密码</label><input type="text" value={newStudentForm.password} onChange={(e) => setNewStudentForm({...newStudentForm, password: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
-                <div><label className="block text-sm font-bold text-gray-700 mb-1">性别</label><input type="text" value={newStudentForm.gender} onChange={(e) => setNewStudentForm({...newStudentForm, gender: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" placeholder="如: L/P" /></div>
-                <div><label className="block text-sm font-bold text-gray-700 mb-1">学号 (NO RUJ SEK)</label><input type="text" value={newStudentForm.studentId} onChange={(e) => setNewStudentForm({...newStudentForm, studentId: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
-                <div><label className="block text-sm font-bold text-gray-700 mb-1">IDME</label><input type="text" value={newStudentForm.idme} onChange={(e) => setNewStudentForm({...newStudentForm, idme: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
-                <div><label className="block text-sm font-bold text-gray-700 mb-1">报生纸 (SURAT BERANAK)</label><input type="text" value={newStudentForm.birthCert} onChange={(e) => setNewStudentForm({...newStudentForm, birthCert: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
-                <div><label className="block text-sm font-bold text-gray-700 mb-1">出生日期</label><input type="text" value={newStudentForm.dob} onChange={(e) => setNewStudentForm({...newStudentForm, dob: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" placeholder="如: 01/01/2014" /></div>
-                <div><label className="block text-sm font-bold text-gray-700 mb-1">运动队伍 (RUMAH SUKAN)</label><input type="text" value={newStudentForm.sportsHouse} onChange={(e) => setNewStudentForm({...newStudentForm, sportsHouse: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
-              </div>
-              <div className="flex gap-4 mt-8"><button type="button" onClick={() => setIsAddingStudent(false)} className="flex-1 bg-gray-100 font-bold py-3 rounded-xl">取消</button><button type="submit" className="flex-1 bg-purple-600 text-white font-bold py-3 rounded-xl">确认新增</button></div>
             </form>
           </div>
         </div>
