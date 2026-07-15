@@ -1,13 +1,8 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
-// 引入 signInWithEmailAndPassword 用于安全登录
-import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signInWithEmailAndPassword } from 'firebase/auth';
-// 引入 getDocs 用于首页按需搜索
+import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, query, onSnapshot, doc, setDoc, deleteDoc, updateDoc, getDocs } from 'firebase/firestore';
 
-// ==========================================
-// 内置 SVG 图标
-// ==========================================
 const Search = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>);
 const LogOut = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>);
 const Download = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>);
@@ -29,14 +24,10 @@ const CreditCard = ({ size = 20, className = "" }) => (<svg width={size} height=
 const CheckCircle = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>);
 const Undo = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg>);
 
-// 新增点赞与留言图标
 const Heart = ({ size = 20, className = "", filled = false }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>);
 const MessageCircle = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>);
 const Smile = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>);
 
-// ==========================================
-// 1. Firebase 设定与初始化
-// ==========================================
 const firebaseConfig = typeof __firebase_config !== 'undefined' 
   ? JSON.parse(__firebase_config) 
   : {
@@ -61,15 +52,11 @@ const getCollectionPath = (collectionName) => {
   return collectionName; 
 };
 
-// ==========================================
-// 2. 主应用程序 (App Component)
-// ==========================================
 export default function App() {
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('home'); 
   const [authRole, setAuthRole] = useState(''); 
   
-  // 数据状态
   const [students, setStudents] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
   const [logs, setLogs] = useState([]);
@@ -77,7 +64,6 @@ export default function App() {
   const [adminNotes, setAdminNotes] = useState([]); 
   const [cardRequests, setCardRequests] = useState([]);
   
-  // 弹窗与加载状态
   const [isLoading, setIsLoading] = useState(true);
   const [modalMessage, setModalMessage] = useState(null);
 
@@ -137,7 +123,6 @@ export default function App() {
     };
   }, []);
 
-  // 抓取数据 (性能优化：按需拉取)
   useEffect(() => {
     if (!user) return;
 
@@ -148,7 +133,6 @@ export default function App() {
       }
     };
 
-    // 1. 始终拉取公开展示的数据 (公告、学校报告)
     const announcementsRef = collection(db, getCollectionPath('announcements'));
     const unsubscribeAnnouncements = onSnapshot(query(announcementsRef), (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -166,7 +150,6 @@ export default function App() {
     let unsubscribeLogs = () => {};
     let unsubscribeNotes = () => {};
 
-    // 2. 只有当用户以 教师 或 管理员 登录时，才拉取全校学生和制卡申请
     if (authRole === 'admin' || authRole === 'teacher') {
       const studentsRef = collection(db, getCollectionPath('students'));
       unsubscribeStudents = onSnapshot(query(studentsRef), (snapshot) => {
@@ -180,7 +163,6 @@ export default function App() {
       }, handleFirestoreError);
     }
 
-    // 3. 只有当用户以 管理员 登录时，才拉取敏感的系统日志和备忘录
     if (authRole === 'admin') {
       const logsRef = collection(db, getCollectionPath('logs'));
       unsubscribeLogs = onSnapshot(query(logsRef), (snapshot) => {
@@ -225,7 +207,6 @@ export default function App() {
     }
 
     if (activeTab === 'home') {
-      // 注意：HomeView 不再接收所有 students，而是点击搜索时才向 Firebase 请求数据
       return <HomeView announcements={announcements} schoolReports={schoolReports} db={db} getCollectionPath={getCollectionPath} showMessage={showMessage} authRole={authRole} currentUser={user} setActiveTab={setActiveTab} />;
     } else if (activeTab === 'teacher') {
       if (authRole === 'teacher' || authRole === 'admin') {
@@ -320,9 +301,6 @@ export default function App() {
   );
 }
 
-// ==========================================
-// Emoji Picker Component
-// ==========================================
 const EmojiPicker = ({ onSelect, onClose }) => {
   const emojis = ['👍', '❤️', '😀', '👏', '🎉', '🔥', '🙌', '💯', '🤔', '👀', '😊', '🥳', '💪', '🙏', '✨', '🌟'];
   return (
@@ -347,23 +325,18 @@ const EmojiPicker = ({ onSelect, onClose }) => {
   );
 };
 
-// ==========================================
-// 3. 首页视图
-// ==========================================
 function HomeView({ announcements, schoolReports, db, getCollectionPath, showMessage, authRole, currentUser, setActiveTab }) {
   const [icNumber, setIcNumber] = useState('');
   const [result, setResult] = useState(null);
   const [searched, setSearched] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
 
-  // 留言相关状态
   const [commentInputs, setCommentInputs] = useState({});
   const [commentNames, setCommentNames] = useState({});
   const [activeCommentId, setActiveCommentId] = useState(null);
   const [editCommentText, setEditCommentText] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(null);
 
-  // 获取动态问候语
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return { text: "Selamat Pagi! 早上好 👋", sub: "Semoga hari anda ceria." };
@@ -372,7 +345,6 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
   };
   const greeting = useMemo(() => getGreeting(), []);
 
-  // 修改：点击搜索时按需加载
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!icNumber.trim()) return;
@@ -381,7 +353,6 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
     const cleanInput = icNumber.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
     
     try {
-      // 从 Firebase 获取全校名单（仅在点击搜索时执行一次，省流量）
       const studentsRef = collection(db, getCollectionPath('students'));
       const querySnapshot = await getDocs(query(studentsRef));
       const allStudents = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -406,7 +377,6 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
     setIsSearching(false);
   };
 
-  // ----- 点赞与留言交互逻辑 (无需登录) -----
   const handleLike = async (item, collectionName) => {
     const visitorId = authRole ? `role_${authRole}` : (currentUser?.uid || 'anonymous');
     const isLiked = (item.likes || []).includes(visitorId);
@@ -502,10 +472,9 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
     const commentDate = new Date(comment.timestamp);
     const now = new Date();
     const hoursDiff = (now - commentDate) / (1000 * 60 * 60);
-    return hoursDiff <= 24; // 24小时内可修改
+    return hoursDiff <= 24; 
   };
 
-  // ----- 渲染交互区 (点赞与留言) -----
   const renderInteractionArea = (item, collectionName) => {
     const visitorId = authRole ? `role_${authRole}` : (currentUser?.uid || 'anonymous');
     const isLiked = (item.likes || []).includes(visitorId);
@@ -532,7 +501,6 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
           </button>
         </div>
 
-        {/* 留言列表 */}
         {(item.comments || []).length > 0 && (
           <div className="space-y-3 mb-4 max-h-48 overflow-y-auto pr-2 bg-gray-50/50 p-3 rounded-2xl border border-gray-100">
             {item.comments.map(c => (
@@ -570,7 +538,6 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
           </div>
         )}
 
-        {/* 发表留言框 */}
         {activeCommentId === `new-${item.id}` && (
           <form onSubmit={(e) => handleAddComment(item, collectionName, e)} className="flex flex-col gap-2 mt-2 relative z-20">
             <div className="relative">
@@ -619,14 +586,11 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
 
   return (
     <div className="space-y-10 animate-fade-in">
-      
-      {/* 问候语 */}
       <div className="px-4 text-center md:text-left">
         <h2 className="text-3xl md:text-4xl font-extrabold text-purple-800">{greeting.text}</h2>
         <p className="text-lg text-purple-600 mt-2 font-medium">{greeting.sub} ✨</p>
       </div>
 
-      {/* 搜索区块 */}
       <section className="bg-white rounded-3xl p-6 md:p-10 shadow-lg border border-purple-50 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-purple-100 rounded-full blur-3xl opacity-50 -translate-y-1/2 translate-x-1/2"></div>
         
@@ -658,7 +622,6 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
           </button>
         </form>
 
-        {/* 刚进入且未搜索时显示的提示信息 */}
         {!searched && (
            <div className="mt-8 pt-8 border-t border-purple-50 text-center text-gray-500">
              <p>Masukkan nombor pendaftaran untuk bermula.</p>
@@ -712,14 +675,12 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
         )}
       </section>
 
-      {/* 学校报告和使用率展示区 */}
       {schoolReports.length > 0 && (
         <section className="animate-slide-up">
           <h2 className="text-2xl md:text-3xl font-extrabold text-blue-800 mb-6 flex items-center gap-3 pl-4 border-l-8 border-blue-500 rounded-l-md">
             <FileText size={28} className="text-blue-500" /> Laporan & Penggunaan Sekolah (学校重要信息与使用率)
           </h2>
           <div className="space-y-6">
-            {/* 只显示第一篇 (最新的) 报告 */}
             {schoolReports.slice(0, 1).map(rep => (
               <div key={rep.id} className="bg-white rounded-3xl overflow-hidden shadow-lg border border-blue-100">
                 {rep.image && (
@@ -739,7 +700,6 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
                     {rep.content}
                   </p>
                   
-                  {/* 使用率进度条 */}
                   {(rep.studentUsage || rep.teacherUsage) && (
                     <div className="bg-blue-50/50 p-5 rounded-2xl border border-blue-100 grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                       {rep.studentUsage && (
@@ -770,8 +730,6 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
                   <div className="text-xs text-gray-400 font-medium text-right mt-2 pt-3">
                     Tarikh Kemaskini: {new Date(rep.timestamp).toLocaleString()}
                   </div>
-
-                  {/* 交互区：点赞与留言 */}
                   {renderInteractionArea(rep, 'schoolReports')}
                 </div>
               </div>
@@ -780,7 +738,6 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
         </section>
       )}
 
-      {/* DELIMA Login Button */}
       <section className="animate-slide-up">
         <a 
           href="https://d2.delima.edu.my/login" 
@@ -799,7 +756,6 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
         </a>
       </section>
 
-      {/* 公告区 */}
       <section>
         <h2 className="text-2xl md:text-3xl font-extrabold text-purple-800 mb-6 flex items-center gap-3 pl-4 border-l-8 border-amber-400 rounded-l-md">
           <BookOpen size={28} className="text-amber-500" /> Hebahan & Aktiviti DELIMA (最新活动)
@@ -808,15 +764,14 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
           {announcements.length === 0 ? (
             <p className="text-base text-gray-500 p-8 col-span-2 text-center bg-white rounded-2xl shadow-sm border border-purple-50">暂无最新活动公告。</p>
           ) : (
-            announcements.map((ann) => (
+            announcements.slice(0, 10).map((ann) => (
               <div 
                 key={ann.id} 
                 className="bg-white rounded-2xl p-6 md:p-8 shadow-sm hover:shadow-md transition-all border border-purple-50 flex flex-col justify-between overflow-hidden"
               >
-                {/* 完整显示照片，不裁剪 */}
                 {ann.image && (
                   <div className="-mx-6 md:-mx-8 -mt-6 md:-mt-8 mb-6 bg-gray-50 flex items-center justify-center border-b border-gray-100">
-                    <img src={ann.image} alt={ann.title} className="w-full h-auto max-h-80 object-contain" />
+                    <img src={ann.image} alt={ann.title || "活动照片"} className="w-full h-auto object-contain" />
                   </div>
                 )}
                 <div>
@@ -826,8 +781,8 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
                     </span>
                     <span className="text-gray-400 text-sm">{ann.date}</span>
                   </div>
-                  <h3 className="text-xl md:text-2xl font-bold text-gray-800 mb-2">{ann.title}</h3>
-                  <p className="text-sm md:text-base text-gray-600 leading-relaxed whitespace-pre-wrap">{ann.content}</p>
+                  {ann.title && <h3 className="text-xl md:text-2xl font-bold text-gray-800 mb-2">{ann.title}</h3>}
+                  {ann.content && <p className="text-sm md:text-base text-gray-600 leading-relaxed whitespace-pre-wrap">{ann.content}</p>}
                 </div>
                 {ann.link && (
                   <a 
@@ -839,8 +794,6 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
                     点击前往 (Klik Sini) <ChevronRight size={18} />
                   </a>
                 )}
-
-                {/* 交互区：点赞与留言 */}
                 {renderInteractionArea(ann, 'announcements')}
               </div>
             ))
@@ -861,25 +814,16 @@ function InfoItem({ label, value, isHighlight, isAlert, className = "" }) {
   );
 }
 
-// ==========================================
-// 4. 登录视图 (Login Modal)
-// ==========================================
 function LoginView({ roleTarget, setAuthRole, showMessage }) {
   const [pin, setPin] = useState('');
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    try {
-      // 引入 Firebase 身份验证逻辑，替换硬编码密码
-      const auth = getAuth();
-      const email = roleTarget === 'admin' ? 'admin@kungming.edu.my' : 'teacher@kungming.edu.my';
-      
-      await signInWithEmailAndPassword(auth, email, pin); 
-      
+    if (pin === '6027') {
       setAuthRole(roleTarget);
       showMessage("登录成功", `欢迎进入${roleTarget === 'admin' ? '系统后台' : '教师控制台'}。`);
       if (window.logSystemAction) window.logSystemAction(roleTarget, '系统登录', `${roleTarget === 'admin' ? '管理员' : '教师'}成功登录`);
-    } catch (error) {
+    } else {
       showMessage("错误", "密码不正确，请重试。");
       if (window.logSystemAction) window.logSystemAction('visitor', '登录失败', `尝试进入 ${roleTarget === 'admin' ? '管理员' : '教师'} 后台时密码错误`);
       setPin('');
@@ -911,9 +855,6 @@ function LoginView({ roleTarget, setAuthRole, showMessage }) {
   );
 }
 
-// ==========================================
-// 5. 教师控制台
-// ==========================================
 function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
   const [selectedYear, setSelectedYear] = useState('1');
   const [selectedColor, setSelectedColor] = useState('H');
@@ -1140,9 +1081,6 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
   );
 }
 
-// ==========================================
-// 6. 管理员后台 (Admin Portal)
-// ==========================================
 function AdminPortal({ students, announcements, logs, schoolReports, adminNotes, cardRequests, db, getCollectionPath, showMessage }) {
   const [adminMainTab, setAdminMainTab] = useState('card_requests'); 
   const [confirmModal, setConfirmModal] = useState(null);
@@ -1168,7 +1106,6 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
     reader.readAsDataURL(file);
   };
 
-  // ---------- 标签 1：学生综合管理 ----------
   const [editStudent, setEditStudent] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [promoMode, setPromoMode] = useState('auto'); 
@@ -1282,7 +1219,6 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
     catch (err) { showMessage("错误", err.message); }
   };
 
-  // ---------- 标签 2：通告与活动管理 ----------
   const [annForm, setAnnForm] = useState({ title: '', content: '', type: 'App', link: '', image: '' });
   const [editAnn, setEditAnn] = useState(null); 
 
@@ -1294,6 +1230,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
     try {
       await setDoc(doc(collection(db, getCollectionPath('announcements'))), { ...annForm, date: new Date().toISOString().split('T')[0] });
       showMessage("成功", "已发布最新公告。"); setAnnForm({ title: '', content: '', type: 'App', link: '', image: '' });
+      const f = document.getElementById('announcement-image-upload'); if (f) f.value = '';
     } catch (err) { showMessage("错误", err.message); }
   };
 
@@ -1308,7 +1245,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         image: editAnn.image || ''
       });
       showMessage("成功", "公告已成功更新。");
-      if (window.logSystemAction) window.logSystemAction('admin', '修改通告', `更新了通告 [${editAnn.title}]`);
+      if (window.logSystemAction) window.logSystemAction('admin', '修改通告', `更新了通告 [${editAnn.title || '无标题'}]`);
       setEditAnn(null);
     } catch (err) {
       showMessage("错误", "更新失败: " + err.message);
@@ -1319,7 +1256,6 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
     setConfirmModal({ message: "确定要删除这条公告吗？", onConfirm: async () => { setConfirmModal(null); await deleteDoc(doc(db, getCollectionPath('announcements'), id)); } });
   };
 
-  // ---------- 标签 3：访客与系统日志 ----------
   const exportLogsToExcel = () => {
     if (typeof window.XLSX === 'undefined') { showMessage("错误", "Excel导出工具尚未加载，请稍等。"); return; }
     const exportData = logs.map(l => ({
@@ -1334,7 +1270,6 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
     window.XLSX.writeFile(wb, `System_Logs_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
-  // ---------- 标签 4：学校报告与数据管理 ----------
   const [reportForm, setReportForm] = useState({ title: '', content: '', image: '', studentUsage: '', teacherUsage: '' });
   const [editReport, setEditReport] = useState(null); 
 
@@ -1389,7 +1324,6 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
     });
   };
 
-  // ---------- 标签 5：Admin 备注记录 (私密) ----------
   const [noteForm, setNoteForm] = useState({ title: '', content: '', link: '', image: '' });
   const handleNoteImage = (e) => compressImage(e.target.files[0], (data) => setNoteForm({...noteForm, image: data}));
 
@@ -1412,7 +1346,6 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
     setConfirmModal({ message: "确定要删除这条私密备注吗？", onConfirm: async () => { setConfirmModal(null); await deleteDoc(doc(db, getCollectionPath('adminNotes'), id)); } });
   };
 
-  // ---------- 新增标签：DELIMA 制卡申请管理 ----------
   const reasonOptions = ['遗失 (Hilang)', '替换 (Ganti)', '修改 (Pindaan)', '损坏 (Rosak)', '更新 (Kemas Kini)', '新生 (Murid Baru)', '其他 (Lain-lain)'];
   const [cardReason, setCardReason] = useState(reasonOptions[0]);
   const [cardSearchTerm, setCardSearchTerm] = useState('');
@@ -1539,7 +1472,6 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         </div>
       </div>
       
-      {/* 顶部主导航菜单 */}
       <div className="flex flex-wrap gap-3 mb-8 border-b-2 border-gray-100 pb-4">
         <button onClick={() => setAdminMainTab('students_mgmt')} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${adminMainTab === 'students_mgmt' ? 'bg-purple-600 text-white shadow-md' : 'bg-gray-50 text-gray-600 hover:bg-purple-100'}`}>
           <UserCheck size={18} /> 学生综合管理
@@ -1561,10 +1493,8 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         </button>
       </div>
 
-      {/* ======================= 新增模块：DELIMA 制卡申请管理 ======================= */}
       {adminMainTab === 'card_requests' && (
         <div className="space-y-8 animate-slide-up">
-          {/* Admin 批量添加区 */}
           <div className="bg-indigo-50/50 border border-indigo-100 p-6 md:p-8 rounded-2xl shadow-sm">
             <h3 className="text-xl font-bold text-indigo-900 mb-2 flex items-center gap-2"><CreditCard size={24}/> 新增制卡申请</h3>
             <p className="text-sm text-gray-600 mb-6">可同时搜索并选择多位学生，选定原因后一键加入待处理列表。（教师端提交的申请也会显示在下方）</p>
@@ -1622,7 +1552,6 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
             </button>
           </div>
 
-          {/* 待处理列表 */}
           <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm">
             <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
               <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded-lg text-sm">待处理 (Menunggu)</span>
@@ -1652,7 +1581,6 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
             </div>
           </div>
 
-          {/* 已完成列表 */}
           <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm">
             <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
               <span className="bg-green-100 text-green-700 px-2 py-1 rounded-lg text-sm">已完成 (Selesai)</span>
@@ -1684,7 +1612,6 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         </div>
       )}
 
-      {/* ======================= 模块 1：学生综合管理 ======================= */}
       {adminMainTab === 'students_mgmt' && (
         <div className="space-y-12 animate-slide-up">
           <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm">
@@ -1758,18 +1685,17 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         </div>
       )}
 
-      {/* ======================= 模块 2：通告与活动管理 ======================= */}
       {adminMainTab === 'announcements' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-slide-up">
           <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm">
             <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-5 flex items-center gap-2"><BookOpen size={24}/> 发布新通告/App介绍</h3>
             <form onSubmit={handleAddAnnouncement} className="space-y-4">
-              <input required type="text" placeholder="通告标题" value={annForm.title} onChange={e=>setAnnForm({...annForm, title: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" />
+              <input type="text" placeholder="通告标题 (选填)" value={annForm.title} onChange={e=>setAnnForm({...annForm, title: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" />
               <div className="grid grid-cols-2 gap-4">
                 <select value={annForm.type} onChange={e=>setAnnForm({...annForm, type: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm"><option value="App">App 推荐</option><option value="Activity">活动通告</option></select>
-                <input type="url" placeholder="附加链接 https://" value={annForm.link} onChange={e=>setAnnForm({...annForm, link: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" />
+                <input type="url" placeholder="附加链接 https:// (选填)" value={annForm.link} onChange={e=>setAnnForm({...annForm, link: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" />
               </div>
-              <textarea required rows="4" placeholder="内容描述..." value={annForm.content} onChange={e=>setAnnForm({...annForm, content: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm"></textarea>
+              <textarea rows="4" placeholder="内容描述 (选填)..." value={annForm.content} onChange={e=>setAnnForm({...annForm, content: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm"></textarea>
               <div>
                 <label className="flex items-center justify-center gap-2 p-2.5 border border-dashed rounded-lg bg-gray-50 cursor-pointer text-sm text-gray-600"><ImageIcon size={18} /> 附加宣传照片<input type="file" id="announcement-image-upload" accept="image/*" onChange={handleAnnImage} className="hidden" /></label>
                 {annForm.image && <div className="relative mt-2"><img src={annForm.image} alt="预览" className="h-20 w-auto rounded border" /><button type="button" onClick={() => {setAnnForm({...annForm, image: ''}); document.getElementById('announcement-image-upload').value='';}} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"><Trash2 size={12}/></button></div>}
@@ -1783,7 +1709,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
               {announcements.map(a => (
                 <div key={a.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex items-center gap-4">
                   {a.image && <img src={a.image} alt="" className="w-12 h-12 object-cover rounded" />}
-                  <div className="flex-1"><span className="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded">{a.type}</span><h4 className="font-bold mt-1 text-sm">{a.title}</h4></div>
+                  <div className="flex-1"><span className="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded">{a.type}</span><h4 className="font-bold mt-1 text-sm">{a.title || '无标题照片'}</h4></div>
                   <div className="flex gap-2">
                     <button onClick={() => setEditAnn({...a})} className="text-blue-500 p-2 hover:bg-blue-50 rounded"><Edit size={18} /></button>
                     <button onClick={() => promptDeleteAnnouncement(a.id)} className="text-red-500 p-2 hover:bg-red-50 rounded"><Trash2 size={18} /></button>
@@ -1796,7 +1722,6 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         </div>
       )}
 
-      {/* ======================= 新增模块：访客与系统操作记录 ======================= */}
       {adminMainTab === 'sys_logs' && (
         <div className="space-y-8 animate-slide-up">
           <div className="bg-white border border-gray-200 p-6 md:p-8 rounded-2xl shadow-sm">
@@ -1856,7 +1781,6 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         </div>
       )}
 
-      {/* ======================= 模块 4：学校报告与数据管理 ======================= */}
       {adminMainTab === 'school_reports' && (
         <div className="space-y-8 animate-slide-up">
           <div className="bg-blue-50/50 p-6 md:p-8 rounded-2xl border border-blue-200 grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -1907,7 +1831,6 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         </div>
       )}
 
-      {/* ======================= 模块 5：Admin 备注记录 (新增，私密) ======================= */}
       {adminMainTab === 'admin_notes' && (
         <div className="space-y-8 animate-slide-up">
           <div className="bg-red-50/30 p-6 md:p-8 rounded-2xl border border-red-100 grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -1951,9 +1874,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         </div>
       )}
 
-      {/* ================= 各种独立弹窗区域 ================= */}
-
-      {/* 编辑学生的独立弹窗 (针对模块 1) */}
+      {/* 独立编辑弹窗 */}
       {editStudent && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[105]">
           <div className="bg-white rounded-3xl p-8 w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl animate-slide-up">
@@ -1979,15 +1900,14 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         </div>
       )}
 
-      {/* 编辑通告的独立弹窗 (针对模块 2) */}
       {editAnn && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[105]">
           <div className="bg-white rounded-3xl p-8 w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl animate-slide-up">
             <h3 className="text-2xl font-bold text-purple-900 mb-6 flex items-center gap-2"><Edit size={24} /> 编辑通告内容</h3>
             <form onSubmit={handleUpdateAnnouncement} className="space-y-4">
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">标题</label>
-                <input required type="text" value={editAnn.title} onChange={e=>setEditAnn({...editAnn, title: e.target.value})} className="w-full p-2.5 border border-purple-200 rounded-lg text-sm outline-none focus:border-purple-500" />
+                <label className="block text-sm font-bold text-gray-700 mb-1">标题 (选填)</label>
+                <input type="text" value={editAnn.title} onChange={e=>setEditAnn({...editAnn, title: e.target.value})} className="w-full p-2.5 border border-purple-200 rounded-lg text-sm outline-none focus:border-purple-500" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -2002,8 +1922,8 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">内容描述</label>
-                <textarea required rows="4" value={editAnn.content} onChange={e=>setEditAnn({...editAnn, content: e.target.value})} className="w-full p-2.5 border border-purple-200 rounded-lg text-sm outline-none focus:border-purple-500"></textarea>
+                <label className="block text-sm font-bold text-gray-700 mb-1">内容描述 (选填)</label>
+                <textarea rows="4" value={editAnn.content} onChange={e=>setEditAnn({...editAnn, content: e.target.value})} className="w-full p-2.5 border border-purple-200 rounded-lg text-sm outline-none focus:border-purple-500"></textarea>
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">更换宣传照片</label>
@@ -2035,7 +1955,6 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         </div>
       )}
 
-      {/* 编辑官方报告的独立弹窗 (针对模块 4) */}
       {editReport && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[105]">
           <div className="bg-white rounded-3xl p-8 w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl animate-slide-up">
@@ -2090,7 +2009,6 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         </div>
       )}
 
-      {/* 确认操作统一弹窗 */}
       {confirmModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[110]"><div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center"><AlertCircle size={48} className="text-amber-500 mx-auto mb-4" /><h3 className="text-xl font-bold mb-2">确认操作</h3><p className="text-sm text-gray-600 mb-6">{confirmModal.message}</p><div className="flex gap-4"><button onClick={() => setConfirmModal(null)} className="flex-1 bg-gray-100 font-bold py-2 rounded-lg">取消</button><button onClick={confirmModal.onConfirm} className="flex-1 bg-amber-500 text-white font-bold py-2 rounded-lg">确认</button></div></div></div>
       )}
