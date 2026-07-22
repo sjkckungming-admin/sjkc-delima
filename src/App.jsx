@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, query, onSnapshot, doc, setDoc, deleteDoc, updateDoc, getDocs } from 'firebase/firestore';
+import * as XLSX from 'xlsx'; // 已添加：导入 xlsx 库
 
 const Search = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>);
 const LogOut = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>);
@@ -890,14 +891,13 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
   }, [students, selectedYear, selectedColor]);
 
   const exportToExcel = () => {
-    if (typeof window.XLSX === 'undefined') { showMessage("错误", "Excel导出工具尚未加载，请稍等。"); return; }
     const exportData = classStudents.map(s => ({
       "KELAS": `${s.classYear}${s.classColor}`, "TARIKH MASUK": s.admissionDate || '', "NO.RUJ IDME": s.idme || '', "NO RUJ SEK": s.studentId || '', "NAMA MURID": s.name.includes('(') ? s.name.split('(')[0].trim() : s.name, "姓名": s.name.includes('(') ? s.name.split('(')[1].replace(')', '').trim() : '', "JANTINA": s.gender || '', "RUMAH SUKAN": s.sportsHouse || '', "SURAT BERANAK": s.birthCert || '', "TARIKH LAHIR": s.dob || '', "ic": s.rawIc || '', "IC MURID": s.ic, "EMAIL DELIMA": s.delimaId, "PASSWORD": s.password
     }));
-    const ws = window.XLSX.utils.json_to_sheet(exportData);
-    const wb = window.XLSX.utils.book_new();
-    window.XLSX.utils.book_append_sheet(wb, ws, "Students");
-    window.XLSX.writeFile(wb, `Senarai_Kelas_${selectedYear}${selectedColor}.xlsx`);
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Students");
+    XLSX.writeFile(wb, `Senarai_Kelas_${selectedYear}${selectedColor}.xlsx`);
   };
 
   const handleTransfer = async (e) => {
@@ -1130,23 +1130,22 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
   }, [students, promoSearchTerm]);
 
   const downloadTemplate = () => {
-    if (typeof window.XLSX === 'undefined') return showMessage("错误", "组件未加载");
     const headers = ["KELAS", "TARIKH MASUK", "NO.RUJ IDME", "NO RUJ SEK", "NAMA MURID", "姓名", "JANTINA", "RUMAH SUKAN", "SURAT BERANAK", "TARIKH LAHIR", "ic", "IC MURID", "EMAIL DELIMA", "PASSWORD"];
     const dummyData = [["1H", "12/1/2026", "231203013003", "2026001", "ABNERCHRIS ARAPOC NICHOLAS", "艾纳士", "L", "H", "SC 055497", "16/11/2019", "191116-12-0253", "191116-12-0253", "abnerchrisarapocnicholas@moe-dl.edu.my", "Kmbft@0253"]];
-    const ws = window.XLSX.utils.aoa_to_sheet([headers, ...dummyData]);
-    const wb = window.XLSX.utils.book_new();
-    window.XLSX.utils.book_append_sheet(wb, ws, "Template");
-    window.XLSX.writeFile(wb, "Template_Data_Murid_SJKC.xlsx");
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...dummyData]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Template");
+    XLSX.writeFile(wb, "Template_Data_Murid_SJKC.xlsx");
   };
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
-    if (!file || typeof window.XLSX === 'undefined') return;
+    if (!file) return;
     const reader = new FileReader();
     reader.onload = async (evt) => {
       try {
-        const wb = window.XLSX.read(evt.target.result, { type: 'binary' });
-        const data = window.XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { raw: false });
+        const wb = XLSX.read(evt.target.result, { type: 'binary' });
+        const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { raw: false });
         let successCount = 0;
         for (const row of data) {
           let sName = String(row['NAMA MURID'] || '').trim();
@@ -1257,17 +1256,16 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
   };
 
   const exportLogsToExcel = () => {
-    if (typeof window.XLSX === 'undefined') { showMessage("错误", "Excel导出工具尚未加载，请稍等。"); return; }
     const exportData = logs.map(l => ({
       "时间 (Masa)": new Date(l.timestamp).toLocaleString(),
       "身份 (Peranan)": l.role === 'admin' ? '管理员 (Admin)' : l.role === 'teacher' ? '教师 (Guru)' : '访客/家长 (Pelawat)',
       "操作类别 (Tindakan)": l.action,
       "详细内容 (Butiran)": l.details
     }));
-    const ws = window.XLSX.utils.json_to_sheet(exportData);
-    const wb = window.XLSX.utils.book_new();
-    window.XLSX.utils.book_append_sheet(wb, ws, "System_Logs");
-    window.XLSX.writeFile(wb, `System_Logs_${new Date().toISOString().split('T')[0]}.xlsx`);
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "System_Logs");
+    XLSX.writeFile(wb, `System_Logs_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
   const [reportForm, setReportForm] = useState({ title: '', content: '', image: '', studentUsage: '', teacherUsage: '' });
@@ -1423,8 +1421,6 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
   };
 
   const exportCardRequestsToExcel = (statusFilter) => {
-    if (typeof window.XLSX === 'undefined') return showMessage("错误", "组件未加载");
-    
     const filteredRequests = statusFilter ? cardRequests.filter(r => r.status === statusFilter) : cardRequests;
     
     if (filteredRequests.length === 0) {
@@ -1452,11 +1448,11 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
       };
     });
 
-    const ws = window.XLSX.utils.json_to_sheet(exportData);
-    const wb = window.XLSX.utils.book_new();
-    window.XLSX.utils.book_append_sheet(wb, ws, "MailMergeData");
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "MailMergeData");
     const fileNameStatus = statusFilter === 'pending' ? 'Menunggu' : (statusFilter === 'completed' ? 'Selesai' : 'Semua');
-    window.XLSX.writeFile(wb, `MailMerge_Kad_${fileNameStatus}_${new Date().toISOString().split('T')[0]}.xlsx`);
+    XLSX.writeFile(wb, `MailMerge_Kad_${fileNameStatus}_${new Date().toISOString().split('T')[0]}.xlsx`);
     
     showMessage("导出成功", `Excel 文件已下载！\n\n此 Excel 格式已完全适配您的 TEMPLETE.docx。\n\n请打开 Word 文档，点击顶部的【邮件(Mailings)】->【选择收件人(Select Recipients)】->【使用现有列表(Use an Existing List)】，然后载入此 Excel，即可一键完成 Mail Merge 制卡！`);
   };
