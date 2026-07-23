@@ -54,23 +54,83 @@ return collectionName;
 };
 
 export default function App() {
-const [user, setUser] = useState(null);
-const [activeTab, setActiveTab] = useState('home');
-const [authRole, setAuthRole] = useState('');
+const 
 
-const [students, setStudents] = useState([]);
-const [announcements, setAnnouncements] = useState([]);
-const [logs, setLogs] = useState([]);
-const [schoolReports, setSchoolReports] = useState([]);
-const [adminNotes, setAdminNotes] = useState([]);
-const [cardRequests, setCardRequests] = useState([]);
+$$user, setUser$$
 
-const [isLoading, setIsLoading] = useState(true);
-const [modalMessage, setModalMessage] = useState(null);
+ = useState(null);
+const 
+
+$$activeTab, setActiveTab$$
+
+ = useState('home');
+const 
+
+$$authRole, setAuthRole$$
+
+ = useState('');
+
+const 
+
+$$students, setStudents$$
+
+ = useState(
+
+);
+const 
+
+$$announcements, setAnnouncements$$
+
+ = useState(
+
+);
+const 
+
+$$logs, setLogs$$
+
+ = useState(
+
+);
+const 
+
+$$schoolReports, setSchoolReports$$
+
+ = useState(
+
+);
+const 
+
+$$adminNotes, setAdminNotes$$
+
+ = useState(
+
+);
+const 
+
+$$cardRequests, setCardRequests$$
+
+ = useState(
+
+);
+
+const 
+
+$$isLoading, setIsLoading$$
+
+ = useState(true);
+const 
+
+$$modalMessage, setModalMessage$$
+
+ = useState(null);
 
 useEffect(() => {
 const faviconSvg = encodeURIComponent('');
-let iconLink = document.querySelector("link[rel~='icon']");
+let iconLink = document.querySelector("link
+
+$$rel\~='icon'$$
+
+");
 if (!iconLink) {
 iconLink = document.createElement('link');
 iconLink.rel = 'icon';
@@ -124,7 +184,10 @@ return () => {
 };
 
 
-}, []);
+
+}, 
+
+);
 
 useEffect(() => {
 if (!user) return;
@@ -190,7 +253,12 @@ return () => {
 };
 
 
-}, [user, authRole]);
+
+}, 
+
+$$user, authRole$$
+
+);
 
 const showMessage = (title, text) => setModalMessage({ title, text });
 
@@ -204,7 +272,6 @@ showMessage("成功", "已安全退出账户。");
 const renderContent = () => {
 if (isLoading) {
 return (
-
 
 正在安全连接系统...
 
@@ -228,11 +295,10 @@ if (activeTab === 'home') {
 }
 
 
+
 };
 
 return (
-
-
 
 <img
 src="delima.jpg"
@@ -243,10 +309,7 @@ onError={(e) => { e.target.src = "https://upload.wikimedia.org/wikipedia/commons
 
 SJKC KUNG MING, BEAUFORT, SABAH.
 
-
 保佛公民小学 Delima 账户查询
-
-
 
     <div className="flex justify-center gap-4 mt-6 flex-wrap">
       {activeTab !== 'home' && (
@@ -307,17 +370,20 @@ SJKC KUNG MING, BEAUFORT, SABAH.
 </div>
 
 
+
 );
 }
 
 const EmojiPicker = ({ onSelect, onClose }) => {
-const emojis = ['👍', '❤️', '😀', '👏', '🎉', '🔥', '🙌', '💯', '🤔', '👀', '😊', '🥳', '💪', '🙏', '✨', '🌟'];
-return (
+const emojis = 
 
+$$'👍', '❤️', '😀', '👏', '🎉', '🔥', '🙌', '💯', '🤔', '👀', '😊', '🥳', '💪', '🙏', '✨', '🌟'$$
+
+;
+return (
 
 Pilih Emoji
 ×
-
 
 {emojis.map(emoji => (
 <button
@@ -330,21 +396,56 @@ onClick={() => onSelect(emoji)}
 
 ))}
 
-
 );
 };
 
 function HomeView({ announcements, schoolReports, db, getCollectionPath, showMessage, authRole, currentUser, setActiveTab }) {
-const [icNumber, setIcNumber] = useState('');
-const [result, setResult] = useState(null);
-const [searched, setSearched] = useState(false);
-const [isSearching, setIsSearching] = useState(false);
+const 
 
-const [commentInputs, setCommentInputs] = useState({});
-const [commentNames, setCommentNames] = useState({});
-const [activeCommentId, setActiveCommentId] = useState(null);
-const [editCommentText, setEditCommentText] = useState('');
-const [showEmojiPicker, setShowEmojiPicker] = useState(null);
+$$icNumber, setIcNumber$$
+
+ = useState('');
+const 
+
+$$result, setResult$$
+
+ = useState(null);
+const 
+
+$$searched, setSearched$$
+
+ = useState(false);
+const 
+
+$$isSearching, setIsSearching$$
+
+ = useState(false);
+
+const 
+
+$$commentInputs, setCommentInputs$$
+
+ = useState({});
+const 
+
+$$commentNames, setCommentNames$$
+
+ = useState({});
+const 
+
+$$activeCommentId, setActiveCommentId$$
+
+ = useState(null);
+const 
+
+$$editCommentText, setEditCommentText$$
+
+ = useState('');
+const 
+
+$$showEmojiPicker, setShowEmojiPicker$$
+
+ = useState(null);
 
 const getGreeting = () => {
 const hour = new Date().getHours();
@@ -352,7 +453,9 @@ if (hour < 12) return { text: "Selamat Pagi! 早上好 👋", sub: "Semoga hari 
 if (hour < 18) return { text: "Selamat Petang! 下午好 ☀️", sub: "Teruskan usaha cemerlang." };
 return { text: "Selamat Malam! 晚上好 🌙", sub: "Berehatlah dengan tenang." };
 };
-const greeting = useMemo(() => getGreeting(), []);
+const greeting = useMemo(() => getGreeting(), 
+
+);
 
 const handleSearch = async (e) => {
 e.preventDefault();
@@ -386,12 +489,17 @@ try {
 setIsSearching(false);
 
 
+
 };
 
 const handleLike = async (item, collectionName) => {
 const visitorId = authRole ? role_${authRole} : (currentUser?.uid || 'anonymous');
-const isLiked = (item.likes || []).includes(visitorId);
-let newLikes = item.likes || [];
+const isLiked = (item.likes || 
+
+).includes(visitorId);
+let newLikes = item.likes || 
+
+;
 
 if (isLiked) {
   newLikes = newLikes.filter(id => id !== visitorId);
@@ -406,26 +514,51 @@ try {
 }
 
 
+
 };
 
 const handleCommentInputChange = (itemId, value) => {
-setCommentInputs(prev => ({ ...prev, [itemId]: value }));
+setCommentInputs(prev => ({ ...prev, 
+
+$$itemId$$
+
+: value }));
 };
 
 const handleCommentNameChange = (itemId, value) => {
-setCommentNames(prev => ({ ...prev, [itemId]: value }));
+setCommentNames(prev => ({ ...prev, 
+
+$$itemId$$
+
+: value }));
 };
 
 const insertEmoji = (itemId, emoji) => {
-const currentInput = commentInputs[itemId] || '';
-setCommentInputs(prev => ({ ...prev, [itemId]: currentInput + emoji }));
+const currentInput = commentInputs
+
+$$itemId$$
+
+ || '';
+setCommentInputs(prev => ({ ...prev, 
+
+$$itemId$$
+
+: currentInput + emoji }));
 setShowEmojiPicker(null);
 };
 
 const handleAddComment = async (item, collectionName, e) => {
 e.preventDefault();
-const input = commentInputs[item.id];
-const name = commentNames[item.id];
+const input = commentInputs
+
+$$item.id$$
+
+;
+const name = commentNames
+
+$$item.id$$
+
+;
 
 if (!input || !input.trim()) return;
 if (!authRole && (!name || !name.trim())) {
@@ -454,6 +587,7 @@ try {
 } catch (err) {
   showMessage("错误 (Ralat)", "Gagal menghantar komen: " + err.message);
 }
+
 
 
 };
@@ -492,7 +626,9 @@ return hoursDiff <= 24;
 
 const renderInteractionArea = (item, collectionName) => {
 const visitorId = authRole ? role_${authRole} : (currentUser?.uid || 'anonymous');
-const isLiked = (item.likes || []).includes(visitorId);
+const isLiked = (item.likes || 
+
+).includes(visitorId);
 
 return (
   <div className="mt-5 pt-4 border-t border-gray-100">
@@ -599,14 +735,13 @@ return (
 );
 
 
+
 };
 
 return (
 
-
 {greeting.text}
 {greeting.sub} ✨
-
 
   <section className="bg-white rounded-3xl p-6 md:p-10 shadow-lg border border-purple-50 relative overflow-hidden">
     <div className="absolute top-0 right-0 w-64 h-64 bg-purple-100 rounded-full blur-3xl opacity-50 -translate-y-1/2 translate-x-1/2"></div>
@@ -820,21 +955,23 @@ return (
 </div>
 
 
+
 );
 }
 
 function InfoItem({ label, value, isHighlight, isAlert, className = "" }) {
 const displayValue = (!value || String(value).trim() === '' || value === '-') ? 'Sedang dikemaskini' : value;
 return (
-<div className={p-4 rounded-xl border border-transparent ${isHighlight ? 'bg-purple-600 text-white shadow-sm' : isAlert ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-white border-gray-100'} ${className}}>
-<div className={text-xs md:text-sm font-semibold mb-1 opacity-80}>{label}
-<div className={text-lg md:text-xl font-bold break-all ${displayValue === 'Sedang dikemaskini' ? 'italic opacity-60 font-normal text-base' : ''}}>{displayValue}
 
 );
 }
 
 function LoginView({ roleTarget, setAuthRole, showMessage }) {
-const [pin, setPin] = useState('');
+const 
+
+$$pin, setPin$$
+
+ = useState('');
 
 const handleLogin = async (e) => {
 e.preventDefault();
@@ -851,66 +988,111 @@ setPin('');
 
 return (
 
-
 {roleTarget === 'admin' ?  : }
 
 安全登录
 
 {roleTarget === 'admin' ? "请输入管理员账号密码" : "请输入教师专属账号密码"}
 
-
 <input
 type="password"
 placeholder="请输入密码"
-className="w-full text-center text-xl tracking-[0.5em] p-4 border-2 border-purple-100 rounded-xl focus:border-purple-500 focus:outline-none transition-colors"
+className="w-full text-center text-xl tracking-
+
+$$0.5em$$
+
+ p-4 border-2 border-purple-100 rounded-xl focus:border-purple-500 focus:outline-none transition-colors"
 value={pin}
 onChange={(e) => setPin(e.target.value)}
 />
 
 Log Masuk (登录)
 
-
-
 );
 }
 
 function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
-const [selectedYear, setSelectedYear] = useState('1');
-const [selectedColor, setSelectedColor] = useState('H');
-const [transferModal, setTransferModal] = useState(null);
+const 
 
-const [selectedForCardReq, setSelectedForCardReq] = useState([]);
-const [cardReqModal, setCardReqModal] = useState(false);
-const [cardReqReason, setCardReqReason] = useState('遗失 (Hilang)');
+$$selectedYear, setSelectedYear$$
 
-const reasonOptions = ['遗失 (Hilang)', '替换 (Ganti)', '修改 (Pindaan)', '损坏 (Rosak)', '更新 (Kemas Kini)', '新生 (Murid Baru)', '其他 (Lain-lain)'];
+ = useState('1');
+const 
 
-const years = [
-{ val: '1', label: '一年级 (Tahun 1)' },
-{ val: '2', label: '二年级 (Tahun 2)' },
-{ val: '3', label: '三年级 (Tahun 3)' },
-{ val: '4', label: '四年级 (Tahun 4)' },
-{ val: '5', label: '五年级 (Tahun 5)' },
-{ val: '6', label: '六年级 (Tahun 6)' },
-{ val: '19', label: '第19班: 转校生 (Pindah)' },
-{ val: '20', label: '第20班: 毕业生 (Tamat)' }
-];
+$$selectedColor, setSelectedColor$$
+
+ = useState('H');
+const 
+
+$$transferModal, setTransferModal$$
+
+ = useState(null);
+
+const 
+
+$$selectedForCardReq, setSelectedForCardReq$$
+
+ = useState(
+
+);
+const 
+
+$$cardReqModal, setCardReqModal$$
+
+ = useState(false);
+const 
+
+$$cardReqReason, setCardReqReason$$
+
+ = useState('遗失 (Hilang)');
+
+const reasonOptions = 
+
+$$'遗失 (Hilang)', '替换 (Ganti)', '修改 (Pindaan)', '损坏 (Rosak)', '更新 (Kemas Kini)', '新生 (Murid Baru)', '其他 (Lain-lain)'$$
+
+;
+
+const years = 
+
+$${ val: '1', label: '一年级 (Tahun 1)' }, { val: '2', label: '二年级 (Tahun 2)' }, { val: '3', label: '三年级 (Tahun 3)' }, { val: '4', label: '四年级 (Tahun 4)' }, { val: '5', label: '五年级 (Tahun 5)' }, { val: '6', label: '六年级 (Tahun 6)' }, { val: '19', label: '第19班: 转校生 (Pindah)' }, { val: '20', label: '第20班: 毕业生 (Tamat)' }$$
+
+;
 
 const colors = useMemo(() => {
-const cls = new Set([...students.map(s => s.classColor).filter(Boolean), 'H', 'M', 'K']);
+const cls = new Set(
+
+$$...students.map(s => s.classColor).filter(Boolean), 'H', 'M', 'K'$$
+
+);
 return Array.from(cls).sort();
-}, [students]);
+}, 
+
+$$students$$
+
+);
 
 const classStudents = useMemo(() => {
 return students.filter(s => {
 if (selectedYear === '19' || selectedYear === '20') return s.classYear === selectedYear;
 return s.classYear === selectedYear && s.classColor === selectedColor;
 }).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-}, [students, selectedYear, selectedColor]);
+}, 
+
+$$students, selectedYear, selectedColor$$
+
+);
 
 const exportToExcel = () => {
 const exportData = classStudents.map(s => ({
-"KELAS": ${s.classYear}${s.classColor}, "TARIKH MASUK": s.admissionDate || '', "NO.RUJ IDME": s.idme || '', "NO RUJ SEK": s.studentId || '', "NAMA MURID": s.name.includes('(') ? s.name.split('(')[0].trim() : s.name, "姓名": s.name.includes('(') ? s.name.split('(')[1].replace(')', '').trim() : '', "JANTINA": s.gender || '', "RUMAH SUKAN": s.sportsHouse || '', "SURAT BERANAK": s.birthCert || '', "TARIKH LAHIR": s.dob || '', "ic": s.rawIc || '', "IC MURID": s.ic, "EMAIL DELIMA": s.delimaId, "PASSWORD": s.password
+"KELAS": ${s.classYear}${s.classColor}, "TARIKH MASUK": s.admissionDate || '', "NO.RUJ IDME": s.idme || '', "NO RUJ SEK": s.studentId || '', "NAMA MURID": s.name.includes('(') ? s.name.split('(')
+
+$$0$$
+
+.trim() : s.name, "姓名": s.name.includes('(') ? s.name.split('(')
+
+$$1$$
+
+.replace(')', '').trim() : '', "JANTINA": s.gender || '', "RUMAH SUKAN": s.sportsHouse || '', "SURAT BERANAK": s.birthCert || '', "TARIKH LAHIR": s.dob || '', "ic": s.rawIc || '', "IC MURID": s.ic, "EMAIL DELIMA": s.delimaId, "PASSWORD": s.password
 }));
 const ws = XLSX.utils.json_to_sheet(exportData);
 const wb = XLSX.utils.book_new();
@@ -935,15 +1117,25 @@ const toggleStudentCardSelect = (s) => {
 if (selectedForCardReq.find(sel => sel.ic === s.ic)) {
 setSelectedForCardReq(selectedForCardReq.filter(sel => sel.ic !== s.ic));
 } else {
-setSelectedForCardReq([...selectedForCardReq, s]);
+setSelectedForCardReq(
+
+$$...selectedForCardReq, s$$
+
+);
 }
 };
 
 const toggleAllCardSelect = () => {
 if (selectedForCardReq.length === classStudents.length) {
-setSelectedForCardReq([]);
+setSelectedForCardReq(
+
+);
 } else {
-setSelectedForCardReq([...classStudents]);
+setSelectedForCardReq(
+
+$$...classStudents$$
+
+);
 }
 };
 
@@ -966,7 +1158,9 @@ count++;
 }
 showMessage("成功", 已成功提交 ${count} 位学生的制卡申请至 Admin 后台。);
 if (window.logSystemAction) window.logSystemAction('teacher', '申请制卡', 教师批量申请了 ${count} 张 DELIMA 卡 (原因: ${cardReqReason}));
-setSelectedForCardReq([]);
+setSelectedForCardReq(
+
+);
 setCardReqReason('遗失 (Hilang)');
 } catch(err) {
 showMessage("错误", "申请提交失败: " + err.message);
@@ -975,11 +1169,8 @@ showMessage("错误", "申请提交失败: " + err.message);
 
 return (
 
-
-
- 教师控制台 (Panel Guru)
+教师控制台 (Panel Guru)
 请选择您的班级以查看和整理资料。
-
 
 <select className="text-base p-2 rounded-xl border border-purple-200 outline-none focus:border-purple-400" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
 {years.map(y => {y.label})}
@@ -989,8 +1180,6 @@ return (
 {colors.map(c => {c} 班)}
 
 )}
-
-
 
   <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
     <h3 className="text-xl font-bold text-gray-800">学生列表 ({classStudents.length} 人)</h3>
@@ -1098,12 +1287,21 @@ return (
 </div>
 
 
+
 );
 }
 
 function AdminPortal({ students, announcements, logs, schoolReports, adminNotes, cardRequests, db, getCollectionPath, showMessage }) {
-const [adminMainTab, setAdminMainTab] = useState('card_requests');
-const [confirmModal, setConfirmModal] = useState(null);
+const 
+
+$$adminMainTab, setAdminMainTab$$
+
+ = useState('card_requests');
+const 
+
+$$confirmModal, setConfirmModal$$
+
+ = useState(null);
 
 const compressImage = (file, callback) => {
 if (!file.type.startsWith('image/')) { showMessage("错误", "请上传图片文件"); return; }
@@ -1126,16 +1324,36 @@ img.src = event.target.result;
 reader.readAsDataURL(file);
 };
 
-const [editStudent, setEditStudent] = useState(null);
-const [searchTerm, setSearchTerm] = useState('');
-const [promoMode, setPromoMode] = useState('auto');
-const [promoSearchTerm, setPromoSearchTerm] = useState('');
-const [promoEdits, setPromoEdits] = useState({});
-const years = [
-{ val: '1', label: '一年级' }, { val: '2', label: '二年级' }, { val: '3', label: '三年级' },
-{ val: '4', label: '四年级' }, { val: '5', label: '五年级' }, { val: '6', label: '六年级' },
-{ val: '19', label: '19班 (转校)' }, { val: '20', label: '20班 (毕业)' }
-];
+const 
+
+$$editStudent, setEditStudent$$
+
+ = useState(null);
+const 
+
+$$searchTerm, setSearchTerm$$
+
+ = useState('');
+const 
+
+$$promoMode, setPromoMode$$
+
+ = useState('auto');
+const 
+
+$$promoSearchTerm, setPromoSearchTerm$$
+
+ = useState('');
+const 
+
+$$promoEdits, setPromoEdits$$
+
+ = useState({});
+const years = 
+
+$${ val: '1', label: '一年级' }, { val: '2', label: '二年级' }, { val: '3', label: '三年级' }, { val: '4', label: '四年级' }, { val: '5', label: '五年级' }, { val: '6', label: '六年级' }, { val: '19', label: '19班 (转校)' }, { val: '20', label: '20班 (毕业)' }$$
+
+;
 
 const filteredAllStudents = useMemo(() => {
 let result = students;
@@ -1143,8 +1361,16 @@ if (searchTerm) {
 const lower = searchTerm.toLowerCase();
 result = students.filter(s => s.name.toLowerCase().includes(lower) || s.ic.toLowerCase().includes(lower) || formatClassName(s.classYear, s.classColor).toLowerCase().includes(lower));
 }
-return [...result].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-}, [students, searchTerm]);
+return 
+
+$$...result$$
+
+.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+}, 
+
+$$students, searchTerm$$
+
+);
 
 const filteredPromoStudents = useMemo(() => {
 let result = students;
@@ -1152,39 +1378,155 @@ if (promoSearchTerm) {
 const lower = promoSearchTerm.toLowerCase();
 result = students.filter(s => s.name.toLowerCase().includes(lower) || s.ic.toLowerCase().includes(lower));
 }
-return [...result].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-}, [students, promoSearchTerm]);
+return 
+
+$$...result$$
+
+.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+}, 
+
+$$students, promoSearchTerm$$
+
+);
 
 const downloadTemplate = () => {
-const headers = ["KELAS", "TARIKH MASUK", "NO.RUJ IDME", "NO RUJ SEK", "NAMA MURID", "姓名", "JANTINA", "RUMAH SUKAN", "SURAT BERANAK", "TARIKH LAHIR", "ic", "IC MURID", "EMAIL DELIMA", "PASSWORD"];
-const dummyData = [["1H", "12/1/2026", "231203013003", "2026001", "ABNERCHRIS ARAPOC NICHOLAS", "艾纳士", "L", "H", "SC 055497", "16/11/2019", "191116-12-0253", "191116-12-0253", "abnerchrisarapocnicholas@moe-dl.edu.my", "Kmbft@0253"]];
-const ws = XLSX.utils.aoa_to_sheet([headers, ...dummyData]);
+const headers = 
+
+$$"KELAS", "TARIKH MASUK", "NO.RUJ IDME", "NO RUJ SEK", "NAMA MURID", "姓名", "JANTINA", "RUMAH SUKAN", "SURAT BERANAK", "TARIKH LAHIR", "ic", "IC MURID", "EMAIL DELIMA", "PASSWORD"$$
+
+;
+const dummyData = 
+
+$$\["1H", "12/1/2026", "231203013003", "2026001", "ABNERCHRIS ARAPOC NICHOLAS", "艾纳士", "L", "H", "SC 055497", "16/11/2019", "191116-12-0253", "191116-12-0253", "abnerchrisarapocnicholas@moe-dl.edu.my", "Kmbft@0253"$$
+
+];
+const ws = XLSX.utils.aoa_to_sheet(
+
+$$headers, ...dummyData$$
+
+);
 const wb = XLSX.utils.book_new();
 XLSX.utils.book_append_sheet(wb, ws, "Template");
 XLSX.writeFile(wb, "Template_Data_Murid_SJKC.xlsx");
 };
 
 const handleFileUpload = (e) => {
-const file = e.target.files[0];
+const file = e.target.files
+
+$$0$$
+
+;
 if (!file) return;
 const reader = new FileReader();
 reader.onload = async (evt) => {
 try {
 const wb = XLSX.read(evt.target.result, { type: 'binary' });
-const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { raw: false });
+const data = XLSX.utils.sheet_to_json(wb.Sheets
+
+$$wb.SheetNames\[0$$
+
+], { raw: false });
 let successCount = 0;
 for (const row of data) {
-let sName = String(row['NAMA MURID'] || '').trim();
-const cName = String(row['姓名'] || '').trim();
+let sName = String(row
+
+$$'NAMA MURID'$$
+
+ || '').trim();
+const cName = String(row
+
+$$'姓名'$$
+
+ || '').trim();
 if (sName && cName) sName = ${sName} (${cName}); else if (!sName && cName) sName = cName;
-let cVal = String(row['KELAS'] || row['NO'] || '').trim(), pYear = '1', pColor = 'H';
-if (cVal) { const match = cVal.match(/^(\d+)(.*)$/); if (match) { pYear = match[1]; pColor = match[2].trim().toUpperCase() || 'H'; } else pYear = cVal; }
+let cVal = String(row
+
+$$'KELAS'$$
+
+ || row
+
+$$'NO'$$
+
+ || '').trim(), pYear = '1', pColor = 'H';
+if (cVal) { const match = cVal.match(/^(\d+)(.*)$/); if (match) { pYear = match
+
+$$1$$
+
+; pColor = match
+
+$$2$$
+
+.trim().toUpperCase() || 'H'; } else pYear = cVal; }
 const ns = {
-ic: String(row['IC MURID'] || row['IC号码'] || '').trim(), rawIc: String(row['ic'] || '').trim(),
-name: sName, studentId: String(row['NO RUJ SEK'] || row['ID MURID'] || ''), delimaId: String(row['EMAIL DELIMA'] || row['MOE EMAIL'] || ''),
-password: String(row['PASSWORD'] || row['MOE PASSWORD'] || ''), idme: String(row['NO.RUJ IDME'] || row['IDME'] || ''),
-admissionDate: String(row['TARIKH MASUK'] || ''), sportsHouse: String(row['RUMAH SUKAN'] || ''), gender: String(row['JANTINA'] || ''),
-birthCert: String(row['SURAT BERANAK'] || ''), dob: String(row['TARIKH LAHIR'] || ''), classYear: pYear, classColor: pColor, status: 'Active'
+ic: String(row
+
+$$'IC MURID'$$
+
+ || row
+
+$$'IC号码'$$
+
+ || '').trim(), rawIc: String(row
+
+$$'ic'$$
+
+ || '').trim(),
+name: sName, studentId: String(row
+
+$$'NO RUJ SEK'$$
+
+ || row
+
+$$'ID MURID'$$
+
+ || ''), delimaId: String(row
+
+$$'EMAIL DELIMA'$$
+
+ || row
+
+$$'MOE EMAIL'$$
+
+ || ''),
+password: String(row
+
+$$'PASSWORD'$$
+
+ || row
+
+$$'MOE PASSWORD'$$
+
+ || ''), idme: String(row
+
+$$'NO.RUJ IDME'$$
+
+ || row
+
+$$'IDME'$$
+
+ || ''),
+admissionDate: String(row
+
+$$'TARIKH MASUK'$$
+
+ || ''), sportsHouse: String(row
+
+$$'RUMAH SUKAN'$$
+
+ || ''), gender: String(row
+
+$$'JANTINA'$$
+
+ || ''),
+birthCert: String(row
+
+$$'SURAT BERANAK'$$
+
+ || ''), dob: String(row
+
+$$'TARIKH LAHIR'$$
+
+ || ''), classYear: pYear, classColor: pColor, status: 'Active'
 };
 if (ns.ic && ns.name) { await setDoc(doc(db, getCollectionPath('students'), ns.ic), ns); successCount++; }
 }
@@ -1207,7 +1549,11 @@ let nYear = s.classYear;
 if (nYear === '19' || nYear === '20') continue;
 const yInt = parseInt(nYear, 10);
 if (yInt === 6) nYear = '20'; else if (yInt >= 1 && yInt <= 5) nYear = String(yInt + 1);
-if (nYear !== s.classYear) { await updateDoc(doc(db, getCollectionPath('students'), s.id), { classYear: nYear, graduationDate: nYear === '20' ? new Date().toISOString().split('T')[0] : null }); count++; }
+if (nYear !== s.classYear) { await updateDoc(doc(db, getCollectionPath('students'), s.id), { classYear: nYear, graduationDate: nYear === '20' ? new Date().toISOString().split('T')
+
+$$0$$
+
+ : null }); count++; }
 }
 showMessage("操作成功", 已成功调整 ${count} 名学生的班级。);
 if (window.logSystemAction) window.logSystemAction('admin', '年度升学', 自动升学调整，变动 ${count} 人);
@@ -1216,15 +1562,39 @@ if (window.logSystemAction) window.logSystemAction('admin', '年度升学', 自�
 });
 };
 
-const handlePromoEditChange = (id, field, value) => setPromoEdits(p => ({ ...p, [id]: { ...(p[id] || {}), [field]: value } }));
+const handlePromoEditChange = (id, field, value) => setPromoEdits(p => ({ ...p, 
+
+$$id$$
+
+: { ...(p
+
+$$id$$
+
+ || {}), 
+
+$$field$$
+
+: value } }));
 const saveManualPromo = async (id, os) => {
-const upd = promoEdits[id]; if (!upd) return;
+const upd = promoEdits
+
+$$id$$
+
+; if (!upd) return;
 try {
 const nYear = upd.classYear !== undefined ? upd.classYear : os.classYear;
 const nColor = upd.classColor !== undefined ? upd.classColor : os.classColor;
-await updateDoc(doc(db, getCollectionPath('students'), id), { classYear: nYear, classColor: nColor, graduationDate: nYear === '20' ? new Date().toISOString().split('T')[0] : os.graduationDate });
+await updateDoc(doc(db, getCollectionPath('students'), id), { classYear: nYear, classColor: nColor, graduationDate: nYear === '20' ? new Date().toISOString().split('T')
+
+$$0$$
+
+ : os.graduationDate });
 showMessage("成功", 成功更新 ${os.name} 的班级。);
-setPromoEdits(p => { const next = { ...p }; delete next[id]; return next; });
+setPromoEdits(p => { const next = { ...p }; delete next
+
+$$id$$
+
+; return next; });
 } catch (err) { showMessage("错误", "更新失败: " + err.message); }
 };
 
@@ -1244,16 +1614,36 @@ try { await updateDoc(doc(db, getCollectionPath('students'), editStudent.id), ed
 catch (err) { showMessage("错误", err.message); }
 };
 
-const [annForm, setAnnForm] = useState({ title: '', content: '', type: 'App', link: '', image: '' });
-const [editAnn, setEditAnn] = useState(null);
+const 
 
-const handleAnnImage = (e) => compressImage(e.target.files[0], (data) => setAnnForm({...annForm, image: data}));
-const handleEditAnnImage = (e) => compressImage(e.target.files[0], (data) => setEditAnn({...editAnn, image: data}));
+$$annForm, setAnnForm$$
+
+ = useState({ title: '', content: '', type: 'App', link: '', image: '' });
+const 
+
+$$editAnn, setEditAnn$$
+
+ = useState(null);
+
+const handleAnnImage = (e) => compressImage(e.target.files
+
+$$0$$
+
+, (data) => setAnnForm({...annForm, image: data}));
+const handleEditAnnImage = (e) => compressImage(e.target.files
+
+$$0$$
+
+, (data) => setEditAnn({...editAnn, image: data}));
 
 const handleAddAnnouncement = async (e) => {
 e.preventDefault();
 try {
-await setDoc(doc(collection(db, getCollectionPath('announcements'))), { ...annForm, date: new Date().toISOString().split('T')[0] });
+await setDoc(doc(collection(db, getCollectionPath('announcements'))), { ...annForm, date: new Date().toISOString().split('T')
+
+$$0$$
+
+ });
 showMessage("成功", "已发布最新公告。"); setAnnForm({ title: '', content: '', type: 'App', link: '', image: '' });
 const f = document.getElementById('announcement-image-upload'); if (f) f.value = '';
 } catch (err) { showMessage("错误", err.message); }
@@ -1294,11 +1684,27 @@ XLSX.utils.book_append_sheet(wb, ws, "System_Logs");
 XLSX.writeFile(wb, System_Logs_${new Date().toISOString().split('T')[0]}.xlsx);
 };
 
-const [reportForm, setReportForm] = useState({ title: '', content: '', image: '', studentUsage: '', teacherUsage: '' });
-const [editReport, setEditReport] = useState(null);
+const 
 
-const handleReportImage = (e) => compressImage(e.target.files[0], (data) => setReportForm({...reportForm, image: data}));
-const handleEditReportImage = (e) => compressImage(e.target.files[0], (data) => setEditReport({...editReport, image: data}));
+$$reportForm, setReportForm$$
+
+ = useState({ title: '', content: '', image: '', studentUsage: '', teacherUsage: '' });
+const 
+
+$$editReport, setEditReport$$
+
+ = useState(null);
+
+const handleReportImage = (e) => compressImage(e.target.files
+
+$$0$$
+
+, (data) => setReportForm({...reportForm, image: data}));
+const handleEditReportImage = (e) => compressImage(e.target.files
+
+$$0$$
+
+, (data) => setEditReport({...editReport, image: data}));
 
 const handleAddReport = async (e) => {
 e.preventDefault();
@@ -1308,7 +1714,11 @@ await setDoc(newRef, {
 ...reportForm,
 studentUsage: reportForm.studentUsage ? Number(reportForm.studentUsage) : null,
 teacherUsage: reportForm.teacherUsage ? Number(reportForm.teacherUsage) : null,
-date: new Date().toISOString().split('T')[0],
+date: new Date().toISOString().split('T')
+
+$$0$$
+
+,
 timestamp: new Date().toISOString()
 });
 showMessage("成功", "学校报告已成功保存并在首页展示。");
@@ -1348,8 +1758,16 @@ if (window.logSystemAction) window.logSystemAction('admin', '删除报告', 删�
 });
 };
 
-const [noteForm, setNoteForm] = useState({ title: '', content: '', link: '', image: '' });
-const handleNoteImage = (e) => compressImage(e.target.files[0], (data) => setNoteForm({...noteForm, image: data}));
+const 
+
+$$noteForm, setNoteForm$$
+
+ = useState({ title: '', content: '', link: '', image: '' });
+const handleNoteImage = (e) => compressImage(e.target.files
+
+$$0$$
+
+, (data) => setNoteForm({...noteForm, image: data}));
 
 const handleAddNote = async (e) => {
 e.preventDefault();
@@ -1357,7 +1775,11 @@ try {
 const newRef = doc(collection(db, getCollectionPath('adminNotes')));
 await setDoc(newRef, {
 ...noteForm,
-date: new Date().toISOString().split('T')[0],
+date: new Date().toISOString().split('T')
+
+$$0$$
+
+,
 timestamp: new Date().toISOString()
 });
 showMessage("成功", "私密备注已保存。");
@@ -1370,23 +1792,55 @@ const promptDeleteNote = (id) => {
 setConfirmModal({ message: "确定要删除这条私密备注吗？", onConfirm: async () => { setConfirmModal(null); await deleteDoc(doc(db, getCollectionPath('adminNotes'), id)); } });
 };
 
-const reasonOptions = ['遗失 (Hilang)', '替换 (Ganti)', '修改 (Pindaan)', '损坏 (Rosak)', '更新 (Kemas Kini)', '新生 (Murid Baru)', '其他 (Lain-lain)'];
-const [cardReason, setCardReason] = useState(reasonOptions[0]);
-const [cardSearchTerm, setCardSearchTerm] = useState('');
-const [selectedForCard, setSelectedForCard] = useState([]);
+const reasonOptions = 
+
+$$'遗失 (Hilang)', '替换 (Ganti)', '修改 (Pindaan)', '损坏 (Rosak)', '更新 (Kemas Kini)', '新生 (Murid Baru)', '其他 (Lain-lain)'$$
+
+;
+const 
+
+$$cardReason, setCardReason$$
+
+ = useState(reasonOptions
+
+$$0$$
+
+);
+const 
+
+$$cardSearchTerm, setCardSearchTerm$$
+
+ = useState('');
+const 
+
+$$selectedForCard, setSelectedForCard$$
+
+ = useState(
+
+);
 
 const cardStudentOptions = useMemo(() => {
-if (!cardSearchTerm) return [];
+if (!cardSearchTerm) return 
+
+;
 const lower = cardSearchTerm.toLowerCase();
 return students.filter(s =>
 (s.name.toLowerCase().includes(lower) || s.ic.toLowerCase().includes(lower))
 && !selectedForCard.find(sel => sel.ic === s.ic)
 ).sort((a, b) => (a.name || '').localeCompare(b.name || ''))
 .slice(0, 5);
-}, [students, cardSearchTerm, selectedForCard]);
+}, 
+
+$$students, cardSearchTerm, selectedForCard$$
+
+);
 
 const handleSelectForCard = (student) => {
-setSelectedForCard([...selectedForCard, student]);
+setSelectedForCard(
+
+$$...selectedForCard, student$$
+
+);
 setCardSearchTerm('');
 };
 
@@ -1414,8 +1868,14 @@ count++;
 }
 showMessage("成功", 已成功加入 ${count} 位学生的制卡要求。);
 if (window.logSystemAction) window.logSystemAction('admin', '新增制卡', 批量加入了 ${count} 个制卡申请);
-setSelectedForCard([]);
-setCardReason(reasonOptions[0]);
+setSelectedForCard(
+
+);
+setCardReason(reasonOptions
+
+$$0$$
+
+);
 } catch(err) {
 showMessage("错误", "添加失败: " + err.message);
 }
@@ -1484,18 +1944,14 @@ XLSX.writeFile(wb, `MailMerge_Kad_${fileNameStatus}_${new Date().toISOString().s
 showMessage("导出成功", `Excel 文件已下载！\n\n此 Excel 格式已完全适配您的 TEMPLETE.docx。\n\n请打开 Word 文档，点击顶部的【邮件(Mailings)】->【选择收件人(Select Recipients)】->【使用现有列表(Use an Existing List)】，然后载入此 Excel，即可一键完成 Mail Merge 制卡！`);
 
 
+
 };
 
 return (
 
-
-
- Admin 控制台
-
+Admin 控制台
 
 全校已录入: {students.length} 人
-
-
 
   <div className="flex flex-wrap gap-3 mb-8 border-b-2 border-gray-100 pb-4">
     <button onClick={() => setAdminMainTab('students_mgmt')} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${adminMainTab === 'students_mgmt' ? 'bg-purple-600 text-white shadow-md' : 'bg-gray-50 text-gray-600 hover:bg-purple-100'}`}>
@@ -2038,6 +2494,7 @@ return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[110]"><div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center"><AlertCircle size={48} className="text-amber-500 mx-auto mb-4" /><h3 className="text-xl font-bold mb-2">确认操作</h3><p className="text-sm text-gray-600 mb-6">{confirmModal.message}</p><div className="flex gap-4"><button onClick={() => setConfirmModal(null)} className="flex-1 bg-gray-100 font-bold py-2 rounded-lg">取消</button><button onClick={confirmModal.onConfirm} className="flex-1 bg-amber-500 text-white font-bold py-2 rounded-lg">确认</button></div></div></div>
   )}
 </div>
+
 
 
 );
