@@ -2029,3 +2029,4 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
 
 function formatSimpleClassName(year, color) { if (year === '19') return '19 (转校)'; if (year === '20') return '20 (毕业)'; return `${year}${color}`; }
 function formatClassName(year, color) { if (year === '19') return '第19班 (转校)'; if (year === '20') return '第20班 (毕业)'; return `${year} 年级 ${color} 班`; }
+```eof
