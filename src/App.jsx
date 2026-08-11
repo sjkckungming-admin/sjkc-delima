@@ -354,7 +354,27 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
     const cleanInput = icNumber.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
     
     try {
+<comment-tag id="1" text="This current method downloads the entire 'students' collection to the user's browser just to find one person. This is a severe security data leak (exposing all student passwords/ICs) and will cause performance issues. You should use Firestore queries ('where') to search server-side instead.
+
+Here is the safer approach using queries:
+
       const studentsRef = collection(db, getCollectionPath('students'));
+      
+      // 使用精确查询代替拉取全部数据，保护学生隐私并提升查询性能
+      const qIC = query(studentsRef, where('ic', '==', icNumber.trim()));
+      const snapIC = await getDocs(qIC);
+      
+      let student = null;
+      if (!snapIC.empty) {
+        student = { id: snapIC.docs[0].id, ...snapIC.docs[0].data() };
+      } else {
+        // 若 IC 查不到，尝试查询报生纸字段
+        const qBC = query(studentsRef, where('birthCert', '==', icNumber.trim()));
+        const snapBC = await getDocs(qBC);
+        if (!snapBC.empty) {
+          student = { id: snapBC.docs[0].id, ...snapBC.docs[0].data() };
+        }
+      }" type="suggestion">      const studentsRef = collection(db, getCollectionPath('students'));
       const querySnapshot = await getDocs(query(studentsRef));
       const allStudents = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       
@@ -362,7 +382,7 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
         const cleanIC = (s.ic || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
         const cleanBC = (s.birthCert || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
         return cleanIC === cleanInput || cleanBC === cleanInput;
-      });
+      });</comment-tag>
       
       setResult(student || null);
       setSearched(true);
@@ -820,7 +840,13 @@ function LoginView({ roleTarget, setAuthRole, showMessage }) {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    if (pin === '6027') {
+<comment-tag id="2" text="Hardcoding a password ('6027') in the frontend code is a major security vulnerability. Anyone can right-click, 'Inspect Element', read the JavaScript source code, and log in as Admin/Teacher.
+
+Suggested change:
+    // 严重安全隐患：前端硬编码密码极易被黑客/学生通过查看网页源代码破解。
+    // 建议后期改用 Firebase Authentication 的邮箱密码登录，或将验证逻辑移至 Cloud Functions。
+    // 临时方案（仍不安全，仅作提醒）：
+    if (pin === '6027') {" type="suggestion">    if (pin === '6027') {</comment-tag>
       setAuthRole(roleTarget);
       showMessage("登录成功", `欢迎进入${roleTarget === 'admin' ? '系统后台' : '教师控制台'}。`);
       if (window.logSystemAction) window.logSystemAction(roleTarget, '系统登录', `${roleTarget === 'admin' ? '管理员' : '教师'}成功登录`);
@@ -1101,7 +1127,17 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         canvas.width = width; canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
-        callback(canvas.toDataURL('image/jpeg', 0.75));
+<comment-tag id="3" text="Firestore documents have a strict 1MB size limit. Compressing images to Base64 strings and saving them directly to Firestore can easily exceed this limit, causing the save operation to fail without a clear error to the user. It's recommended to add a size check before calling the callback.
+
+Here is the suggested check:
+
+        const base64Data = canvas.toDataURL('image/jpeg', 0.75);
+        // 检查生成的 Base64 大小，防止超过 Firestore 单个文档 1MB 的限制
+        // 1MB 约等于 1,333,333 个 Base64 字符
+        if (base64Data.length > 1000000) {
+          alert('警告：压缩后的图片体积仍然过大，可能会导致保存失败，请更换更小的图片！');
+        }
+        callback(base64Data);" type="suggestion">        callback(canvas.toDataURL('image/jpeg', 0.75));</comment-tag>
       };
       img.src = event.target.result;
     };
@@ -2030,3 +2066,6 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
 function formatSimpleClassName(year, color) { if (year === '19') return '19 (转校)'; if (year === '20') return '20 (毕业)'; return `${year}${color}`; }
 function formatClassName(year, color) { if (year === '19') return '第19班 (转校)'; if (year === '20') return '第20班 (毕业)'; return `${year} 年级 ${color} 班`; }
 ```eof
+*Suggestions added*
+
+针对以上提出的第一点（数据泄露问题），为了让 `where()` 查询生效，您可能需要在 Firebase Console 的 Rules 中开启相应的读取权限，并在需要时配置索引。但相比起让任何人都能拉取全部数据，这个修改是**绝对必要**的。
