@@ -2,7 +2,18 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, query, onSnapshot, doc, setDoc, deleteDoc, updateDoc, getDocs } from 'firebase/firestore';
-import * as XLSX from 'xlsx';
+
+// --- Add dynamic script loading for XLSX ---
+const loadXLSX = async () => {
+  if (window.XLSX) return window.XLSX;
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+    script.onload = () => resolve(window.XLSX);
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+};
 
 const Search = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>);
 const LogOut = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>);
@@ -19,6 +30,7 @@ const RefreshCw = ({ size = 20, className = "" }) => (<svg width={size} height={
 const ClipboardList = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>);
 const ImageIcon = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>);
 const Users = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>);
+const UserPlus = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>);
 const FileText = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>);
 const BarChart = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>);
 const CreditCard = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>);
@@ -354,10 +366,6 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
     const cleanInput = icNumber.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
     
     try {
-      // [安全提示]: 目前这种查询方式会拉取整个 students 集合到客户端并在前端进行过滤，
-      // 这存在严重的数据泄露风险。
-      // 建议未来重构时，改用 Firebase Cloud Functions (后端云函数) 接收输入并返回结果，
-      // 或在 Firestore 中添加更精细的 Rules 和确切匹配查询。
       const studentsRef = collection(db, getCollectionPath('students'));
       const querySnapshot = await getDocs(query(studentsRef));
       const allStudents = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -769,7 +777,7 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
           {announcements.length === 0 ? (
             <p className="text-base text-gray-500 p-8 col-span-2 text-center bg-white rounded-2xl shadow-sm border border-purple-50">暂无最新活动公告。</p>
           ) : (
-            announcements.slice(0, 10).map((ann) => (
+            announcements.slice(0, 4).map((ann) => (
               <div 
                 key={ann.id} 
                 className="bg-white rounded-2xl p-6 md:p-8 shadow-sm hover:shadow-md transition-all border border-purple-50 flex flex-col justify-between overflow-hidden"
@@ -825,8 +833,6 @@ function LoginView({ roleTarget, setAuthRole, showMessage }) {
   const handleLogin = async (e) => {
     e.preventDefault();
     
-    // [安全提示]: 前端硬编码密码(6027)极易被黑客或学生通过右键查看源代码破解。
-    // 强烈建议后期改用 Firebase Authentication 的邮箱/密码登录，或将验证逻辑移至云端。
     if (pin === '6027') {
       setAuthRole(roleTarget);
       showMessage("登录成功", `欢迎进入${roleTarget === 'admin' ? '系统后台' : '教师控制台'}。`);
@@ -895,18 +901,22 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
       if (selectedYear === '19' || selectedYear === '20') return s.classYear === selectedYear;
       return s.classYear === selectedYear && s.classColor === selectedColor;
     });
-    // 加入 A-Z 排序
     return filtered.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   }, [students, selectedYear, selectedColor]);
 
-  const exportToExcel = () => {
-    const exportData = classStudents.map(s => ({
-      "KELAS": `${s.classYear}${s.classColor}`, "TARIKH MASUK": s.admissionDate || '', "NO.RUJ IDME": s.idme || '', "NO RUJ SEK": s.studentId || '', "NAMA MURID": s.name.includes('(') ? s.name.split('(')[0].trim() : s.name, "姓名": s.name.includes('(') ? s.name.split('(')[1].replace(')', '').trim() : '', "JANTINA": s.gender || '', "RUMAH SUKAN": s.sportsHouse || '', "SURAT BERANAK": s.birthCert || '', "TARIKH LAHIR": s.dob || '', "ic": s.rawIc || '', "IC MURID": s.ic, "EMAIL DELIMA": s.delimaId, "PASSWORD": s.password
-    }));
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Students");
-    XLSX.writeFile(wb, `Senarai_Kelas_${selectedYear}${selectedColor}.xlsx`);
+  const exportToExcel = async () => {
+    try {
+      const XLSX = await loadXLSX();
+      const exportData = classStudents.map(s => ({
+        "KELAS": `${s.classYear}${s.classColor}`, "TARIKH MASUK": s.admissionDate || '', "NO.RUJ IDME": s.idme || '', "NO RUJ SEK": s.studentId || '', "NAMA MURID": s.name.includes('(') ? s.name.split('(')[0].trim() : s.name, "姓名": s.name.includes('(') ? s.name.split('(')[1].replace(')', '').trim() : '', "JANTINA": s.gender || '', "RUMAH SUKAN": s.sportsHouse || '', "SURAT BERANAK": s.birthCert || '', "TARIKH LAHIR": s.dob || '', "ic": s.rawIc || '', "IC MURID": s.ic, "EMAIL DELIMA": s.delimaId, "PASSWORD": s.password
+      }));
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Students");
+      XLSX.writeFile(wb, `Senarai_Kelas_${selectedYear}${selectedColor}.xlsx`);
+    } catch (e) {
+       showMessage("错误", "无法加载 Excel 库。");
+    }
   };
 
   const handleTransfer = async (e) => {
@@ -1094,6 +1104,34 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
   const [adminMainTab, setAdminMainTab] = useState('card_requests'); 
   const [confirmModal, setConfirmModal] = useState(null);
   
+  const [showAddStudentForm, setShowAddStudentForm] = useState(false);
+  const [newStudent, setNewStudent] = useState({
+    name: '', ic: '', classYear: '1', classColor: 'H', delimaId: '', password: '', 
+    gender: 'L', studentId: '', idme: '', birthCert: '', dob: '', sportsHouse: '', admissionDate: ''
+  });
+
+  const handleAddSingleStudent = async (e) => {
+    e.preventDefault();
+    if (!newStudent.ic || !newStudent.name) {
+       showMessage("提示", "姓名和 IC 号码为必填项。");
+       return;
+    }
+    try {
+       const studentData = {
+          ...newStudent,
+          rawIc: newStudent.ic.replace(/[^a-zA-Z0-9]/g, '').toLowerCase(),
+          status: 'Active'
+       };
+       await setDoc(doc(db, getCollectionPath('students'), newStudent.ic), studentData);
+       showMessage("成功", `成功新增学生: ${newStudent.name}`);
+       if (window.logSystemAction) window.logSystemAction('admin', '手动新增学生', `新增了学生资料 [${newStudent.name}]`);
+       setNewStudent({ name: '', ic: '', classYear: '1', classColor: 'H', delimaId: '', password: '', gender: 'L', studentId: '', idme: '', birthCert: '', dob: '', sportsHouse: '', admissionDate: '' });
+       setShowAddStudentForm(false);
+    } catch (err) {
+       showMessage("错误", "添加失败: " + err.message);
+    }
+  };
+
   const compressImage = (file, callback) => {
     if (!file.type.startsWith('image/')) { showMessage("错误", "请上传图片文件"); return; }
     const reader = new FileReader();
@@ -1111,8 +1149,6 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         
         const base64Data = canvas.toDataURL('image/jpeg', 0.75);
         
-        // 检查生成的 Base64 大小，防止超过 Firestore 单个文档 1MB 的限制
-        // 1MB 约等于 1,333,333 个 Base64 字符
         if (base64Data.length > 1000000) {
           alert('警告：压缩后的图片体积仍然过大，可能会导致在 Firebase 中保存失败！请上传体积更小的图片。');
         }
@@ -1141,7 +1177,6 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
       const lower = searchTerm.toLowerCase();
       res = students.filter(s => s.name.toLowerCase().includes(lower) || s.ic.toLowerCase().includes(lower) || formatClassName(s.classYear, s.classColor).toLowerCase().includes(lower));
     }
-    // 加入 A-Z 排序
     return res.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   }, [students, searchTerm]);
 
@@ -1151,17 +1186,21 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
       const lower = promoSearchTerm.toLowerCase();
       res = students.filter(s => s.name.toLowerCase().includes(lower) || s.ic.toLowerCase().includes(lower));
     }
-    // 加入 A-Z 排序
     return res.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   }, [students, promoSearchTerm]);
 
-  const downloadTemplate = () => {
-    const headers = ["KELAS", "TARIKH MASUK", "NO.RUJ IDME", "NO RUJ SEK", "NAMA MURID", "姓名", "JANTINA", "RUMAH SUKAN", "SURAT BERANAK", "TARIKH LAHIR", "ic", "IC MURID", "EMAIL DELIMA", "PASSWORD"];
-    const dummyData = [["1H", "12/1/2026", "231203013003", "2026001", "ABNERCHRIS ARAPOC NICHOLAS", "艾纳士", "L", "H", "SC 055497", "16/11/2019", "191116-12-0253", "191116-12-0253", "abnerchrisarapocnicholas@moe-dl.edu.my", "Kmbft@0253"]];
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...dummyData]);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Template");
-    XLSX.writeFile(wb, "Template_Data_Murid_SJKC.xlsx");
+  const downloadTemplate = async () => {
+    try {
+      const XLSX = await loadXLSX();
+      const headers = ["KELAS", "TARIKH MASUK", "NO.RUJ IDME", "NO RUJ SEK", "NAMA MURID", "姓名", "JANTINA", "RUMAH SUKAN", "SURAT BERANAK", "TARIKH LAHIR", "ic", "IC MURID", "EMAIL DELIMA", "PASSWORD"];
+      const dummyData = [["1H", "12/1/2026", "231203013003", "2026001", "ABNERCHRIS ARAPOC NICHOLAS", "艾纳士", "L", "H", "SC 055497", "16/11/2019", "191116-12-0253", "191116-12-0253", "abnerchrisarapocnicholas@moe-dl.edu.my", "Kmbft@0253"]];
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...dummyData]);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Template");
+      XLSX.writeFile(wb, "Template_Data_Murid_SJKC.xlsx");
+    } catch (e) {
+       showMessage("错误", "无法加载 Excel 库。");
+    }
   };
 
   const handleFileUpload = (e) => {
@@ -1170,6 +1209,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
     const reader = new FileReader();
     reader.onload = async (evt) => {
       try {
+        const XLSX = await loadXLSX();
         const wb = XLSX.read(evt.target.result, { type: 'binary' });
         const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { raw: false });
         let successCount = 0;
@@ -1281,17 +1321,22 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
     setConfirmModal({ message: "确定要删除这条公告吗？", onConfirm: async () => { setConfirmModal(null); await deleteDoc(doc(db, getCollectionPath('announcements'), id)); } });
   };
 
-  const exportLogsToExcel = () => {
-    const exportData = logs.map(l => ({
-      "时间 (Masa)": new Date(l.timestamp).toLocaleString(),
-      "身份 (Peranan)": l.role === 'admin' ? '管理员 (Admin)' : l.role === 'teacher' ? '教师 (Guru)' : '访客/家长 (Pelawat)',
-      "操作类别 (Tindakan)": l.action,
-      "详细内容 (Butiran)": l.details
-    }));
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "System_Logs");
-    XLSX.writeFile(wb, `System_Logs_${new Date().toISOString().split('T')[0]}.xlsx`);
+  const exportLogsToExcel = async () => {
+    try {
+      const XLSX = await loadXLSX();
+      const exportData = logs.map(l => ({
+        "时间 (Masa)": new Date(l.timestamp).toLocaleString(),
+        "身份 (Peranan)": l.role === 'admin' ? '管理员 (Admin)' : l.role === 'teacher' ? '教师 (Guru)' : '访客/家长 (Pelawat)',
+        "操作类别 (Tindakan)": l.action,
+        "详细内容 (Butiran)": l.details
+      }));
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "System_Logs");
+      XLSX.writeFile(wb, `System_Logs_${new Date().toISOString().split('T')[0]}.xlsx`);
+    } catch (e) {
+       showMessage("错误", "导出失败，无法加载 Excel 库。");
+    }
   };
 
   const [reportForm, setReportForm] = useState({ title: '', content: '', image: '', studentUsage: '', teacherUsage: '' });
@@ -1382,7 +1427,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
       (s.name.toLowerCase().includes(lower) || s.ic.toLowerCase().includes(lower)) 
       && !selectedForCard.find(sel => sel.ic === s.ic)
     )
-    .sort((a, b) => (a.name || '').localeCompare(b.name || '')) // 加入 A-Z 排序
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
     .slice(0, 5); 
   }, [students, cardSearchTerm, selectedForCard]);
 
@@ -1448,44 +1493,48 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
     });
   };
 
-  const exportCardRequestsToExcel = (statusFilter) => {
+  const exportCardRequestsToExcel = async (statusFilter) => {
     const filteredRequests = statusFilter ? cardRequests.filter(r => r.status === statusFilter) : cardRequests;
     
     if (filteredRequests.length === 0) {
       return showMessage("提示", "当前没有符合条件的数据可供导出。");
     }
 
-    const exportData = filteredRequests.map(r => {
-      const studentInfo = students.find(s => s.ic === r.studentIc) || {};
-      const malayName = studentInfo.name?.includes('(') ? studentInfo.name.split('(')[0].trim() : (studentInfo.name || r.studentName);
-      const chineseName = studentInfo.name?.includes('(') ? studentInfo.name.split('(')[1].replace(')', '').trim() : '';
+    try {
+      const XLSX = await loadXLSX();
+      const exportData = filteredRequests.map(r => {
+        const studentInfo = students.find(s => s.ic === r.studentIc) || {};
+        const malayName = studentInfo.name?.includes('(') ? studentInfo.name.split('(')[0].trim() : (studentInfo.name || r.studentName);
+        const chineseName = studentInfo.name?.includes('(') ? studentInfo.name.split('(')[1].replace(')', '').trim() : '';
 
-      return {
-        "NO": formatSimpleClassName(studentInfo.classYear || r.classYear, studentInfo.classColor || r.classColor),
-        "NO.RUJ IDME": studentInfo.idme || '',
-        "NO RUJ SEK": studentInfo.studentId || '',
-        "NAMA MURID": malayName,
-        "姓名": chineseName,
-        "性别": studentInfo.gender || '',
-        "RUMAH SUKAN": studentInfo.sportsHouse || '',
-        "SURAT BERANAK": studentInfo.birthCert || '',
-        "TARIKH LAHIR": studentInfo.dob || '',
-        "IC": r.studentIc,
-        "EMAL DELIMA": studentInfo.delimaId || '',
-        "PASSWORD": studentInfo.password || ''
-      };
-    });
+        return {
+          "NO": formatSimpleClassName(studentInfo.classYear || r.classYear, studentInfo.classColor || r.classColor),
+          "NO.RUJ IDME": studentInfo.idme || '',
+          "NO RUJ SEK": studentInfo.studentId || '',
+          "NAMA MURID": malayName,
+          "姓名": chineseName,
+          "性别": studentInfo.gender || '',
+          "RUMAH SUKAN": studentInfo.sportsHouse || '',
+          "SURAT BERANAK": studentInfo.birthCert || '',
+          "TARIKH LAHIR": studentInfo.dob || '',
+          "IC": r.studentIc,
+          "EMAL DELIMA": studentInfo.delimaId || '',
+          "PASSWORD": studentInfo.password || ''
+        };
+      });
 
-    // 针对导出的 Excel 数据强制按照 A-Z 排序
-    exportData.sort((a, b) => (a["NAMA MURID"] || '').localeCompare(b["NAMA MURID"] || ''));
+      exportData.sort((a, b) => (a["NAMA MURID"] || '').localeCompare(b["NAMA MURID"] || ''));
 
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "MailMergeData");
-    const fileNameStatus = statusFilter === 'pending' ? 'Menunggu' : (statusFilter === 'completed' ? 'Selesai' : 'Semua');
-    XLSX.writeFile(wb, `MailMerge_Kad_${fileNameStatus}_${new Date().toISOString().split('T')[0]}.xlsx`);
-    
-    showMessage("导出成功", `Excel 文件已下载！\n\n此 Excel 格式已完全适配您的 TEMPLETE.docx。\n\n请打开 Word 文档，点击顶部的【邮件(Mailings)】->【选择收件人(Select Recipients)】->【使用现有列表(Use an Existing List)】，然后载入此 Excel，即可一键完成 Mail Merge 制卡！`);
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "MailMergeData");
+      const fileNameStatus = statusFilter === 'pending' ? 'Menunggu' : (statusFilter === 'completed' ? 'Selesai' : 'Semua');
+      XLSX.writeFile(wb, `MailMerge_Kad_${fileNameStatus}_${new Date().toISOString().split('T')[0]}.xlsx`);
+      
+      showMessage("导出成功", `Excel 文件已下载！\n\n此 Excel 格式已完全适配您的 TEMPLETE.docx。\n\n请打开 Word 文档，点击顶部的【邮件(Mailings)】->【选择收件人(Select Recipients)】->【使用现有列表(Use an Existing List)】，然后载入此 Excel，即可一键完成 Mail Merge 制卡！`);
+    } catch (e) {
+       showMessage("错误", "导出失败，无法加载 Excel 库。");
+    }
   };
 
   return (
@@ -1639,16 +1688,85 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         </div>
       )}
 
+      {}
       {adminMainTab === 'students_mgmt' && (
         <div className="space-y-12 animate-slide-up">
           <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm">
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-              <h3 className="text-lg md:text-xl font-bold text-purple-800">全校学生名单管理</h3>
+              <div className="flex items-center gap-4">
+                <h3 className="text-lg md:text-xl font-bold text-purple-800">全校学生名单管理</h3>
+                <button onClick={() => setShowAddStudentForm(!showAddStudentForm)} className="flex items-center gap-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-xl font-bold text-sm shadow-sm transition-all">
+                  <UserPlus size={18} /> {showAddStudentForm ? '取消新增' : '新增单名学生'}
+                </button>
+              </div>
               <div className="relative w-full md:w-1/3">
                 <input type="text" placeholder="搜索姓名、IC 或 班级..." className="w-full p-2.5 pl-10 border border-gray-300 rounded-xl text-sm focus:outline-none focus:border-purple-500" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                 <Search size={18} className="absolute left-3 top-3 text-gray-400" />
               </div>
             </div>
+
+            {showAddStudentForm && (
+              <div className="mb-6 p-6 bg-purple-50 rounded-2xl border border-purple-100 animate-slide-up">
+                 <h3 className="text-lg font-bold text-purple-800 mb-4 flex items-center gap-2">
+                    <UserPlus size={20} className="text-purple-600" /> 手动新增单名学生 (Tambah Murid)
+                 </h3>
+                 <form onSubmit={handleAddSingleStudent} className="space-y-4">
+                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                     <div>
+                       <label className="block text-xs font-bold text-gray-700 mb-1">姓名 (必填)</label>
+                       <input required type="text" value={newStudent.name} onChange={e=>setNewStudent({...newStudent, name: e.target.value})} className="w-full p-2.5 border border-purple-200 focus:border-purple-500 rounded-lg text-sm outline-none" placeholder="如: ALI BIN ABU (阿里)" />
+                     </div>
+                     <div>
+                       <label className="block text-xs font-bold text-gray-700 mb-1">IC 号码 (必填)</label>
+                       <input required type="text" value={newStudent.ic} onChange={e=>setNewStudent({...newStudent, ic: e.target.value})} className="w-full p-2.5 border border-purple-200 focus:border-purple-500 rounded-lg text-sm outline-none" placeholder="如: 161201-12-1234" />
+                     </div>
+                     <div>
+                       <label className="block text-xs font-bold text-gray-700 mb-1">年级编号</label>
+                       <select value={newStudent.classYear} onChange={e=>setNewStudent({...newStudent, classYear: e.target.value})} className="w-full p-2.5 border border-purple-200 focus:border-purple-500 rounded-lg text-sm bg-white outline-none">
+                         {years.map(y => <option key={y.val} value={y.val}>{y.label}</option>)}
+                       </select>
+                     </div>
+                     <div>
+                       <label className="block text-xs font-bold text-gray-700 mb-1">班级名称</label>
+                       <input type="text" value={newStudent.classColor} onChange={e=>setNewStudent({...newStudent, classColor: e.target.value.toUpperCase()})} className="w-full p-2.5 border border-purple-200 focus:border-purple-500 rounded-lg text-sm outline-none" placeholder="如: H, M" />
+                     </div>
+                     <div>
+                       <label className="block text-xs font-bold text-gray-700 mb-1">DELIMA Email</label>
+                       <input type="text" value={newStudent.delimaId} onChange={e=>setNewStudent({...newStudent, delimaId: e.target.value})} className="w-full p-2.5 border border-purple-200 focus:border-purple-500 rounded-lg text-sm outline-none" placeholder="m-xxxx@moe-dl.edu.my" />
+                     </div>
+                     <div>
+                       <label className="block text-xs font-bold text-gray-700 mb-1">密码</label>
+                       <input type="text" value={newStudent.password} onChange={e=>setNewStudent({...newStudent, password: e.target.value})} className="w-full p-2.5 border border-purple-200 focus:border-purple-500 rounded-lg text-sm outline-none" placeholder="Kmbft@xxxx" />
+                     </div>
+                     <div>
+                       <label className="block text-xs font-bold text-gray-700 mb-1">性别</label>
+                       <select value={newStudent.gender} onChange={e=>setNewStudent({...newStudent, gender: e.target.value})} className="w-full p-2.5 border border-purple-200 focus:border-purple-500 rounded-lg text-sm bg-white outline-none">
+                         <option value="L">L (Lelaki)</option>
+                         <option value="P">P (Perempuan)</option>
+                       </select>
+                     </div>
+                     <div>
+                       <label className="block text-xs font-bold text-gray-700 mb-1">学号 (NO RUJ SEK)</label>
+                       <input type="text" value={newStudent.studentId} onChange={e=>setNewStudent({...newStudent, studentId: e.target.value})} className="w-full p-2.5 border border-purple-200 focus:border-purple-500 rounded-lg text-sm outline-none" placeholder="如: 2026001" />
+                     </div>
+                     <div>
+                       <label className="block text-xs font-bold text-gray-700 mb-1">IDME</label>
+                       <input type="text" value={newStudent.idme} onChange={e=>setNewStudent({...newStudent, idme: e.target.value})} className="w-full p-2.5 border border-purple-200 focus:border-purple-500 rounded-lg text-sm outline-none" placeholder="如: 231203013003" />
+                     </div>
+                     <div>
+                       <label className="block text-xs font-bold text-gray-700 mb-1">报生纸 (Surat Beranak)</label>
+                       <input type="text" value={newStudent.birthCert} onChange={e=>setNewStudent({...newStudent, birthCert: e.target.value})} className="w-full p-2.5 border border-purple-200 focus:border-purple-500 rounded-lg text-sm outline-none" placeholder="如: SC 055497" />
+                     </div>
+                   </div>
+                   <div className="flex justify-end mt-4">
+                      <button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 px-8 rounded-lg transition-all shadow-sm active:scale-95 flex items-center gap-2">
+                        <UserPlus size={16}/> 保存记录
+                      </button>
+                   </div>
+                 </form>
+              </div>
+            )}
+
             <div className="overflow-x-auto rounded-xl border border-gray-200 h-[600px] overflow-y-auto">
               <table className="w-full text-left border-collapse min-w-max">
                 <thead className="sticky top-0 bg-gray-50 shadow-sm z-10"><tr className="text-gray-600 text-sm border-b border-gray-200"><th className="p-4">姓名</th><th className="p-4">班级</th><th className="p-4">IC MURID</th><th className="p-4">ic (小写)</th><th className="p-4">性别</th><th className="p-4">DELIMA Email</th><th className="p-4">密码</th><th className="p-4">学号</th><th className="p-4">IDME</th><th className="p-4">出生日期</th><th className="p-4">报生纸</th><th className="p-4">入学日期</th><th className="p-4">运动队伍</th><th className="p-4 text-center sticky right-0 bg-gray-50">操作</th></tr></thead>
@@ -1712,6 +1830,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         </div>
       )}
 
+      {}
       {adminMainTab === 'announcements' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-slide-up">
           <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm">
@@ -1749,6 +1868,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         </div>
       )}
 
+      {}
       {adminMainTab === 'sys_logs' && (
         <div className="space-y-8 animate-slide-up">
           <div className="bg-white border border-gray-200 p-6 md:p-8 rounded-2xl shadow-sm">
@@ -1808,6 +1928,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         </div>
       )}
 
+      {}
       {adminMainTab === 'school_reports' && (
         <div className="space-y-8 animate-slide-up">
           <div className="bg-blue-50/50 p-6 md:p-8 rounded-2xl border border-blue-200 grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -1858,6 +1979,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         </div>
       )}
 
+      {}
       {adminMainTab === 'admin_notes' && (
         <div className="space-y-8 animate-slide-up">
           <div className="bg-red-50/30 p-6 md:p-8 rounded-2xl border border-red-100 grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -1901,7 +2023,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         </div>
       )}
 
-      {/* 独立编辑弹窗 */}
+      {}
       {editStudent && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[105]">
           <div className="bg-white rounded-3xl p-8 w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl animate-slide-up">
