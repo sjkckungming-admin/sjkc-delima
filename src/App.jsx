@@ -2,18 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, query, onSnapshot, doc, setDoc, deleteDoc, updateDoc, getDocs } from 'firebase/firestore';
-
-// --- Add dynamic script loading for XLSX ---
-const loadXLSX = async () => {
-  if (window.XLSX) return window.XLSX;
-  return new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
-    script.onload = () => resolve(window.XLSX);
-    script.onerror = reject;
-    document.head.appendChild(script);
-  });
-};
+import * as XLSX from 'xlsx';
 
 const Search = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>);
 const LogOut = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>);
@@ -30,7 +19,6 @@ const RefreshCw = ({ size = 20, className = "" }) => (<svg width={size} height={
 const ClipboardList = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>);
 const ImageIcon = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>);
 const Users = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>);
-const UserPlus = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>);
 const FileText = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>);
 const BarChart = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>);
 const CreditCard = ({ size = 20, className = "" }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>);
@@ -71,6 +59,7 @@ export default function App() {
   const [authRole, setAuthRole] = useState(''); 
   
   const [students, setStudents] = useState([]);
+  const [teachers, setTeachers] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
   const [logs, setLogs] = useState([]);
   const [schoolReports, setSchoolReports] = useState([]); 
@@ -111,7 +100,7 @@ export default function App() {
       } catch (err) {
         console.error("Auth error:", err);
         setIsLoading(false);
-        setModalMessage({ title: "连接配置异常", text: `无法连接至 Firebase 账户。\n详细错误: ${err.message}` });
+        setModalMessage({ title: "Ralat Sambungan (连接异常)", text: `Gagal menyambung ke Firebase.\n无法连接至 Firebase 账户。\n\n${err.message}` });
       }
     };
     initAuth();
@@ -142,7 +131,7 @@ export default function App() {
     const handleFirestoreError = (error) => {
       console.error("Firestore error:", error);
       if (error.code === 'permission-denied' || (error.message && error.message.includes('Missing or insufficient permissions'))) {
-         setModalMessage({ title: "数据库读写被拦截", text: "系统无法读取或写入数据。\n请前往 Firebase Console 更新 Rules 设置。" });
+         setModalMessage({ title: "Akses Ditolak (权限被拦截)", text: "Sistem tidak dapat membaca/menulis data. Sila kemaskini Firebase Rules.\n系统无法读写数据，请更新 Firebase Rules。" });
       }
     };
 
@@ -159,6 +148,7 @@ export default function App() {
     }, handleFirestoreError);
 
     let unsubscribeStudents = () => {};
+    let unsubscribeTeachers = () => {};
     let unsubscribeCards = () => {};
     let unsubscribeLogs = () => {};
     let unsubscribeNotes = () => {};
@@ -173,6 +163,14 @@ export default function App() {
       unsubscribeCards = onSnapshot(query(cardsRef), (snapshot) => {
         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setCardRequests(data.sort((a, b) => new Date(b.requestedAt) - new Date(a.requestedAt)));
+      }, handleFirestoreError);
+    }
+    
+    // Both Admin and Teachers need teacher data now for querying 
+    if (authRole === 'admin' || authRole === 'teacher') {
+      const teachersRef = collection(db, getCollectionPath('teachers'));
+      unsubscribeTeachers = onSnapshot(query(teachersRef), (snapshot) => {
+        setTeachers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       }, handleFirestoreError);
     }
 
@@ -194,6 +192,7 @@ export default function App() {
       unsubscribeAnnouncements();
       unsubscribeReports();
       unsubscribeStudents();
+      unsubscribeTeachers();
       unsubscribeCards();
       unsubscribeLogs();
       unsubscribeNotes();
@@ -203,10 +202,10 @@ export default function App() {
   const showMessage = (title, text) => setModalMessage({ title, text });
 
   const handleLogout = () => {
-    if (authRole) window.logSystemAction(authRole, '退出系统', '用户安全登出');
+    if (authRole) window.logSystemAction(authRole, 'Log Keluar (退出系统)', 'Pengguna log keluar dengan selamat.');
     setAuthRole('');
     setActiveTab('home');
-    showMessage("成功", "已安全退出账户。");
+    showMessage("Berjaya (成功)", "Log keluar berjaya. (已安全退出账户。)");
   };
 
   const renderContent = () => {
@@ -214,7 +213,7 @@ export default function App() {
       return (
         <div className="flex flex-col items-center justify-center p-16 space-y-4">
           <RefreshCw className="animate-spin text-purple-500" size={40} />
-          <div className="text-xl text-purple-600 font-semibold animate-pulse">正在安全连接系统...</div>
+          <div className="text-xl text-purple-600 font-semibold animate-pulse">Menyambung ke sistem... (正在安全连接系统...)</div>
         </div>
       );
     }
@@ -229,7 +228,7 @@ export default function App() {
       }
     } else if (activeTab === 'admin') {
       if (authRole === 'admin') {
-        return <AdminPortal students={students} announcements={announcements} logs={logs} schoolReports={schoolReports} adminNotes={adminNotes} cardRequests={cardRequests} db={db} getCollectionPath={getCollectionPath} showMessage={showMessage} />;
+        return <AdminPortal students={students} teachers={teachers} announcements={announcements} logs={logs} schoolReports={schoolReports} adminNotes={adminNotes} cardRequests={cardRequests} db={db} getCollectionPath={getCollectionPath} showMessage={showMessage} />;
       } else {
         return <LoginView roleTarget="admin" setAuthRole={setAuthRole} showMessage={showMessage} />;
       }
@@ -249,8 +248,9 @@ export default function App() {
           <h2 className="text-lg md:text-xl font-bold tracking-widest text-gray-700 uppercase mt-1 mb-1">
             SJKC KUNG MING, BEAUFORT, SABAH.
           </h2>
-          <h1 className="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-800 to-purple-500 my-2 py-1">
-            保佛公民小学 Delima 账户查询
+          <h1 className="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-800 to-purple-500 my-2 py-1 flex flex-col gap-1">
+            <span>保佛公民小学 Delima 账户查询</span>
+            <span className="text-xl md:text-2xl text-purple-600">Portal Semakan Akaun Delima</span>
           </h1>
         </div>
 
@@ -260,7 +260,7 @@ export default function App() {
               onClick={() => setActiveTab('home')}
               className="px-6 py-2 rounded-full text-base font-bold bg-purple-50 text-purple-700 hover:bg-purple-100 transition-all shadow-sm"
             >
-              返回首页 (Kembali)
+              Kembali (返回首页)
             </button>
           )}
           {authRole !== '' && (
@@ -268,7 +268,7 @@ export default function App() {
               onClick={handleLogout}
               className="flex items-center gap-2 px-6 py-2 rounded-full text-base font-bold bg-red-50 text-red-600 hover:bg-red-100 shadow-sm transition-all"
             >
-              <LogOut size={18} /> 登出
+              <LogOut size={18} /> Log Keluar (登出)
             </button>
           )}
         </div>
@@ -281,23 +281,23 @@ export default function App() {
       <footer className="text-center py-8 mt-8 text-purple-400">
         <p className="text-sm mb-2">© {new Date().getFullYear()} SJKC KUNG MING. Hak Cipta Terpelihara.</p>
         <div className="flex justify-center items-center gap-4 text-xs mt-2 opacity-60 hover:opacity-100 transition-opacity">
-          <button onClick={() => setActiveTab('teacher')} className="hover:text-amber-600 transition-colors">panel guru</button>
+          <button onClick={() => setActiveTab('teacher')} className="hover:text-amber-600 transition-colors">panel guru (教师入口)</button>
           <span>|</span>
-          <button onClick={() => setActiveTab('admin')} className="hover:text-purple-700 transition-colors">admin access</button>
+          <button onClick={() => setActiveTab('admin')} className="hover:text-purple-700 transition-colors">admin access (后台管理)</button>
         </div>
       </footer>
 
       {modalMessage && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[150]">
           <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl animate-bounce-in transform transition-all">
             <div className="flex items-center justify-center mb-4">
-              {modalMessage.title.includes('异常') || modalMessage.title.includes('被拦截') || modalMessage.title === '错误' || modalMessage.title.includes('失败') ? (
+              {modalMessage.title.includes('异常') || modalMessage.title.includes('Ralat') || modalMessage.title.includes('被拦截') || modalMessage.title.includes('错误') || modalMessage.title.includes('失败') ? (
                  <AlertCircle size={40} className="text-red-500" />
               ) : (
                  <UserCheck size={40} className="text-purple-500" />
               )}
             </div>
-            <h3 className={`text-2xl font-bold mb-4 text-center ${modalMessage.title.includes('异常') || modalMessage.title.includes('被拦截') || modalMessage.title === '错误' ? 'text-red-600' : 'text-purple-700'}`}>
+            <h3 className={`text-2xl font-bold mb-4 text-center ${modalMessage.title.includes('异常') || modalMessage.title.includes('Ralat') || modalMessage.title.includes('被拦截') || modalMessage.title.includes('错误') ? 'text-red-600' : 'text-purple-700'}`}>
               {modalMessage.title}
             </h3>
             <p className="text-base text-gray-700 leading-relaxed text-center whitespace-pre-line">{modalMessage.text}</p>
@@ -305,7 +305,7 @@ export default function App() {
               onClick={() => setModalMessage(null)}
               className="mt-6 w-full bg-purple-600 text-white rounded-xl py-3 text-lg font-bold hover:bg-purple-700 transition-colors"
             >
-              确定 (Tutup)
+              Tutup (关闭)
             </button>
           </div>
         </div>
@@ -338,6 +338,16 @@ const EmojiPicker = ({ onSelect, onClose }) => {
   );
 };
 
+function InfoItem({ label, value, isHighlight, isAlert, className = "" }) {
+  const displayValue = (!value || String(value).trim() === '' || value === '-') ? 'Sedang dikemaskini / 更新中' : value;
+  return (
+    <div className={`p-4 rounded-xl border border-transparent ${isHighlight ? 'bg-purple-600 text-white shadow-sm' : isAlert ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-white border-gray-100'} ${className}`}>
+      <div className={`text-xs md:text-sm font-semibold mb-1 opacity-80`}>{label}</div>
+      <div className={`text-lg md:text-xl font-bold break-all ${displayValue === 'Sedang dikemaskini / 更新中' ? 'italic opacity-60 font-normal text-base' : ''}`}>{displayValue}</div>
+    </div>
+  );
+}
+
 function HomeView({ announcements, schoolReports, db, getCollectionPath, showMessage, authRole, currentUser, setActiveTab }) {
   const [icNumber, setIcNumber] = useState('');
   const [result, setResult] = useState(null);
@@ -367,24 +377,37 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
     
     try {
       const studentsRef = collection(db, getCollectionPath('students'));
-      const querySnapshot = await getDocs(query(studentsRef));
-      const allStudents = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const teachersRef = collection(db, getCollectionPath('teachers'));
       
-      const student = allStudents.find(s => {
-        const cleanIC = (s.ic || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-        const cleanBC = (s.birthCert || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+      const [studentsSnap, teachersSnap] = await Promise.all([
+        getDocs(query(studentsRef)),
+        getDocs(query(teachersRef))
+      ]);
+      
+      const allStudents = studentsSnap.docs.map(doc => ({ id: doc.id, type: 'student', ...doc.data() }));
+      const allTeachers = teachersSnap.docs.map(doc => ({ id: doc.id, type: 'teacher', ...doc.data() }));
+      
+      const allUsers = [...allStudents, ...allTeachers];
+      
+      const match = allUsers.find(u => {
+        const cleanIC = (u.ic || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+        const cleanBC = (u.birthCert || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
         return cleanIC === cleanInput || cleanBC === cleanInput;
       });
       
-      setResult(student || null);
+      setResult(match || null);
       setSearched(true);
 
       if (window.logSystemAction) {
-        if (student) window.logSystemAction('visitor', '成功查询资料', `家长/学生成功进入，输入的身份证/报生纸: ${icNumber} (学生: ${student.name}, 班级: ${student.classYear}${student.classColor})`);
-        else window.logSystemAction('visitor', '查询失败', `家长/学生尝试进入但失败，输入的号码: ${icNumber}`);
+        if (match) {
+          const roleText = match.type === 'teacher' ? 'Guru (教师)' : 'Murid (学生)';
+          window.logSystemAction('visitor', 'Semakan Berjaya (成功查询)', `Berjaya menyemak ${roleText}: ${match.name} (Input: ${icNumber})`);
+        } else {
+          window.logSystemAction('visitor', 'Semakan Gagal (查询失败)', `Cuba menyemak tetapi tiada rekod (Input: ${icNumber})`);
+        }
       }
     } catch (error) {
-      showMessage("错误", "无法连接数据库进行查询: " + error.message);
+      showMessage("Ralat (错误)", "Gagal menyambung ke pangkalan data (无法连接数据库): " + error.message);
     }
     
     setIsSearching(false);
@@ -429,7 +452,7 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
 
     if (!input || !input.trim()) return;
     if (!authRole && (!name || !name.trim())) {
-      showMessage("提示 (Perhatian)", "Sila masukkan nama anda.\n请输入您的名字。");
+      showMessage("Perhatian (提示)", "Sila masukkan nama anda.\n请输入您的名字。");
       return;
     }
 
@@ -450,9 +473,9 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
       setCommentInputs(prev => { const next = {...prev}; delete next[item.id]; return next; });
       setCommentNames(prev => { const next = {...prev}; delete next[item.id]; return next; });
       setActiveCommentId(null);
-      showMessage("成功 (Berjaya)", "Komen anda telah dihantar.\n您的留言已发布！");
+      showMessage("Berjaya (成功)", "Komen anda telah dihantar.\n您的留言已发布！");
     } catch (err) {
-      showMessage("错误 (Ralat)", "Gagal menghantar komen: " + err.message);
+      showMessage("Ralat (错误)", "Gagal menghantar komen (留言失败): " + err.message);
     }
   };
 
@@ -464,7 +487,7 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
       setActiveCommentId(null);
       setEditCommentText('');
     } catch (err) {
-      showMessage("错误 (Ralat)", "Gagal mengemas kini komen: " + err.message);
+      showMessage("Ralat (错误)", "Gagal mengemas kini komen (更新留言失败): " + err.message);
     }
   };
 
@@ -474,7 +497,7 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
     try {
       await updateDoc(doc(db, getCollectionPath(collectionName), item.id), { comments: updatedComments });
     } catch (err) {
-      showMessage("错误 (Ralat)", "Gagal memadam komen: " + err.message);
+      showMessage("Ralat (错误)", "Gagal memadam komen (删除留言失败): " + err.message);
     }
   };
 
@@ -500,7 +523,7 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
             className={`flex items-center gap-1.5 text-sm font-bold transition-colors ${isLiked ? 'text-red-500 hover:text-red-600' : 'text-gray-500 hover:text-red-500'}`}
           >
             <Heart size={20} filled={isLiked} /> 
-            <span>Like ({item.likes?.length || 0})</span>
+            <span>Suka ({item.likes?.length || 0})</span>
           </button>
           <button 
             onClick={(e) => { 
@@ -520,7 +543,7 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
               <div key={c.id} className="bg-white p-3 rounded-xl shadow-sm border border-gray-100 text-sm">
                 <div className="flex justify-between items-start mb-1">
                   <span className="font-bold text-gray-800">{c.authorName}</span>
-                  <span className="text-xs text-gray-400">{new Date(c.timestamp).toLocaleString()} {c.edited && '(Edited)'}</span>
+                  <span className="text-xs text-gray-400">{new Date(c.timestamp).toLocaleString()} {c.edited && '(Telah Disunting)'}</span>
                 </div>
                 
                 {activeCommentId === c.id ? (
@@ -611,13 +634,14 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
           <Search size={32} className="text-purple-600 shrink-0 mt-1" />
           <div>
             <h2 className="text-2xl md:text-3xl font-extrabold text-purple-800">
-              查询学生 Delima 资料
+              查询师生 Delima 资料 (Semak ID)
             </h2>
             <h3 className="text-lg md:text-xl font-bold text-purple-600 mt-1">
-              Semakan email Delima Murid-murid
+              Semakan ID Delima Murid & Guru
             </h3>
             <p className="text-sm md:text-base text-gray-600 mt-2 font-medium">
-              Sila masukkan No. K/P atau Surat Beranak Murid untuk menyemak emel Delima Murid.
+              Sila masukkan No. K/P atau Surat Beranak (untuk murid) untuk menyemak emel Delima. 
+              <br/> 请输入身份证号码或报生纸号码（学生）进行查询。
             </p>
           </div>
         </div>
@@ -625,13 +649,13 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
         <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4 relative z-10">
           <input 
             type="text" 
-            placeholder="请输入学生IC或报生纸号码 (No.K/P atau Surat Beranak)" 
+            placeholder="请输入IC或报生纸号码 (No.K/P / Surat Beranak)" 
             className="flex-1 text-lg p-4 border-2 border-purple-200 rounded-2xl focus:outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-100 transition-all shadow-inner"
             value={icNumber}
             onChange={(e) => setIcNumber(e.target.value)}
           />
-          <button type="submit" disabled={isSearching} className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-lg px-8 py-4 rounded-2xl shadow-md transition-transform active:scale-95 flex items-center justify-center gap-2">
-            {isSearching ? '正在查询...' : '查询 (Cari)'}
+          <button type="submit" disabled={isSearching} className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-lg px-8 py-4 rounded-2xl shadow-md transition-transform active:scale-95 flex items-center justify-center gap-2 whitespace-nowrap">
+            {isSearching ? '查询中 (Mencari)...' : '查询 (Cari)'}
           </button>
         </form>
 
@@ -646,42 +670,57 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
           <div className="mt-8 border-t-2 border-purple-50 pt-8 animate-slide-up">
             {result ? (
               <div className="bg-purple-50 rounded-2xl p-6 md:p-8 border border-purple-200 shadow-sm">
-                <h3 className="text-2xl font-bold text-purple-900 mb-6 border-b-2 border-purple-200 pb-3">学生资料 (Maklumat Murid)</h3>
+                <h3 className="text-2xl font-bold text-purple-900 mb-6 border-b-2 border-purple-200 pb-3">
+                  {result.type === 'teacher' ? '教师资料 (Maklumat Guru)' : '学生资料 (Maklumat Murid)'}
+                </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-y-5 gap-x-6">
-                  <InfoItem label="姓名 (NAMA MURID)" value={result.name} />
-                  <InfoItem label="班级 (KELAS)" value={formatSimpleClassName(result.classYear, result.classColor)} />
-                  <InfoItem label="IC 号码 (IC MURID)" value={result.ic} />
-                  <InfoItem label="性别 (JANTINA)" value={result.gender} />
-                  <InfoItem label="DELIMA ID (EMAIL)" value={result.delimaId} isHighlight />
+                  <InfoItem label={result.type === 'teacher' ? "姓名 (NAMA GURU)" : "姓名 (NAMA MURID)"} value={result.name} />
+                  
+                  {result.type === 'student' && (
+                     <InfoItem label="班级 (KELAS)" value={formatSimpleClassName(result.classYear, result.classColor)} />
+                  )}
+                  
+                  <InfoItem label={result.type === 'teacher' ? "IC 号码 (IC GURU)" : "IC 号码 (IC MURID)"} value={result.ic} />
+                  
+                  {result.type === 'student' && (
+                     <InfoItem label="性别 (JANTINA)" value={result.gender} />
+                  )}
+                  
+                  <InfoItem label="DELIMA ID (E-MEL)" value={result.delimaId} isHighlight />
                   
                   <div className="flex flex-col">
-                    <InfoItem label="密码 (PASSWORD)" value={result.password} isHighlight />
+                    <InfoItem label="密码 (KATA LALUAN)" value={result.password} isHighlight />
                     <span className="text-red-500 font-bold text-xs md:text-sm mt-2 px-1 leading-tight">
-                      * Sila hubungi Guru Penyelaras Delima Sekolah jika ingin menukar kata laluan.
+                      * Sila hubungi Guru Penyelaras Delima jika ingin menukar kata laluan.
+                      <br/>* 若需修改密码，请联系学校 Delima 协调老师。
                     </span>
                   </div>
                   
-                  <InfoItem label="学号 (NO RUJ SEK)" value={result.studentId} />
-                  <InfoItem label="IDME (NO.RUJ IDME)" value={result.idme} />
-                  <InfoItem label="报生纸 (SURAT BERANAK)" value={result.birthCert} />
-                  <InfoItem label="运动队伍 (RUMAH SUKAN)" value={result.sportsHouse} />
-                  
-                  {result.classYear === '19' && (
+                  {result.type === 'student' && (
                     <>
-                      <InfoItem label="状态 (Status)" value="已转校 (Pindah)" isAlert />
-                      <InfoItem label="转校学校名称" value={result.transferSchool || '-'} />
-                    </>
-                  )}
-                  {result.classYear === '20' && (
-                    <>
-                      <InfoItem label="状态 (Status)" value="已毕业 (Tamat)" isAlert />
+                      <InfoItem label="学号 (NO RUJ SEK)" value={result.studentId} />
+                      <InfoItem label="IDME (NO.RUJ IDME)" value={result.idme} />
+                      <InfoItem label="报生纸 (SURAT BERANAK)" value={result.birthCert} />
+                      <InfoItem label="运动队伍 (RUMAH SUKAN)" value={result.sportsHouse} />
+                      
+                      {result.classYear === '19' && (
+                        <>
+                          <InfoItem label="状态 (STATUS)" value="已转校 (Pindah)" isAlert />
+                          <InfoItem label="转校学校名称 (SEKOLAH BARU)" value={result.transferSchool || '-'} />
+                        </>
+                      )}
+                      {result.classYear === '20' && (
+                        <>
+                          <InfoItem label="状态 (STATUS)" value="已毕业 (Tamat)" isAlert />
+                        </>
+                      )}
                     </>
                   )}
                 </div>
               </div>
             ) : (
               <div className="bg-red-50 text-red-600 p-6 rounded-2xl text-lg text-center font-bold border border-red-100 flex items-center justify-center gap-3">
-                <AlertCircle size={24} /> 找不到该学生的资料，请检查输入的号码是否正确。
+                <AlertCircle size={24} /> Maklumat tidak dijumpai, sila semak semula.<br/>找不到相关资料，请检查输入的号码是否正确。
               </div>
             )}
           </div>
@@ -691,7 +730,7 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
       {schoolReports.length > 0 && (
         <section className="animate-slide-up">
           <h2 className="text-2xl md:text-3xl font-extrabold text-blue-800 mb-6 flex items-center gap-3 pl-4 border-l-8 border-blue-500 rounded-l-md">
-            <FileText size={28} className="text-blue-500" /> Laporan & Penggunaan Sekolah (学校重要信息与使用率)
+            <FileText size={28} className="text-blue-500" /> Laporan & Penggunaan Sekolah (学校报告与使用率)
           </h2>
           <div className="space-y-6">
             {schoolReports.slice(0, 1).map(rep => (
@@ -718,7 +757,7 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
                       {rep.studentUsage && (
                         <div>
                           <div className="flex justify-between text-sm font-bold text-gray-700 mb-2">
-                            <span className="flex items-center gap-1"><Users size={16}/> 学生使用率 (Murid)</span>
+                            <span className="flex items-center gap-1"><Users size={16}/> Penggunaan Murid (学生使用率)</span>
                             <span className="text-blue-600">{rep.studentUsage}%</span>
                           </div>
                           <div className="w-full bg-gray-200 rounded-full h-3">
@@ -729,7 +768,7 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
                       {rep.teacherUsage && (
                         <div>
                           <div className="flex justify-between text-sm font-bold text-gray-700 mb-2">
-                            <span className="flex items-center gap-1"><UserCheck size={16}/> 老师使用率 (Guru)</span>
+                            <span className="flex items-center gap-1"><UserCheck size={16}/> Penggunaan Guru (老师使用率)</span>
                             <span className="text-green-600">{rep.teacherUsage}%</span>
                           </div>
                           <div className="w-full bg-gray-200 rounded-full h-3">
@@ -760,7 +799,7 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
         >
           <div className="flex flex-col items-center justify-center gap-1 md:gap-2">
             <h3 className="text-sm md:text-lg font-bold text-purple-600 uppercase tracking-widest opacity-90">
-              Click here for login
+              Klik Sini Untuk Log Masuk (点击登录 DELIMA 网站)
             </h3>
             <h2 className="text-2xl md:text-4xl lg:text-5xl font-extrabold text-purple-800 leading-tight group-hover:scale-[1.02] transition-transform">
               Digital Educational Learning Initiative Malaysia
@@ -775,7 +814,7 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {announcements.length === 0 ? (
-            <p className="text-base text-gray-500 p-8 col-span-2 text-center bg-white rounded-2xl shadow-sm border border-purple-50">暂无最新活动公告。</p>
+            <p className="text-base text-gray-500 p-8 col-span-2 text-center bg-white rounded-2xl shadow-sm border border-purple-50">Tiada hebahan terkini. (暂无最新活动公告。)</p>
           ) : (
             announcements.slice(0, 4).map((ann) => (
               <div 
@@ -784,7 +823,7 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
               >
                 {ann.image && (
                   <div className="-mx-6 md:-mx-8 -mt-6 md:-mt-8 mb-6 bg-gray-50 flex items-center justify-center border-b border-gray-100">
-                    <img src={ann.image} alt={ann.title || "活动照片"} className="w-full h-auto object-contain" />
+                    <img src={ann.image} alt={ann.title || "Gambar Aktiviti"} className="w-full h-auto object-contain" />
                   </div>
                 )}
                 <div>
@@ -804,7 +843,7 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
                     rel="noreferrer" 
                     className="mt-4 flex items-center text-purple-600 font-bold text-sm hover:translate-x-2 transition-transform w-fit"
                   >
-                    点击前往 (Klik Sini) <ChevronRight size={18} />
+                    Klik Sini (点击前往) <ChevronRight size={18} />
                   </a>
                 )}
                 {renderInteractionArea(ann, 'announcements')}
@@ -817,29 +856,18 @@ function HomeView({ announcements, schoolReports, db, getCollectionPath, showMes
   );
 }
 
-function InfoItem({ label, value, isHighlight, isAlert, className = "" }) {
-  const displayValue = (!value || String(value).trim() === '' || value === '-') ? 'Sedang dikemaskini' : value;
-  return (
-    <div className={`p-4 rounded-xl border border-transparent ${isHighlight ? 'bg-purple-600 text-white shadow-sm' : isAlert ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-white border-gray-100'} ${className}`}>
-      <div className={`text-xs md:text-sm font-semibold mb-1 opacity-80`}>{label}</div>
-      <div className={`text-lg md:text-xl font-bold break-all ${displayValue === 'Sedang dikemaskini' ? 'italic opacity-60 font-normal text-base' : ''}`}>{displayValue}</div>
-    </div>
-  );
-}
-
 function LoginView({ roleTarget, setAuthRole, showMessage }) {
   const [pin, setPin] = useState('');
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    
     if (pin === '6027') {
       setAuthRole(roleTarget);
-      showMessage("登录成功", `欢迎进入${roleTarget === 'admin' ? '系统后台' : '教师控制台'}。`);
-      if (window.logSystemAction) window.logSystemAction(roleTarget, '系统登录', `${roleTarget === 'admin' ? '管理员' : '教师'}成功登录`);
+      showMessage("Berjaya (登录成功)", `Selamat datang. (欢迎进入${roleTarget === 'admin' ? '系统后台' : '教师控制台'}。)`);
+      if (window.logSystemAction) window.logSystemAction(roleTarget, 'Sistem Log Masuk (系统登录)', `${roleTarget === 'admin' ? 'Admin' : 'Guru'} berjaya log masuk.`);
     } else {
-      showMessage("错误", "密码不正确，请重试。");
-      if (window.logSystemAction) window.logSystemAction('visitor', '登录失败', `尝试进入 ${roleTarget === 'admin' ? '管理员' : '教师'} 后台时密码错误`);
+      showMessage("Ralat (错误)", "Kata laluan salah, sila cuba lagi.\n密码不正确，请重试。");
+      if (window.logSystemAction) window.logSystemAction('visitor', 'Gagal Log Masuk (登录失败)', `Percubaan kata laluan salah ke portal ${roleTarget === 'admin' ? 'Admin' : 'Guru'}.`);
       setPin('');
     }
   };
@@ -849,14 +877,14 @@ function LoginView({ roleTarget, setAuthRole, showMessage }) {
       <div className="bg-purple-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
         {roleTarget === 'admin' ? <Settings size={36} className="text-purple-700" /> : <UserCheck size={36} className="text-purple-700" />}
       </div>
-      <h2 className="text-2xl font-bold text-gray-800 mb-2">安全登录</h2>
+      <h2 className="text-2xl font-bold text-gray-800 mb-2">Log Masuk (安全登录)</h2>
       <p className="text-sm text-gray-500 mb-6">
-        {roleTarget === 'admin' ? "请输入管理员账号密码" : "请输入教师专属账号密码"}
+        {roleTarget === 'admin' ? "Sila masukkan kata laluan Admin. (请输入管理员账号密码)" : "Sila masukkan kata laluan Guru. (请输入教师专属账号密码)"}
       </p>
       <form onSubmit={handleLogin} className="space-y-6">
         <input 
           type="password" 
-          placeholder="请输入密码" 
+          placeholder="Kata Laluan (密码)" 
           className="w-full text-center text-xl tracking-[0.5em] p-4 border-2 border-purple-100 rounded-xl focus:border-purple-500 focus:outline-none transition-colors"
           value={pin}
           onChange={(e) => setPin(e.target.value)}
@@ -876,19 +904,19 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
   
   const [selectedForCardReq, setSelectedForCardReq] = useState([]);
   const [cardReqModal, setCardReqModal] = useState(false);
-  const [cardReqReason, setCardReqReason] = useState('遗失 (Hilang)');
+  const [cardReqReason, setCardReqReason] = useState('Hilang (遗失)');
 
-  const reasonOptions = ['遗失 (Hilang)', '替换 (Ganti)', '修改 (Pindaan)', '损坏 (Rosak)', '更新 (Kemas Kini)', '新生 (Murid Baru)', '其他 (Lain-lain)'];
+  const reasonOptions = ['Hilang (遗失)', 'Ganti (替换)', 'Pindaan (修改)', 'Rosak (损坏)', 'Kemas Kini (更新)', 'Murid Baru (新生)', 'Lain-lain (其他)'];
 
   const years = [
-    { val: '1', label: '一年级 (Tahun 1)' },
-    { val: '2', label: '二年级 (Tahun 2)' },
-    { val: '3', label: '三年级 (Tahun 3)' },
-    { val: '4', label: '四年级 (Tahun 4)' },
-    { val: '5', label: '五年级 (Tahun 5)' },
-    { val: '6', label: '六年级 (Tahun 6)' },
-    { val: '19', label: '第19班: 转校生 (Pindah)' },
-    { val: '20', label: '第20班: 毕业生 (Tamat)' }
+    { val: '1', label: 'Tahun 1 (一年级)' },
+    { val: '2', label: 'Tahun 2 (二年级)' },
+    { val: '3', label: 'Tahun 3 (三年级)' },
+    { val: '4', label: 'Tahun 4 (四年级)' },
+    { val: '5', label: 'Tahun 5 (五年级)' },
+    { val: '6', label: 'Tahun 6 (六年级)' },
+    { val: '19', label: 'Tahun 19 (转校 Pindah)' },
+    { val: '20', label: 'Tahun 20 (毕业 Tamat)' }
   ];
 
   const colors = useMemo(() => {
@@ -906,7 +934,7 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
 
   const exportToExcel = async () => {
     try {
-      const XLSX = await loadXLSX();
+      const XLSX = await import('xlsx');
       const exportData = classStudents.map(s => ({
         "KELAS": `${s.classYear}${s.classColor}`, "TARIKH MASUK": s.admissionDate || '', "NO.RUJ IDME": s.idme || '', "NO RUJ SEK": s.studentId || '', "NAMA MURID": s.name.includes('(') ? s.name.split('(')[0].trim() : s.name, "姓名": s.name.includes('(') ? s.name.split('(')[1].replace(')', '').trim() : '', "JANTINA": s.gender || '', "RUMAH SUKAN": s.sportsHouse || '', "SURAT BERANAK": s.birthCert || '', "TARIKH LAHIR": s.dob || '', "ic": s.rawIc || '', "IC MURID": s.ic, "EMAIL DELIMA": s.delimaId, "PASSWORD": s.password
       }));
@@ -914,9 +942,7 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Students");
       XLSX.writeFile(wb, `Senarai_Kelas_${selectedYear}${selectedColor}.xlsx`);
-    } catch (e) {
-       showMessage("错误", "无法加载 Excel 库。");
-    }
+    } catch(e) { showMessage("Ralat (错误)", "Gagal eksport Excel."); }
   };
 
   const handleTransfer = async (e) => {
@@ -926,10 +952,10 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
     const school = fd.get('transferSchool');
     try {
       await updateDoc(doc(db, getCollectionPath('students'), transferModal.id), { classYear: '19', transferDate: date, transferSchool: school });
-      showMessage("成功", "学生已成功标记为转校。");
-      if (window.logSystemAction) window.logSystemAction('teacher', '办理转校', `将学生 [${transferModal.name}] 标记为转校至 ${school}`);
+      showMessage("Berjaya (成功)", "Status murid telah dikemaskini. (学生已成功标记为转校。)");
+      if (window.logSystemAction) window.logSystemAction('teacher', 'Urus Pindah (办理转校)', `Murid [${transferModal.name}] ditandakan pindah ke ${school}`);
       setTransferModal(null);
-    } catch (error) { showMessage("错误", "更新失败: " + error.message); }
+    } catch (error) { showMessage("Ralat (错误)", "Gagal dikemaskini (更新失败): " + error.message); }
   };
 
   const toggleStudentCardSelect = (s) => {
@@ -965,12 +991,12 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
         });
         count++;
       }
-      showMessage("成功", `已成功提交 ${count} 位学生的制卡申请至 Admin 后台。`);
-      if (window.logSystemAction) window.logSystemAction('teacher', '申请制卡', `教师批量申请了 ${count} 张 DELIMA 卡 (原因: ${cardReqReason})`);
+      showMessage("Berjaya (成功)", `Berjaya memohon ${count} kad kepada Admin.\n已成功提交 ${count} 位学生的制卡申请至 Admin 后台。`);
+      if (window.logSystemAction) window.logSystemAction('teacher', 'Mohon Kad (申请制卡)', `Guru memohon ${count} kad DELIMA (Sebab: ${cardReqReason})`);
       setSelectedForCardReq([]);
-      setCardReqReason('遗失 (Hilang)');
+      setCardReqReason('Hilang (遗失)');
     } catch(err) {
-      showMessage("错误", "申请提交失败: " + err.message);
+      showMessage("Ralat (错误)", "Permohonan gagal (申请提交失败): " + err.message);
     }
   };
 
@@ -978,8 +1004,8 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
     <div className="bg-white rounded-3xl p-6 md:p-8 shadow-lg border border-purple-50 animate-fade-in">
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-6 border-b border-purple-100 pb-6">
         <div>
-          <h2 className="text-2xl md:text-3xl font-bold text-amber-600 flex items-center gap-3"><UserCheck size={28} /> 教师控制台 (Panel Guru)</h2>
-          <p className="text-sm md:text-base text-gray-500 mt-2">请选择您的班级以查看和整理资料。</p>
+          <h2 className="text-2xl md:text-3xl font-bold text-amber-600 flex items-center gap-3"><UserCheck size={28} /> Panel Guru (教师控制台)</h2>
+          <p className="text-sm md:text-base text-gray-500 mt-2">Sila pilih kelas untuk mengurus rekod. (请选择您的班级以查看和整理资料。)</p>
         </div>
         <div className="flex flex-wrap gap-3 bg-purple-50 p-3 rounded-2xl">
           <select className="text-base p-2 rounded-xl border border-purple-200 outline-none focus:border-purple-400" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
@@ -987,21 +1013,21 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
           </select>
           {selectedYear !== '19' && selectedYear !== '20' && (
             <select className="text-base p-2 rounded-xl border border-purple-200 outline-none focus:border-purple-400" value={selectedColor} onChange={(e) => setSelectedColor(e.target.value)}>
-              {colors.map(c => <option key={c} value={c}>{c} 班</option>)}
+              {colors.map(c => <option key={c} value={c}>{c} Kelas</option>)}
             </select>
           )}
         </div>
       </div>
 
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
-        <h3 className="text-xl font-bold text-gray-800">学生列表 ({classStudents.length} 人)</h3>
+        <h3 className="text-xl font-bold text-gray-800">Senarai Murid (学生列表) - {classStudents.length}</h3>
         <div className="flex gap-2">
           {selectedForCardReq.length > 0 && (
             <button onClick={() => setCardReqModal(true)} className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-2 rounded-xl font-bold text-sm shadow-sm transition-all">
-              <CreditCard size={18} /> 申请制卡 ({selectedForCardReq.length})
+              <CreditCard size={18} /> Mohon Kad (申请制卡) ({selectedForCardReq.length})
             </button>
           )}
-          <button onClick={exportToExcel} className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-5 py-2 rounded-xl font-bold text-sm shadow-sm transition-all"><Download size={18} /> 导出 Excel</button>
+          <button onClick={exportToExcel} className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-5 py-2 rounded-xl font-bold text-sm shadow-sm transition-all"><Download size={18} /> Eksport Excel</button>
         </div>
       </div>
 
@@ -1015,7 +1041,7 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
                   onChange={toggleAllCardSelect} 
                 />
               </th>
-              <th className="p-4 font-semibold">姓名</th><th className="p-4 font-semibold">IC 号码</th><th className="p-4 font-semibold">DELIMA ID</th><th className="p-4 font-semibold">密码</th><th className="p-4 font-semibold text-center">操作</th>
+              <th className="p-4 font-semibold">Nama (姓名)</th><th className="p-4 font-semibold">No. IC (IC 号码)</th><th className="p-4 font-semibold">ID DELIMA</th><th className="p-4 font-semibold">Kata Laluan (密码)</th><th className="p-4 font-semibold text-center">Tindakan (操作)</th>
             </tr>
           </thead>
           <tbody>
@@ -1030,12 +1056,12 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
                 <td className="p-4 font-bold text-gray-800">{s.name}</td><td className="p-4 font-mono text-gray-600">{s.ic}</td><td className="p-4 font-mono text-purple-600">{s.delimaId}</td><td className="p-4 font-mono text-gray-600">{s.password}</td>
                 <td className="p-4 text-center">
                   {selectedYear !== '19' && selectedYear !== '20' && (
-                    <button onClick={() => setTransferModal(s)} className="bg-amber-50 text-amber-600 border border-amber-200 hover:bg-amber-100 px-3 py-1.5 rounded-lg font-semibold text-xs transition-colors">标为转校</button>
+                    <button onClick={() => setTransferModal(s)} className="bg-amber-50 text-amber-600 border border-amber-200 hover:bg-amber-100 px-3 py-1.5 rounded-lg font-semibold text-xs transition-colors">Pindah (标为转校)</button>
                   )}
                 </td>
               </tr>
             ))}
-            {classStudents.length === 0 && (<tr><td colSpan="6" className="p-8 text-center text-gray-500 text-base">该班级暂无学生数据。</td></tr>)}
+            {classStudents.length === 0 && (<tr><td colSpan="6" className="p-8 text-center text-gray-500 text-base">Tiada data murid. (该班级暂无学生数据。)</td></tr>)}
           </tbody>
         </table>
       </div>
@@ -1048,23 +1074,23 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
             </div>
             <h4 className="text-lg font-bold text-gray-800 mb-2 pr-8">{s.name}</h4>
             <div className="space-y-1 text-sm text-gray-600 mb-4"><p>IC: <span className="font-mono text-gray-800">{s.ic}</span></p><p>DELIMA: <span className="font-mono text-purple-600 font-bold">{s.delimaId}</span></p><p>Pwd: <span className="font-mono text-gray-800">{s.password}</span></p></div>
-            {selectedYear !== '19' && selectedYear !== '20' && (<button onClick={() => setTransferModal(s)} className="w-full bg-amber-50 border border-amber-200 text-amber-700 py-2.5 rounded-xl font-bold text-sm transition-colors">标为转校 (Pindah Sekolah)</button>)}
+            {selectedYear !== '19' && selectedYear !== '20' && (<button onClick={() => setTransferModal(s)} className="w-full bg-amber-50 border border-amber-200 text-amber-700 py-2.5 rounded-xl font-bold text-sm transition-colors">Pindah Sekolah (标为转校)</button>)}
           </div>
         ))}
-        {classStudents.length === 0 && (<div className="p-6 text-center text-gray-500 text-sm border border-gray-200 rounded-2xl">该班级暂无学生数据。</div>)}
+        {classStudents.length === 0 && (<div className="p-6 text-center text-gray-500 text-sm border border-gray-200 rounded-2xl">Tiada data murid. (该班级暂无学生数据。)</div>)}
       </div>
 
       {transferModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl animate-slide-up">
-            <h3 className="text-2xl font-bold text-amber-600 mb-2">处理转校</h3>
-            <p className="text-base text-gray-600 mb-6">学生: <strong className="text-gray-800">{transferModal.name}</strong></p>
+            <h3 className="text-2xl font-bold text-amber-600 mb-2">Urus Pindah (处理转校)</h3>
+            <p className="text-base text-gray-600 mb-6">Murid (学生): <strong className="text-gray-800">{transferModal.name}</strong></p>
             <form onSubmit={handleTransfer} className="space-y-4">
-              <div><label className="block text-sm font-bold text-gray-700 mb-2">转校日期</label><input type="date" name="transferDate" required className="w-full p-3 border border-gray-300 rounded-xl text-base focus:border-amber-500 focus:outline-none transition-colors" /></div>
-              <div><label className="block text-sm font-bold text-gray-700 mb-2">新学校名称</label><input type="text" name="transferSchool" required placeholder="如: SJKC HWA SHIONG" className="w-full p-3 border border-gray-300 rounded-xl text-base focus:border-amber-500 focus:outline-none transition-colors" /></div>
+              <div><label className="block text-sm font-bold text-gray-700 mb-2">Tarikh Pindah (转校日期)</label><input type="date" name="transferDate" required className="w-full p-3 border border-gray-300 rounded-xl text-base focus:border-amber-500 focus:outline-none transition-colors" /></div>
+              <div><label className="block text-sm font-bold text-gray-700 mb-2">Sekolah Baru (新学校名称)</label><input type="text" name="transferSchool" required placeholder="Contoh: SJKC HWA SHIONG" className="w-full p-3 border border-gray-300 rounded-xl text-base focus:border-amber-500 focus:outline-none transition-colors" /></div>
               <div className="flex gap-4 mt-8">
-                <button type="button" onClick={() => setTransferModal(null)} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 rounded-xl text-base transition-colors">取消 (Batal)</button>
-                <button type="submit" className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 rounded-xl text-base transition-colors">确认 (Sahkan)</button>
+                <button type="button" onClick={() => setTransferModal(null)} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 rounded-xl text-base transition-colors">Batal (取消)</button>
+                <button type="submit" className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 rounded-xl text-base transition-colors">Sahkan (确认)</button>
               </div>
             </form>
           </div>
@@ -1074,12 +1100,12 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
       {cardReqModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl animate-slide-up">
-            <h3 className="text-2xl font-bold text-indigo-600 mb-2 flex items-center gap-2"><CreditCard size={24}/> 批量申请制卡</h3>
-            <p className="text-sm text-gray-600 mb-6">您已选择了 <strong className="text-indigo-600 text-lg">{selectedForCardReq.length}</strong> 位学生，请选择制卡原因并提交给 Admin 处理。</p>
+            <h3 className="text-2xl font-bold text-indigo-600 mb-2 flex items-center gap-2"><CreditCard size={24}/> Mohon Kad (批量申请制卡)</h3>
+            <p className="text-sm text-gray-600 mb-6">Anda telah memilih <strong className="text-indigo-600 text-lg">{selectedForCardReq.length}</strong> murid. Sila pilih sebab permohonan. (您选择了 {selectedForCardReq.length} 位学生，请选择原因。)</p>
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">制卡原因 (Sebab Mohon Kad)</label>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Sebab Mohon (制卡原因)</label>
                 <select 
                   className="w-full p-3 border border-gray-300 rounded-xl text-base focus:border-indigo-500 focus:outline-none"
                   value={cardReqReason}
@@ -1089,8 +1115,8 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
                 </select>
               </div>
               <div className="flex gap-4 mt-8">
-                <button onClick={() => setCardReqModal(false)} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 rounded-xl text-base transition-colors">取消</button>
-                <button onClick={submitCardRequests} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl text-base transition-colors">提交申请</button>
+                <button onClick={() => setCardReqModal(false)} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 rounded-xl text-base transition-colors">Batal (取消)</button>
+                <button onClick={submitCardRequests} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl text-base transition-colors">Hantar (提交)</button>
               </div>
             </div>
           </div>
@@ -1100,40 +1126,12 @@ function TeacherPortal({ students, db, getCollectionPath, showMessage }) {
   );
 }
 
-function AdminPortal({ students, announcements, logs, schoolReports, adminNotes, cardRequests, db, getCollectionPath, showMessage }) {
-  const [adminMainTab, setAdminMainTab] = useState('card_requests'); 
+function AdminPortal({ students, teachers, announcements, logs, schoolReports, adminNotes, cardRequests, db, getCollectionPath, showMessage }) {
+  const [adminMainTab, setAdminMainTab] = useState('students_mgmt'); 
   const [confirmModal, setConfirmModal] = useState(null);
   
-  const [showAddStudentForm, setShowAddStudentForm] = useState(false);
-  const [newStudent, setNewStudent] = useState({
-    name: '', ic: '', classYear: '1', classColor: 'H', delimaId: '', password: '', 
-    gender: 'L', studentId: '', idme: '', birthCert: '', dob: '', sportsHouse: '', admissionDate: ''
-  });
-
-  const handleAddSingleStudent = async (e) => {
-    e.preventDefault();
-    if (!newStudent.ic || !newStudent.name) {
-       showMessage("提示", "姓名和 IC 号码为必填项。");
-       return;
-    }
-    try {
-       const studentData = {
-          ...newStudent,
-          rawIc: newStudent.ic.replace(/[^a-zA-Z0-9]/g, '').toLowerCase(),
-          status: 'Active'
-       };
-       await setDoc(doc(db, getCollectionPath('students'), newStudent.ic), studentData);
-       showMessage("成功", `成功新增学生: ${newStudent.name}`);
-       if (window.logSystemAction) window.logSystemAction('admin', '手动新增学生', `新增了学生资料 [${newStudent.name}]`);
-       setNewStudent({ name: '', ic: '', classYear: '1', classColor: 'H', delimaId: '', password: '', gender: 'L', studentId: '', idme: '', birthCert: '', dob: '', sportsHouse: '', admissionDate: '' });
-       setShowAddStudentForm(false);
-    } catch (err) {
-       showMessage("错误", "添加失败: " + err.message);
-    }
-  };
-
   const compressImage = (file, callback) => {
-    if (!file.type.startsWith('image/')) { showMessage("错误", "请上传图片文件"); return; }
+    if (!file.type.startsWith('image/')) { showMessage("Ralat (错误)", "Sila muat naik imej (请上传图片文件)"); return; }
     const reader = new FileReader();
     reader.onload = (event) => {
       const img = new Image();
@@ -1148,11 +1146,9 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         ctx.drawImage(img, 0, 0, width, height);
         
         const base64Data = canvas.toDataURL('image/jpeg', 0.75);
-        
         if (base64Data.length > 1000000) {
-          alert('警告：压缩后的图片体积仍然过大，可能会导致在 Firebase 中保存失败！请上传体积更小的图片。');
+          alert('Amaran: Saiz imej terlalu besar!\n警告：压缩后的图片体积仍然过大，可能会导致在 Firebase 中保存失败！');
         }
-        
         callback(base64Data);
       };
       img.src = event.target.result;
@@ -1166,9 +1162,9 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
   const [promoSearchTerm, setPromoSearchTerm] = useState('');
   const [promoEdits, setPromoEdits] = useState({});
   const years = [
-    { val: '1', label: '一年级' }, { val: '2', label: '二年级' }, { val: '3', label: '三年级' },
-    { val: '4', label: '四年级' }, { val: '5', label: '五年级' }, { val: '6', label: '六年级' },
-    { val: '19', label: '19班 (转校)' }, { val: '20', label: '20班 (毕业)' }
+    { val: '1', label: 'Tahun 1 (一年级)' }, { val: '2', label: 'Tahun 2 (二年级)' }, { val: '3', label: 'Tahun 3 (三年级)' },
+    { val: '4', label: 'Tahun 4 (四年级)' }, { val: '5', label: 'Tahun 5 (五年级)' }, { val: '6', label: 'Tahun 6 (六年级)' },
+    { val: '19', label: '19 (转校 Pindah)' }, { val: '20', label: '20 (毕业 Tamat)' }
   ];
 
   const filteredAllStudents = useMemo(() => {
@@ -1191,16 +1187,14 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
 
   const downloadTemplate = async () => {
     try {
-      const XLSX = await loadXLSX();
+      const XLSX = await import('xlsx');
       const headers = ["KELAS", "TARIKH MASUK", "NO.RUJ IDME", "NO RUJ SEK", "NAMA MURID", "姓名", "JANTINA", "RUMAH SUKAN", "SURAT BERANAK", "TARIKH LAHIR", "ic", "IC MURID", "EMAIL DELIMA", "PASSWORD"];
       const dummyData = [["1H", "12/1/2026", "231203013003", "2026001", "ABNERCHRIS ARAPOC NICHOLAS", "艾纳士", "L", "H", "SC 055497", "16/11/2019", "191116-12-0253", "191116-12-0253", "abnerchrisarapocnicholas@moe-dl.edu.my", "Kmbft@0253"]];
       const ws = XLSX.utils.aoa_to_sheet([headers, ...dummyData]);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Template");
       XLSX.writeFile(wb, "Template_Data_Murid_SJKC.xlsx");
-    } catch (e) {
-       showMessage("错误", "无法加载 Excel 库。");
-    }
+    } catch(e) { showMessage("Ralat", "Gagal muat turun."); }
   };
 
   const handleFileUpload = (e) => {
@@ -1209,7 +1203,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
     const reader = new FileReader();
     reader.onload = async (evt) => {
       try {
-        const XLSX = await loadXLSX();
+        const XLSX = await import('xlsx');
         const wb = XLSX.read(evt.target.result, { type: 'binary' });
         const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { raw: false });
         let successCount = 0;
@@ -1228,16 +1222,33 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
           };
           if (ns.ic && ns.name) { await setDoc(doc(db, getCollectionPath('students'), ns.ic), ns); successCount++; }
         }
-        showMessage("导入成功", `成功读取并存入 ${successCount} 名学生资料。`);
-        if (window.logSystemAction) window.logSystemAction('admin', '批量导入', `通过 Excel 成功导入/更新了 ${successCount} 名学生资料`);
-      } catch (err) { showMessage("导入失败", err.message); }
+        showMessage("Berjaya (导入成功)", `Berjaya muat naik ${successCount} rekod murid. (成功存入 ${successCount} 名学生资料。)`);
+        if (window.logSystemAction) window.logSystemAction('admin', 'Muat Naik Excel (批量导入)', `Berjaya muat naik ${successCount} data murid.`);
+      } catch (err) { showMessage("Ralat (导入失败)", err.message); }
     };
     reader.readAsBinaryString(file);
   };
 
+  const [addStudentModal, setAddStudentModal] = useState(false);
+  const [newStudent, setNewStudent] = useState({ name: '', ic: '', classYear: '', classColor: '', delimaId: '', password: '', gender: '', studentId: '', idme: '', birthCert: '', dob: '', sportsHouse: '' });
+  
+  const handleAddSingleStudent = async (e) => {
+    e.preventDefault();
+    if (!newStudent.ic || !newStudent.name) return showMessage("Ralat (错误)", "Sila isi Nama dan IC. (姓名和IC是必填项。)");
+    try {
+      await setDoc(doc(db, getCollectionPath('students'), newStudent.ic), { ...newStudent, status: 'Active' });
+      showMessage("Berjaya (成功)", "Rekod ditambah. (已成功新增学生。)");
+      setAddStudentModal(false);
+      setNewStudent({ name: '', ic: '', classYear: '', classColor: '', delimaId: '', password: '', gender: '', studentId: '', idme: '', birthCert: '', dob: '', sportsHouse: '' });
+      if (window.logSystemAction) window.logSystemAction('admin', 'Tambah Murid (新增学生)', `Murid ditambah manual: ${newStudent.name}`);
+    } catch (err) {
+      showMessage("Ralat (错误)", err.message);
+    }
+  };
+
   const promptYearlyPromotion = () => {
     setConfirmModal({
-      message: "确定要进行年度升学操作吗？\n六年级将移至毕业班，其余年级将自动升一级。此操作不可逆！",
+      message: "Adakah anda pasti untuk menaikkan kelas semua murid? (确定要进行年度升学操作吗？六年级将毕业，其余自动升一级。)",
       onConfirm: async () => {
         setConfirmModal(null);
         try {
@@ -1249,9 +1260,9 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
             if (yInt === 6) nYear = '20'; else if (yInt >= 1 && yInt <= 5) nYear = String(yInt + 1);
             if (nYear !== s.classYear) { await updateDoc(doc(db, getCollectionPath('students'), s.id), { classYear: nYear, graduationDate: nYear === '20' ? new Date().toISOString().split('T')[0] : null }); count++; }
           }
-          showMessage("操作成功", `已成功调整 ${count} 名学生的班级。`);
-          if (window.logSystemAction) window.logSystemAction('admin', '年度升学', `自动升学调整，变动 ${count} 人`);
-        } catch (err) { showMessage("错误", "升学处理失败: " + err.message); }
+          showMessage("Berjaya (操作成功)", `Kelas ${count} murid telah dikemaskini. (已成功调整 ${count} 名学生的班级。)`);
+          if (window.logSystemAction) window.logSystemAction('admin', 'Naik Kelas Auto (年度升学)', `Naik kelas secara auto, ${count} rekod terkesan.`);
+        } catch (err) { showMessage("Ralat (错误)", "Gagal dikemaskini: " + err.message); }
       }
     });
   };
@@ -1263,25 +1274,112 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
       const nYear = upd.classYear !== undefined ? upd.classYear : os.classYear;
       const nColor = upd.classColor !== undefined ? upd.classColor : os.classColor;
       await updateDoc(doc(db, getCollectionPath('students'), id), { classYear: nYear, classColor: nColor, graduationDate: nYear === '20' ? new Date().toISOString().split('T')[0] : os.graduationDate });
-      showMessage("成功", `成功更新 ${os.name} 的班级。`);
+      showMessage("Berjaya (成功)", `Rekod ${os.name} berjaya dikemaskini. (成功更新班级。)`);
       setPromoEdits(p => { const next = { ...p }; delete next[id]; return next; });
-    } catch (err) { showMessage("错误", "更新失败: " + err.message); }
+    } catch (err) { showMessage("Ralat (错误)", "Gagal dikemaskini: " + err.message); }
   };
 
   const promptDeleteStudent = (student) => {
     setConfirmModal({
-      message: `确认要彻底删除学生 [${student.name}] 吗？此操作无法恢复！`,
+      message: `Adakah anda pasti mahu memadam rekod [${student.name}]? (确认要彻底删除学生吗？)`,
       onConfirm: async () => {
         setConfirmModal(null);
-        try { await deleteDoc(doc(db, getCollectionPath('students'), student.id)); showMessage("成功", "已删除。"); } catch (err) { showMessage("错误", err.message); }
+        try { await deleteDoc(doc(db, getCollectionPath('students'), student.id)); showMessage("Berjaya (成功)", "Berjaya dipadam (已删除)."); } catch (err) { showMessage("Ralat (错误)", err.message); }
       }
     });
   };
 
   const handleUpdateStudent = async (e) => {
     e.preventDefault();
-    try { await updateDoc(doc(db, getCollectionPath('students'), editStudent.id), editStudent); showMessage("成功", "更新成功。"); setEditStudent(null); } 
-    catch (err) { showMessage("错误", err.message); }
+    try { await updateDoc(doc(db, getCollectionPath('students'), editStudent.id), editStudent); showMessage("Berjaya (成功)", "Rekod dikemaskini. (更新成功。)"); setEditStudent(null); } 
+    catch (err) { showMessage("Ralat (错误)", err.message); }
+  };
+
+  const [teacherSearchTerm, setTeacherSearchTerm] = useState('');
+  const [addTeacherModal, setAddTeacherModal] = useState(false);
+  const [editTeacher, setEditTeacher] = useState(null);
+  const [newTeacher, setNewTeacher] = useState({ name: '', ic: '', delimaId: '', password: '' });
+
+  const filteredAllTeachers = useMemo(() => {
+    let res = teachers;
+    if (teacherSearchTerm) {
+      const lower = teacherSearchTerm.toLowerCase();
+      res = teachers.filter(t => t.name.toLowerCase().includes(lower) || t.ic.toLowerCase().includes(lower));
+    }
+    return res.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  }, [teachers, teacherSearchTerm]);
+
+  const downloadTeacherTemplate = async () => {
+    try {
+      const XLSX = await import('xlsx');
+      const headers = ["NAMA GURU", "姓名", "IC GURU", "EMAIL DELIMA", "PASSWORD"];
+      const dummyData = [["CHONG WEI", "李宗伟", "880101-12-3456", "g-12345678@moe-dl.edu.my", "Pass1234"]];
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...dummyData]);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Template");
+      XLSX.writeFile(wb, "Template_Data_Guru_SJKC.xlsx");
+    } catch(e) { showMessage("Ralat", "Gagal muat turun."); }
+  };
+
+  const handleTeacherFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const XLSX = await import('xlsx');
+        const wb = XLSX.read(evt.target.result, { type: 'binary' });
+        const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { raw: false });
+        let successCount = 0;
+        for (const row of data) {
+          let mName = String(row['NAMA GURU'] || '').trim();
+          const cName = String(row['姓名'] || '').trim();
+          if (mName && cName) mName = `${mName} (${cName})`; else if (!mName && cName) mName = cName;
+          
+          const nt = {
+            ic: String(row['IC GURU'] || row['IC号码'] || '').trim(),
+            name: mName, 
+            delimaId: String(row['EMAIL DELIMA'] || row['MOE EMAIL'] || ''),
+            password: String(row['PASSWORD'] || row['MOE PASSWORD'] || ''),
+            status: 'Active'
+          };
+          if (nt.ic && nt.name) { await setDoc(doc(db, getCollectionPath('teachers'), nt.ic), nt); successCount++; }
+        }
+        showMessage("Berjaya (导入成功)", `Berjaya muat naik ${successCount} rekod guru. (成功存入 ${successCount} 名教师资料。)`);
+        if (window.logSystemAction) window.logSystemAction('admin', 'Muat Naik Excel (批量导入教师)', `Berjaya muat naik ${successCount} data guru.`);
+      } catch (err) { showMessage("Ralat (导入失败)", err.message); }
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  const handleAddSingleTeacher = async (e) => {
+    e.preventDefault();
+    if (!newTeacher.ic || !newTeacher.name) return showMessage("Ralat (错误)", "Sila isi Nama dan IC. (姓名和IC是必填项。)");
+    try {
+      await setDoc(doc(db, getCollectionPath('teachers'), newTeacher.ic), { ...newTeacher, status: 'Active' });
+      showMessage("Berjaya (成功)", "Rekod ditambah. (已成功新增教师。)");
+      setAddTeacherModal(false);
+      setNewTeacher({ name: '', ic: '', delimaId: '', password: '' });
+      if (window.logSystemAction) window.logSystemAction('admin', 'Tambah Guru (新增教师)', `Guru ditambah manual: ${newTeacher.name}`);
+    } catch (err) {
+      showMessage("Ralat (错误)", err.message);
+    }
+  };
+
+  const handleUpdateTeacher = async (e) => {
+    e.preventDefault();
+    try { await updateDoc(doc(db, getCollectionPath('teachers'), editTeacher.id), editTeacher); showMessage("Berjaya (成功)", "Rekod dikemaskini. (更新成功。)"); setEditTeacher(null); } 
+    catch (err) { showMessage("Ralat (错误)", err.message); }
+  };
+  
+  const promptDeleteTeacher = (teacher) => {
+    setConfirmModal({
+      message: `Adakah anda pasti mahu memadam guru [${teacher.name}]? (确认要彻底删除教师吗？)`,
+      onConfirm: async () => {
+        setConfirmModal(null);
+        try { await deleteDoc(doc(db, getCollectionPath('teachers'), teacher.id)); showMessage("Berjaya (成功)", "Berjaya dipadam (已删除)."); } catch (err) { showMessage("Ralat (错误)", err.message); }
+      }
+    });
   };
 
   const [annForm, setAnnForm] = useState({ title: '', content: '', type: 'App', link: '', image: '' });
@@ -1294,9 +1392,9 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
     e.preventDefault();
     try {
       await setDoc(doc(collection(db, getCollectionPath('announcements'))), { ...annForm, date: new Date().toISOString().split('T')[0] });
-      showMessage("成功", "已发布最新公告。"); setAnnForm({ title: '', content: '', type: 'App', link: '', image: '' });
+      showMessage("Berjaya (成功)", "Hebahan diterbitkan (已发布最新公告)."); setAnnForm({ title: '', content: '', type: 'App', link: '', image: '' });
       const f = document.getElementById('announcement-image-upload'); if (f) f.value = '';
-    } catch (err) { showMessage("错误", err.message); }
+    } catch (err) { showMessage("Ralat (错误)", err.message); }
   };
 
   const handleUpdateAnnouncement = async (e) => {
@@ -1309,34 +1407,32 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         link: editAnn.link,
         image: editAnn.image || ''
       });
-      showMessage("成功", "公告已成功更新。");
-      if (window.logSystemAction) window.logSystemAction('admin', '修改通告', `更新了通告 [${editAnn.title || '无标题'}]`);
+      showMessage("Berjaya (成功)", "Hebahan dikemaskini. (公告已成功更新。)");
+      if (window.logSystemAction) window.logSystemAction('admin', 'Kemaskini Hebahan (修改通告)', `Mengemaskini hebahan [${editAnn.title || 'Tiada Tajuk'}]`);
       setEditAnn(null);
     } catch (err) {
-      showMessage("错误", "更新失败: " + err.message);
+      showMessage("Ralat (错误)", "Gagal dikemaskini: " + err.message);
     }
   };
 
   const promptDeleteAnnouncement = (id) => {
-    setConfirmModal({ message: "确定要删除这条公告吗？", onConfirm: async () => { setConfirmModal(null); await deleteDoc(doc(db, getCollectionPath('announcements'), id)); } });
+    setConfirmModal({ message: "Adakah anda pasti? (确定要删除这条公告吗？)", onConfirm: async () => { setConfirmModal(null); await deleteDoc(doc(db, getCollectionPath('announcements'), id)); } });
   };
 
   const exportLogsToExcel = async () => {
     try {
-      const XLSX = await loadXLSX();
+      const XLSX = await import('xlsx');
       const exportData = logs.map(l => ({
-        "时间 (Masa)": new Date(l.timestamp).toLocaleString(),
-        "身份 (Peranan)": l.role === 'admin' ? '管理员 (Admin)' : l.role === 'teacher' ? '教师 (Guru)' : '访客/家长 (Pelawat)',
-        "操作类别 (Tindakan)": l.action,
-        "详细内容 (Butiran)": l.details
+        "Masa (时间)": new Date(l.timestamp).toLocaleString(),
+        "Peranan (身份)": l.role === 'admin' ? 'Admin' : l.role === 'teacher' ? 'Guru' : 'Pelawat',
+        "Tindakan (操作类别)": l.action,
+        "Butiran (详细内容)": l.details
       }));
       const ws = XLSX.utils.json_to_sheet(exportData);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "System_Logs");
       XLSX.writeFile(wb, `System_Logs_${new Date().toISOString().split('T')[0]}.xlsx`);
-    } catch (e) {
-       showMessage("错误", "导出失败，无法加载 Excel 库。");
-    }
+    } catch(e) { showMessage("Ralat", "Gagal muat turun logs."); }
   };
 
   const [reportForm, setReportForm] = useState({ title: '', content: '', image: '', studentUsage: '', teacherUsage: '' });
@@ -1356,11 +1452,11 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         date: new Date().toISOString().split('T')[0],
         timestamp: new Date().toISOString()
       });
-      showMessage("成功", "学校报告已成功保存并在首页展示。");
-      if (window.logSystemAction) window.logSystemAction('admin', '发布报告', `发布了官方报告 [${reportForm.title}]`);
+      showMessage("Berjaya (成功)", "Laporan diterbitkan (学校报告已成功保存)。");
+      if (window.logSystemAction) window.logSystemAction('admin', 'Terbit Laporan (发布报告)', `Menerbitkan laporan [${reportForm.title}]`);
       setReportForm({ title: '', content: '', image: '', studentUsage: '', teacherUsage: '' });
       const f = document.getElementById('report-image-upload'); if (f) f.value = '';
-    } catch (err) { showMessage("错误", "保存失败: " + err.message); }
+    } catch (err) { showMessage("Ralat (错误)", "Gagal menyimpan (保存失败): " + err.message); }
   };
 
   const handleUpdateReport = async (e) => {
@@ -1374,21 +1470,21 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         image: editReport.image || '',
         timestamp: new Date().toISOString() 
       });
-      showMessage("成功", "学校报告资料已成功更新。");
-      if (window.logSystemAction) window.logSystemAction('admin', '修改报告', `更新了官方报告 [${editReport.title}]`);
+      showMessage("Berjaya (成功)", "Laporan dikemaskini. (学校报告资料已成功更新。)");
+      if (window.logSystemAction) window.logSystemAction('admin', 'Kemaskini Laporan (修改报告)', `Laporan dikemaskini [${editReport.title}]`);
       setEditReport(null);
     } catch (err) {
-      showMessage("错误", "更新失败: " + err.message);
+      showMessage("Ralat (错误)", "Gagal dikemaskini: " + err.message);
     }
   };
 
   const promptDeleteReport = (id, title) => {
     setConfirmModal({ 
-      message: "确定要彻底删除这篇官方报告吗？首页将不再显示。", 
+      message: "Adakah anda pasti? Laporan ini tidak akan terpapar lagi. (确定要彻底删除这篇官方报告吗？)", 
       onConfirm: async () => { 
         setConfirmModal(null); 
         await deleteDoc(doc(db, getCollectionPath('schoolReports'), id)); 
-        if (window.logSystemAction) window.logSystemAction('admin', '删除报告', `删除了官方报告 [${title}]`);
+        if (window.logSystemAction) window.logSystemAction('admin', 'Padam Laporan (删除报告)', `Laporan dipadam [${title}]`);
       } 
     });
   };
@@ -1405,17 +1501,17 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         date: new Date().toISOString().split('T')[0],
         timestamp: new Date().toISOString()
       });
-      showMessage("成功", "私密备注已保存。");
+      showMessage("Berjaya (成功)", "Nota peribadi disimpan (私密备注已保存)。");
       setNoteForm({ title: '', content: '', link: '', image: '' });
       const f = document.getElementById('note-image-upload'); if (f) f.value = '';
-    } catch (err) { showMessage("错误", "保存失败: " + err.message); }
+    } catch (err) { showMessage("Ralat (错误)", "Gagal menyimpan: " + err.message); }
   };
 
   const promptDeleteNote = (id) => {
-    setConfirmModal({ message: "确定要删除这条私密备注吗？", onConfirm: async () => { setConfirmModal(null); await deleteDoc(doc(db, getCollectionPath('adminNotes'), id)); } });
+    setConfirmModal({ message: "Adakah anda pasti? (确定要删除这条私密备注吗？)", onConfirm: async () => { setConfirmModal(null); await deleteDoc(doc(db, getCollectionPath('adminNotes'), id)); } });
   };
 
-  const reasonOptions = ['遗失 (Hilang)', '替换 (Ganti)', '修改 (Pindaan)', '损坏 (Rosak)', '更新 (Kemas Kini)', '新生 (Murid Baru)', '其他 (Lain-lain)'];
+  const reasonOptions = ['Hilang (遗失)', 'Ganti (替换)', 'Pindaan (修改)', 'Rosak (损坏)', 'Kemas Kini (更新)', 'Murid Baru (新生)', 'Lain-lain (其他)'];
   const [cardReason, setCardReason] = useState(reasonOptions[0]);
   const [cardSearchTerm, setCardSearchTerm] = useState('');
   const [selectedForCard, setSelectedForCard] = useState([]);
@@ -1442,7 +1538,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
 
   const handleAddCardRequests = async (e) => {
     e.preventDefault();
-    if (selectedForCard.length === 0) return showMessage("提示", "请先在上方搜索并选择需要制卡的学生。");
+    if (selectedForCard.length === 0) return showMessage("Perhatian (提示)", "Sila pilih murid dahulu. (请先选择学生。)");
     try {
       let count = 0;
       for (const s of selectedForCard) {
@@ -1458,12 +1554,12 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         });
         count++;
       }
-      showMessage("成功", `已成功加入 ${count} 位学生的制卡要求。`);
-      if (window.logSystemAction) window.logSystemAction('admin', '新增制卡', `批量加入了 ${count} 个制卡申请`);
+      showMessage("Berjaya (成功)", `Telah mohon ${count} rekod kad. (已成功加入 ${count} 位学生的制卡要求。)`);
+      if (window.logSystemAction) window.logSystemAction('admin', 'Mohon Kad (新增制卡)', `Permohonan pukal untuk ${count} kad`);
       setSelectedForCard([]);
       setCardReason(reasonOptions[0]);
     } catch(err) {
-      showMessage("错误", "添加失败: " + err.message);
+      showMessage("Ralat (错误)", "Gagal ditambah (添加失败): " + err.message);
     }
   };
 
@@ -1475,19 +1571,19 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
       else updateData.completedAt = null;
       await updateDoc(doc(db, getCollectionPath('cardRequests'), id), updateData);
     } catch(err) {
-      showMessage("错误", "状态更新失败: " + err.message);
+      showMessage("Ralat (错误)", "Status gagal dikemaskini: " + err.message);
     }
   };
 
   const deleteCardRequest = (id) => {
     setConfirmModal({
-      message: "确定要彻底删除这条制卡记录吗？",
+      message: "Adakah anda pasti memadam rekod permohonan ini? (确定要彻底删除这条制卡记录吗？)",
       onConfirm: async () => {
         setConfirmModal(null);
         try {
           await deleteDoc(doc(db, getCollectionPath('cardRequests'), id));
         } catch(err) {
-          showMessage("错误", "删除失败: " + err.message);
+          showMessage("Ralat (错误)", "Gagal dipadam: " + err.message);
         }
       }
     });
@@ -1497,11 +1593,11 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
     const filteredRequests = statusFilter ? cardRequests.filter(r => r.status === statusFilter) : cardRequests;
     
     if (filteredRequests.length === 0) {
-      return showMessage("提示", "当前没有符合条件的数据可供导出。");
+      return showMessage("Perhatian (提示)", "Tiada rekod untuk dieksport. (没有符合条件的数据可供导出。)");
     }
 
     try {
-      const XLSX = await loadXLSX();
+      const XLSX = await import('xlsx');
       const exportData = filteredRequests.map(r => {
         const studentInfo = students.find(s => s.ic === r.studentIc) || {};
         const malayName = studentInfo.name?.includes('(') ? studentInfo.name.split('(')[0].trim() : (studentInfo.name || r.studentName);
@@ -1531,9 +1627,9 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
       const fileNameStatus = statusFilter === 'pending' ? 'Menunggu' : (statusFilter === 'completed' ? 'Selesai' : 'Semua');
       XLSX.writeFile(wb, `MailMerge_Kad_${fileNameStatus}_${new Date().toISOString().split('T')[0]}.xlsx`);
       
-      showMessage("导出成功", `Excel 文件已下载！\n\n此 Excel 格式已完全适配您的 TEMPLETE.docx。\n\n请打开 Word 文档，点击顶部的【邮件(Mailings)】->【选择收件人(Select Recipients)】->【使用现有列表(Use an Existing List)】，然后载入此 Excel，即可一键完成 Mail Merge 制卡！`);
-    } catch (e) {
-       showMessage("错误", "导出失败，无法加载 Excel 库。");
+      showMessage("Berjaya (导出成功)", `Fail Excel berjaya dimuat turun!\nExcel 文件已下载！\n\nSesuai untuk fungsi Mail Merge dalam MS Word.\n完全适配您的 TEMPLETE.docx 进行一键 Mail Merge 制卡！`);
+    } catch(e) {
+      showMessage("Ralat", "Gagal eksport.");
     }
   };
 
@@ -1541,45 +1637,53 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
     <div className="bg-white rounded-3xl p-6 md:p-10 shadow-xl border-t-8 border-purple-800 animate-fade-in relative">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
         <h2 className="text-2xl md:text-3xl font-extrabold text-purple-900 flex items-center gap-3">
-          <Settings size={32} className="text-purple-600" /> Admin 控制台
+          <Settings size={32} className="text-purple-600" /> Admin Portal (管理后台)
         </h2>
-        <div className="bg-purple-50 border border-purple-100 text-purple-700 px-4 py-2 rounded-xl font-bold text-sm shadow-sm">
-          全校已录入: <span className="text-purple-900 text-base">{students.length}</span> 人
+        <div className="flex gap-2">
+          <div className="bg-purple-50 border border-purple-100 text-purple-700 px-4 py-2 rounded-xl font-bold text-sm shadow-sm">
+            Murid (学生): <span className="text-purple-900 text-base">{students.length}</span>
+          </div>
+          <div className="bg-pink-50 border border-pink-100 text-pink-700 px-4 py-2 rounded-xl font-bold text-sm shadow-sm">
+            Guru (教师): <span className="text-pink-900 text-base">{teachers.length}</span>
+          </div>
         </div>
       </div>
       
       <div className="flex flex-wrap gap-3 mb-8 border-b-2 border-gray-100 pb-4">
         <button onClick={() => setAdminMainTab('students_mgmt')} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${adminMainTab === 'students_mgmt' ? 'bg-purple-600 text-white shadow-md' : 'bg-gray-50 text-gray-600 hover:bg-purple-100'}`}>
-          <UserCheck size={18} /> 学生综合管理
+          <UserCheck size={18} /> Murid (学生管理)
         </button>
-        <button onClick={() => setAdminMainTab('announcements')} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${adminMainTab === 'announcements' ? 'bg-purple-600 text-white shadow-md' : 'bg-gray-50 text-gray-600 hover:bg-purple-100'}`}>
-          <BookOpen size={18} /> 通告与活动管理
+        <button onClick={() => setAdminMainTab('teachers_mgmt')} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${adminMainTab === 'teachers_mgmt' ? 'bg-pink-600 text-white shadow-md' : 'bg-gray-50 text-gray-600 hover:bg-pink-100'}`}>
+          <Users size={18} /> Guru (教师管理)
+        </button>
+        <button onClick={() => setAdminMainTab('announcements')} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${adminMainTab === 'announcements' ? 'bg-amber-500 text-white shadow-md' : 'bg-gray-50 text-gray-600 hover:bg-amber-100'}`}>
+          <BookOpen size={18} /> Hebahan (活动通告)
         </button>
         <button onClick={() => setAdminMainTab('card_requests')} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${adminMainTab === 'card_requests' ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-50 text-gray-600 hover:bg-indigo-100'}`}>
-          <CreditCard size={18} /> DELIMA 制卡管理
+          <CreditCard size={18} /> Kad DELIMA (制卡)
         </button>
         <button onClick={() => setAdminMainTab('school_reports')} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${adminMainTab === 'school_reports' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-50 text-gray-600 hover:bg-blue-100'}`}>
-          <BarChart size={18} /> 学校报告与数据
+          <BarChart size={18} /> Laporan (学校报告)
         </button>
         <button onClick={() => setAdminMainTab('sys_logs')} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${adminMainTab === 'sys_logs' ? 'bg-green-600 text-white shadow-md' : 'bg-gray-50 text-gray-600 hover:bg-green-100'}`}>
-          <ClipboardList size={18} /> 访客与系统日志
+          <ClipboardList size={18} /> Log Sistem (系统日志)
         </button>
         <button onClick={() => setAdminMainTab('admin_notes')} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${adminMainTab === 'admin_notes' ? 'bg-red-600 text-white shadow-md' : 'bg-gray-50 text-gray-600 hover:bg-red-100'}`}>
-          <Edit size={18} /> Admin 备注
+          <Edit size={18} /> Nota (Admin 备注)
         </button>
       </div>
 
       {adminMainTab === 'card_requests' && (
         <div className="space-y-8 animate-slide-up">
           <div className="bg-indigo-50/50 border border-indigo-100 p-6 md:p-8 rounded-2xl shadow-sm">
-            <h3 className="text-xl font-bold text-indigo-900 mb-2 flex items-center gap-2"><CreditCard size={24}/> 新增制卡申请</h3>
-            <p className="text-sm text-gray-600 mb-6">可同时搜索并选择多位学生，选定原因后一键加入待处理列表。（教师端提交的申请也会显示在下方）</p>
+            <h3 className="text-xl font-bold text-indigo-900 mb-2 flex items-center gap-2"><CreditCard size={24}/> Mohon Kad (新增制卡申请)</h3>
+            <p className="text-sm text-gray-600 mb-6">Cari dan pilih murid untuk memohon kad. (可搜索并选择多位学生加入待处理列表。)</p>
             
             <form onSubmit={handleAddCardRequests} className="space-y-5">
               <div className="relative z-20">
-                <label className="block text-sm font-bold text-gray-700 mb-2">1. 搜索并选择学生 (可多选)</label>
+                <label className="block text-sm font-bold text-gray-700 mb-2">1. Pilih Murid (选择学生)</label>
                 <div className="relative">
-                  <input type="text" placeholder="输入姓名或 IC..." value={cardSearchTerm} onChange={(e) => setCardSearchTerm(e.target.value)} className="w-full p-3 pl-10 border border-indigo-200 rounded-xl text-sm outline-none focus:border-indigo-500" />
+                  <input type="text" placeholder="Taip nama atau IC (输入姓名或 IC)..." value={cardSearchTerm} onChange={(e) => setCardSearchTerm(e.target.value)} className="w-full p-3 pl-10 border border-indigo-200 rounded-xl text-sm outline-none focus:border-indigo-500" />
                   <Search size={18} className="absolute left-3 top-3.5 text-gray-400" />
                 </div>
                 {cardStudentOptions.length > 0 && (
@@ -1607,13 +1711,13 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
 
               <div className="flex flex-col md:flex-row gap-4 items-end">
                 <div className="w-full md:w-1/2">
-                  <label className="block text-sm font-bold text-gray-700 mb-2">2. 选择制卡原因</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">2. Sebab (选择制卡原因)</label>
                   <select value={cardReason} onChange={(e) => setCardReason(e.target.value)} className="w-full p-3 border border-indigo-200 rounded-xl text-base outline-none focus:border-indigo-500 bg-white">
                     {reasonOptions.map(r => <option key={r} value={r}>{r}</option>)}
                   </select>
                 </div>
                 <button type="submit" className="w-full md:w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl transition-colors shadow-md">
-                  3. 提交制卡申请
+                  3. Hantar (提交制卡申请)
                 </button>
               </div>
             </form>
@@ -1621,25 +1725,25 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
 
           <div className="flex flex-col md:flex-row justify-end gap-3 mb-2 mt-4">
             <button onClick={() => exportCardRequestsToExcel('pending')} className="flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md transition-all">
-              <Download size={18} /> 导出待处理 (用于 Mail Merge 制卡)
+              <Download size={18} /> Eksport Menunggu (导出待处理 - Mail Merge)
             </button>
             <button onClick={() => exportCardRequestsToExcel('completed')} className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md transition-all">
-              <Download size={18} /> 导出已完成 (存档备份)
+              <Download size={18} /> Eksport Selesai (导出已完成)
             </button>
           </div>
 
           <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm">
             <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded-lg text-sm">待处理 (Menunggu)</span>
+              <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded-lg text-sm">Menunggu (待处理)</span>
             </h3>
             <div className="overflow-x-auto rounded-xl border border-gray-200">
               <table className="w-full text-left border-collapse min-w-max">
-                <thead className="bg-gray-50"><tr className="text-gray-600 text-sm border-b"><th className="p-3 w-16 text-center">完成</th><th className="p-3">要求时间</th><th className="p-3">姓名</th><th className="p-3">班级</th><th className="p-3">IC</th><th className="p-3">原因</th><th className="p-3 text-center">操作</th></tr></thead>
+                <thead className="bg-gray-50"><tr className="text-gray-600 text-sm border-b"><th className="p-3 w-16 text-center">Tandakan</th><th className="p-3">Masa</th><th className="p-3">Nama</th><th className="p-3">Kelas</th><th className="p-3">IC</th><th className="p-3">Sebab</th><th className="p-3 text-center">Tindakan</th></tr></thead>
                 <tbody>
                   {cardRequests.filter(r => r.status === 'pending').map((r, idx) => (
                     <tr key={r.id} className={`text-sm border-b ${idx % 2 === 0 ? 'bg-white' : 'bg-[#fafafa]'}`}>
                       <td className="p-3 text-center">
-                        <button onClick={() => toggleCardStatus(r.id, r.status)} className="text-gray-300 hover:text-green-500 transition-colors" title="打钩标记为已完成">
+                        <button onClick={() => toggleCardStatus(r.id, r.status)} className="text-gray-300 hover:text-green-500 transition-colors" title="Tanda Selesai (标记完成)">
                           <CheckCircle size={28} />
                         </button>
                       </td>
@@ -1651,7 +1755,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
                       <td className="p-3 text-center"><button onClick={() => deleteCardRequest(r.id)} className="text-red-500 p-1 hover:bg-red-50 rounded"><Trash2 size={16}/></button></td>
                     </tr>
                   ))}
-                  {cardRequests.filter(r => r.status === 'pending').length === 0 && <tr><td colSpan="7" className="p-6 text-center text-gray-500">目前没有待处理的制卡申请。</td></tr>}
+                  {cardRequests.filter(r => r.status === 'pending').length === 0 && <tr><td colSpan="7" className="p-6 text-center text-gray-500">Tiada rekod (暂无数据).</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -1659,16 +1763,16 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
 
           <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm">
             <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <span className="bg-green-100 text-green-700 px-2 py-1 rounded-lg text-sm">已完成 (Selesai)</span>
+              <span className="bg-green-100 text-green-700 px-2 py-1 rounded-lg text-sm">Selesai (已完成)</span>
             </h3>
             <div className="overflow-x-auto rounded-xl border border-gray-200">
               <table className="w-full text-left border-collapse min-w-max">
-                <thead className="bg-gray-50"><tr className="text-gray-600 text-sm border-b"><th className="p-3 w-16 text-center">撤销</th><th className="p-3">完成时间</th><th className="p-3">姓名</th><th className="p-3">班级</th><th className="p-3">IC</th><th className="p-3">原因</th><th className="p-3 text-center">操作</th></tr></thead>
+                <thead className="bg-gray-50"><tr className="text-gray-600 text-sm border-b"><th className="p-3 w-16 text-center">Batal</th><th className="p-3">Masa Siap</th><th className="p-3">Nama</th><th className="p-3">Kelas</th><th className="p-3">IC</th><th className="p-3">Sebab</th><th className="p-3 text-center">Tindakan</th></tr></thead>
                 <tbody>
                   {cardRequests.filter(r => r.status === 'completed').map((r, idx) => (
                     <tr key={r.id} className={`text-sm border-b ${idx % 2 === 0 ? 'bg-white' : 'bg-[#fafafa]'}`}>
                       <td className="p-3 text-center">
-                        <button onClick={() => toggleCardStatus(r.id, r.status)} className="text-amber-500 hover:text-amber-700 transition-colors" title="撤销回待处理状态">
+                        <button onClick={() => toggleCardStatus(r.id, r.status)} className="text-amber-500 hover:text-amber-700 transition-colors" title="Batal Selesai (撤销完成)">
                           <Undo size={20} />
                         </button>
                       </td>
@@ -1680,7 +1784,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
                       <td className="p-3 text-center"><button onClick={() => deleteCardRequest(r.id)} className="text-red-500 p-1 hover:bg-red-50 rounded"><Trash2 size={16}/></button></td>
                     </tr>
                   ))}
-                  {cardRequests.filter(r => r.status === 'completed').length === 0 && <tr><td colSpan="7" className="p-6 text-center text-gray-500">目前没有已完成的制卡记录。</td></tr>}
+                  {cardRequests.filter(r => r.status === 'completed').length === 0 && <tr><td colSpan="7" className="p-6 text-center text-gray-500">Tiada rekod (暂无数据).</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -1688,93 +1792,92 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         </div>
       )}
 
-      {}
+      {adminMainTab === 'teachers_mgmt' && (
+        <div className="space-y-12 animate-slide-up">
+          <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm">
+            <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+              <h3 className="text-lg md:text-xl font-bold text-pink-800">Senarai Guru (教师名单管理)</h3>
+              <div className="flex gap-2 w-full md:w-auto">
+                <div className="relative flex-1 md:w-64">
+                  <input type="text" placeholder="Cari Nama/IC (搜索姓名/IC)..." className="w-full p-2.5 pl-10 border border-gray-300 rounded-xl text-sm focus:outline-none focus:border-pink-500" value={teacherSearchTerm} onChange={(e) => setTeacherSearchTerm(e.target.value)} />
+                  <Search size={18} className="absolute left-3 top-3 text-gray-400" />
+                </div>
+                <button onClick={() => setAddTeacherModal(true)} className="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-all whitespace-nowrap">
+                  + Tambah (新增教师)
+                </button>
+              </div>
+            </div>
+            
+            <div className="overflow-x-auto rounded-xl border border-gray-200 h-[600px] overflow-y-auto">
+              <table className="w-full text-left border-collapse min-w-max">
+                <thead className="sticky top-0 bg-gray-50 shadow-sm z-10">
+                  <tr className="text-gray-600 text-sm border-b border-gray-200">
+                    <th className="p-4">NAMA GURU (姓名)</th>
+                    <th className="p-4">IC GURU (IC号码)</th>
+                    <th className="p-4">ID DELIMA</th>
+                    <th className="p-4">KATA LALUAN (密码)</th>
+                    <th className="p-4 text-center sticky right-0 bg-gray-50">Tindakan (操作)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredAllTeachers.map((t, idx) => (
+                    <tr key={t.id} className={`text-sm border-b border-gray-100 ${idx % 2 === 0 ? 'bg-white' : 'bg-[#fafafa]'} hover:bg-pink-50`}>
+                      <td className="p-4 font-bold">{t.name}</td>
+                      <td className="p-4 font-mono">{t.ic}</td>
+                      <td className="p-4 font-mono text-pink-600">{t.delimaId}</td>
+                      <td className="p-4 font-mono">{t.password}</td>
+                      <td className="p-4 flex gap-2 sticky right-0" style={{ backgroundColor: idx % 2 === 0 ? '#ffffff' : '#fafafa' }}>
+                        <button onClick={() => setEditTeacher({ ...t })} className="text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg flex items-center gap-1 font-semibold"><Edit size={16} /> Edit</button>
+                        <button onClick={() => promptDeleteTeacher(t)} className="text-red-600 bg-red-50 px-3 py-1.5 rounded-lg flex items-center gap-1 font-semibold"><Trash2 size={16} /> Padam</button>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredAllTeachers.length === 0 && (<tr><td colSpan="5" className="p-8 text-center text-gray-500">Tiada Rekod (未找到教师).</td></tr>)}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="bg-pink-50/50 p-6 md:p-8 rounded-2xl border border-pink-100">
+            <div className="flex justify-between items-center mb-6 gap-4">
+              <div>
+                <h3 className="text-lg font-bold text-pink-800 mb-1">Muat Naik Data Guru (批量导入教师)</h3>
+                <p className="text-xs text-gray-600">Guna templat Excel. IC GURU sebagai ID unik. (使用模板导入，以IC为识别)</p>
+              </div>
+              <button onClick={downloadTeacherTemplate} className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-all"><Download size={20} /> Muat Turun Templat</button>
+            </div>
+            <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-pink-300 border-dashed rounded-2xl cursor-pointer bg-white hover:bg-pink-50">
+              <Upload size={36} className="text-pink-400 mb-2" />
+              <p className="font-bold text-gray-700">Klik / Seret fail Excel (点击或拖拽上传)</p>
+              <input type="file" className="hidden" accept=".xlsx, .xls" onChange={handleTeacherFileUpload} />
+            </label>
+          </div>
+        </div>
+      )}
+
       {adminMainTab === 'students_mgmt' && (
         <div className="space-y-12 animate-slide-up">
           <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm">
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-              <div className="flex items-center gap-4">
-                <h3 className="text-lg md:text-xl font-bold text-purple-800">全校学生名单管理</h3>
-                <button onClick={() => setShowAddStudentForm(!showAddStudentForm)} className="flex items-center gap-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-xl font-bold text-sm shadow-sm transition-all">
-                  <UserPlus size={18} /> {showAddStudentForm ? '取消新增' : '新增单名学生'}
+              <h3 className="text-lg md:text-xl font-bold text-purple-800">Senarai Murid (全校学生名单管理)</h3>
+              <div className="flex gap-2 w-full md:w-auto">
+                <div className="relative flex-1 md:w-64">
+                  <input type="text" placeholder="Cari (搜索姓名、IC、班级)..." className="w-full p-2.5 pl-10 border border-gray-300 rounded-xl text-sm focus:outline-none focus:border-purple-500" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                  <Search size={18} className="absolute left-3 top-3 text-gray-400" />
+                </div>
+                <button onClick={() => setAddStudentModal(true)} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-all whitespace-nowrap">
+                  + Tambah (新增单名学生)
                 </button>
               </div>
-              <div className="relative w-full md:w-1/3">
-                <input type="text" placeholder="搜索姓名、IC 或 班级..." className="w-full p-2.5 pl-10 border border-gray-300 rounded-xl text-sm focus:outline-none focus:border-purple-500" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                <Search size={18} className="absolute left-3 top-3 text-gray-400" />
-              </div>
             </div>
-
-            {showAddStudentForm && (
-              <div className="mb-6 p-6 bg-purple-50 rounded-2xl border border-purple-100 animate-slide-up">
-                 <h3 className="text-lg font-bold text-purple-800 mb-4 flex items-center gap-2">
-                    <UserPlus size={20} className="text-purple-600" /> 手动新增单名学生 (Tambah Murid)
-                 </h3>
-                 <form onSubmit={handleAddSingleStudent} className="space-y-4">
-                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                     <div>
-                       <label className="block text-xs font-bold text-gray-700 mb-1">姓名 (必填)</label>
-                       <input required type="text" value={newStudent.name} onChange={e=>setNewStudent({...newStudent, name: e.target.value})} className="w-full p-2.5 border border-purple-200 focus:border-purple-500 rounded-lg text-sm outline-none" placeholder="如: ALI BIN ABU (阿里)" />
-                     </div>
-                     <div>
-                       <label className="block text-xs font-bold text-gray-700 mb-1">IC 号码 (必填)</label>
-                       <input required type="text" value={newStudent.ic} onChange={e=>setNewStudent({...newStudent, ic: e.target.value})} className="w-full p-2.5 border border-purple-200 focus:border-purple-500 rounded-lg text-sm outline-none" placeholder="如: 161201-12-1234" />
-                     </div>
-                     <div>
-                       <label className="block text-xs font-bold text-gray-700 mb-1">年级编号</label>
-                       <select value={newStudent.classYear} onChange={e=>setNewStudent({...newStudent, classYear: e.target.value})} className="w-full p-2.5 border border-purple-200 focus:border-purple-500 rounded-lg text-sm bg-white outline-none">
-                         {years.map(y => <option key={y.val} value={y.val}>{y.label}</option>)}
-                       </select>
-                     </div>
-                     <div>
-                       <label className="block text-xs font-bold text-gray-700 mb-1">班级名称</label>
-                       <input type="text" value={newStudent.classColor} onChange={e=>setNewStudent({...newStudent, classColor: e.target.value.toUpperCase()})} className="w-full p-2.5 border border-purple-200 focus:border-purple-500 rounded-lg text-sm outline-none" placeholder="如: H, M" />
-                     </div>
-                     <div>
-                       <label className="block text-xs font-bold text-gray-700 mb-1">DELIMA Email</label>
-                       <input type="text" value={newStudent.delimaId} onChange={e=>setNewStudent({...newStudent, delimaId: e.target.value})} className="w-full p-2.5 border border-purple-200 focus:border-purple-500 rounded-lg text-sm outline-none" placeholder="m-xxxx@moe-dl.edu.my" />
-                     </div>
-                     <div>
-                       <label className="block text-xs font-bold text-gray-700 mb-1">密码</label>
-                       <input type="text" value={newStudent.password} onChange={e=>setNewStudent({...newStudent, password: e.target.value})} className="w-full p-2.5 border border-purple-200 focus:border-purple-500 rounded-lg text-sm outline-none" placeholder="Kmbft@xxxx" />
-                     </div>
-                     <div>
-                       <label className="block text-xs font-bold text-gray-700 mb-1">性别</label>
-                       <select value={newStudent.gender} onChange={e=>setNewStudent({...newStudent, gender: e.target.value})} className="w-full p-2.5 border border-purple-200 focus:border-purple-500 rounded-lg text-sm bg-white outline-none">
-                         <option value="L">L (Lelaki)</option>
-                         <option value="P">P (Perempuan)</option>
-                       </select>
-                     </div>
-                     <div>
-                       <label className="block text-xs font-bold text-gray-700 mb-1">学号 (NO RUJ SEK)</label>
-                       <input type="text" value={newStudent.studentId} onChange={e=>setNewStudent({...newStudent, studentId: e.target.value})} className="w-full p-2.5 border border-purple-200 focus:border-purple-500 rounded-lg text-sm outline-none" placeholder="如: 2026001" />
-                     </div>
-                     <div>
-                       <label className="block text-xs font-bold text-gray-700 mb-1">IDME</label>
-                       <input type="text" value={newStudent.idme} onChange={e=>setNewStudent({...newStudent, idme: e.target.value})} className="w-full p-2.5 border border-purple-200 focus:border-purple-500 rounded-lg text-sm outline-none" placeholder="如: 231203013003" />
-                     </div>
-                     <div>
-                       <label className="block text-xs font-bold text-gray-700 mb-1">报生纸 (Surat Beranak)</label>
-                       <input type="text" value={newStudent.birthCert} onChange={e=>setNewStudent({...newStudent, birthCert: e.target.value})} className="w-full p-2.5 border border-purple-200 focus:border-purple-500 rounded-lg text-sm outline-none" placeholder="如: SC 055497" />
-                     </div>
-                   </div>
-                   <div className="flex justify-end mt-4">
-                      <button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 px-8 rounded-lg transition-all shadow-sm active:scale-95 flex items-center gap-2">
-                        <UserPlus size={16}/> 保存记录
-                      </button>
-                   </div>
-                 </form>
-              </div>
-            )}
-
             <div className="overflow-x-auto rounded-xl border border-gray-200 h-[600px] overflow-y-auto">
               <table className="w-full text-left border-collapse min-w-max">
-                <thead className="sticky top-0 bg-gray-50 shadow-sm z-10"><tr className="text-gray-600 text-sm border-b border-gray-200"><th className="p-4">姓名</th><th className="p-4">班级</th><th className="p-4">IC MURID</th><th className="p-4">ic (小写)</th><th className="p-4">性别</th><th className="p-4">DELIMA Email</th><th className="p-4">密码</th><th className="p-4">学号</th><th className="p-4">IDME</th><th className="p-4">出生日期</th><th className="p-4">报生纸</th><th className="p-4">入学日期</th><th className="p-4">运动队伍</th><th className="p-4 text-center sticky right-0 bg-gray-50">操作</th></tr></thead>
+                <thead className="sticky top-0 bg-gray-50 shadow-sm z-10"><tr className="text-gray-600 text-sm border-b border-gray-200"><th className="p-4">NAMA</th><th className="p-4">KELAS</th><th className="p-4">IC MURID</th><th className="p-4">ic (Raw)</th><th className="p-4">JANTINA</th><th className="p-4">DELIMA Email</th><th className="p-4">PASSWORD</th><th className="p-4">NO RUJ SEK</th><th className="p-4">IDME</th><th className="p-4">TARIKH LAHIR</th><th className="p-4">SURAT BERANAK</th><th className="p-4">TARIKH MASUK</th><th className="p-4">RUMAH SUKAN</th><th className="p-4 text-center sticky right-0 bg-gray-50">Tindakan (操作)</th></tr></thead>
                 <tbody>
                   {filteredAllStudents.map((s, idx) => (
-                    <tr key={s.id} className={`text-sm border-b border-gray-100 ${idx % 2 === 0 ? 'bg-white' : 'bg-[#fafafa]'} hover:bg-purple-50`}><td className="p-4 font-bold">{s.name}</td><td className="p-4">{formatClassName(s.classYear, s.classColor)}</td><td className="p-4 font-mono">{s.ic}</td><td className="p-4 font-mono text-gray-500">{s.rawIc}</td><td className="p-4">{s.gender}</td><td className="p-4 font-mono text-purple-600">{s.delimaId}</td><td className="p-4 font-mono">{s.password}</td><td className="p-4 font-mono">{s.studentId}</td><td className="p-4 font-mono">{s.idme}</td><td className="p-4">{s.dob}</td><td className="p-4 font-mono">{s.birthCert}</td><td className="p-4">{s.admissionDate}</td><td className="p-4">{s.sportsHouse}</td><td className="p-4 flex gap-2 sticky right-0" style={{ backgroundColor: idx % 2 === 0 ? '#ffffff' : '#fafafa' }}><button onClick={() => setEditStudent({ ...s })} className="text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg flex items-center gap-1 font-semibold"><Edit size={16} /> 编辑</button><button onClick={() => promptDeleteStudent(s)} className="text-red-600 bg-red-50 px-3 py-1.5 rounded-lg flex items-center gap-1 font-semibold"><Trash2 size={16} /> 删除</button></td></tr>
+                    <tr key={s.id} className={`text-sm border-b border-gray-100 ${idx % 2 === 0 ? 'bg-white' : 'bg-[#fafafa]'} hover:bg-purple-50`}><td className="p-4 font-bold">{s.name}</td><td className="p-4">{formatClassName(s.classYear, s.classColor)}</td><td className="p-4 font-mono">{s.ic}</td><td className="p-4 font-mono text-gray-500">{s.rawIc}</td><td className="p-4">{s.gender}</td><td className="p-4 font-mono text-purple-600">{s.delimaId}</td><td className="p-4 font-mono">{s.password}</td><td className="p-4 font-mono">{s.studentId}</td><td className="p-4 font-mono">{s.idme}</td><td className="p-4">{s.dob}</td><td className="p-4 font-mono">{s.birthCert}</td><td className="p-4">{s.admissionDate}</td><td className="p-4">{s.sportsHouse}</td><td className="p-4 flex gap-2 sticky right-0" style={{ backgroundColor: idx % 2 === 0 ? '#ffffff' : '#fafafa' }}><button onClick={() => setEditStudent({ ...s })} className="text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg flex items-center gap-1 font-semibold"><Edit size={16} /> Edit</button><button onClick={() => promptDeleteStudent(s)} className="text-red-600 bg-red-50 px-3 py-1.5 rounded-lg flex items-center gap-1 font-semibold"><Trash2 size={16} /> Padam</button></td></tr>
                   ))}
-                  {filteredAllStudents.length === 0 && (<tr><td colSpan="14" className="p-8 text-center text-gray-500">未找到符合条件的学生</td></tr>)}
+                  {filteredAllStudents.length === 0 && (<tr><td colSpan="14" className="p-8 text-center text-gray-500">Tiada Rekod (未找到学生)</td></tr>)}
                 </tbody>
               </table>
             </div>
@@ -1782,31 +1885,31 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
 
           <div className="bg-purple-50/50 p-6 md:p-8 rounded-2xl border border-purple-100">
             <div className="flex justify-between items-center mb-6 gap-4">
-              <div><h3 className="text-lg font-bold text-purple-800 mb-1">批量导入学生数据</h3><p className="text-xs text-gray-600">请下载模板，系统会以 `IC MURID` 作为唯一识别，自动更新或新增。</p></div>
-              <button onClick={downloadTemplate} className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-all"><Download size={20} /> 下载模板</button>
+              <div><h3 className="text-lg font-bold text-purple-800 mb-1">Muat Naik Data Murid (批量导入学生)</h3><p className="text-xs text-gray-600">Guna templat Excel. IC MURID sebagai ID unik. (使用模板导入。)</p></div>
+              <button onClick={downloadTemplate} className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-all"><Download size={20} /> Muat Turun Templat</button>
             </div>
-            <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-purple-300 border-dashed rounded-2xl cursor-pointer bg-white hover:bg-purple-50"><Upload size={36} className="text-purple-400 mb-2" /><p className="font-bold text-gray-700">点击或拖拽上传填写好的 Excel 文件</p><input type="file" className="hidden" accept=".xlsx, .xls" onChange={handleFileUpload} /></label>
+            <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-purple-300 border-dashed rounded-2xl cursor-pointer bg-white hover:bg-purple-50"><Upload size={36} className="text-purple-400 mb-2" /><p className="font-bold text-gray-700">Klik / Seret fail Excel (点击或拖拽上传)</p><input type="file" className="hidden" accept=".xlsx, .xls" onChange={handleFileUpload} /></label>
           </div>
 
           <div className="bg-white p-6 md:p-8 rounded-2xl border border-gray-200 shadow-sm">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-              <h3 className="text-xl font-bold text-amber-800 flex items-center gap-2"><RefreshCw size={24}/> 升学与班级管理</h3>
+              <h3 className="text-xl font-bold text-amber-800 flex items-center gap-2"><RefreshCw size={24}/> Pengurusan Kelas (升学与班级管理)</h3>
               <div className="flex bg-gray-100 p-1 rounded-xl">
-                <button onClick={() => setPromoMode('auto')} className={`px-4 py-2 rounded-lg font-bold text-sm ${promoMode === 'auto' ? 'bg-white shadow-sm text-amber-600' : 'text-gray-500'}`}>一键升学</button>
-                <button onClick={() => setPromoMode('manual')} className={`px-4 py-2 rounded-lg font-bold text-sm ${promoMode === 'manual' ? 'bg-white shadow-sm text-amber-600' : 'text-gray-500'}`}>手动调班</button>
+                <button onClick={() => setPromoMode('auto')} className={`px-4 py-2 rounded-lg font-bold text-sm ${promoMode === 'auto' ? 'bg-white shadow-sm text-amber-600' : 'text-gray-500'}`}>Naik Kelas Auto (一键升学)</button>
+                <button onClick={() => setPromoMode('manual')} className={`px-4 py-2 rounded-lg font-bold text-sm ${promoMode === 'manual' ? 'bg-white shadow-sm text-amber-600' : 'text-gray-500'}`}>Ubah Manual (手动调班)</button>
               </div>
             </div>
             {promoMode === 'auto' ? (
               <div className="bg-amber-50 p-6 rounded-2xl border border-amber-200 text-center">
-                <p className="text-gray-700 mb-4">自动把一年级升至二年级，依此类推。六年级将被移入毕业班 (第20班)。</p>
-                <button onClick={promptYearlyPromotion} className="bg-amber-500 hover:bg-amber-600 text-white text-base font-bold px-8 py-3 rounded-xl shadow-md">执行一键升学</button>
+                <p className="text-gray-700 mb-4">Sistem akan menaikkan darjah murid secara automatik. (自动升班，六年级将移入毕业班)</p>
+                <button onClick={promptYearlyPromotion} className="bg-amber-500 hover:bg-amber-600 text-white text-base font-bold px-8 py-3 rounded-xl shadow-md">Laksanakan Naik Kelas (执行一键升学)</button>
               </div>
             ) : (
               <div>
-                <input type="text" placeholder="搜索学生..." className="w-full md:w-1/3 p-2.5 border rounded-xl text-sm mb-4" value={promoSearchTerm} onChange={(e) => setPromoSearchTerm(e.target.value)} />
+                <input type="text" placeholder="Cari murid (搜索学生)..." className="w-full md:w-1/3 p-2.5 border rounded-xl text-sm mb-4" value={promoSearchTerm} onChange={(e) => setPromoSearchTerm(e.target.value)} />
                 <div className="overflow-x-auto rounded-xl border max-h-[400px]">
                   <table className="w-full text-left border-collapse min-w-max">
-                    <thead className="sticky top-0 bg-gray-50 z-10"><tr className="text-gray-600 text-sm border-b"><th className="p-3">姓名</th><th className="p-3">IC</th><th className="p-3">原班级</th><th className="p-3">修改年级</th><th className="p-3">修改班名</th><th className="p-3 text-center">操作</th></tr></thead>
+                    <thead className="sticky top-0 bg-gray-50 z-10"><tr className="text-gray-600 text-sm border-b"><th className="p-3">Nama</th><th className="p-3">IC</th><th className="p-3">Kelas Asal</th><th className="p-3">Ubah Tahun</th><th className="p-3">Ubah Nama Kelas</th><th className="p-3 text-center">Tindakan</th></tr></thead>
                     <tbody>
                       {filteredPromoStudents.map((s, idx) => {
                         const ey = promoEdits[s.id]?.classYear !== undefined ? promoEdits[s.id].classYear : s.classYear;
@@ -1817,7 +1920,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
                             <td className="p-3 font-bold">{s.name}</td><td className="p-3 font-mono">{s.ic}</td><td className="p-3">{formatClassName(s.classYear, s.classColor)}</td>
                             <td className="p-3"><select className="p-1.5 border rounded-md" value={ey} onChange={e => handlePromoEditChange(s.id, 'classYear', e.target.value)}>{years.map(y => <option key={y.val} value={y.val}>{y.label}</option>)}</select></td>
                             <td className="p-3"><input type="text" className="p-1.5 border rounded-md w-16 text-center" value={ec} onChange={e => handlePromoEditChange(s.id, 'classColor', e.target.value.toUpperCase())} /></td>
-                            <td className="p-3 text-center"><button disabled={!hc} onClick={() => saveManualPromo(s.id, s)} className={`px-3 py-1.5 rounded-lg font-bold text-xs ${hc ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-400'}`}>保存</button></td>
+                            <td className="p-3 text-center"><button disabled={!hc} onClick={() => saveManualPromo(s.id, s)} className={`px-3 py-1.5 rounded-lg font-bold text-xs ${hc ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-400'}`}>Simpan (保存)</button></td>
                           </tr>
                         )
                       })}
@@ -1830,69 +1933,67 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         </div>
       )}
 
-      {}
       {adminMainTab === 'announcements' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-slide-up">
           <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm">
-            <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-5 flex items-center gap-2"><BookOpen size={24}/> 发布新通告/App介绍</h3>
+            <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-5 flex items-center gap-2"><BookOpen size={24}/> Terbit Hebahan Baru (发布新通告/App介绍)</h3>
             <form onSubmit={handleAddAnnouncement} className="space-y-4">
-              <input type="text" placeholder="通告标题 (选填)" value={annForm.title} onChange={e=>setAnnForm({...annForm, title: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" />
+              <input type="text" placeholder="Tajuk (通告标题 - 选填)" value={annForm.title} onChange={e=>setAnnForm({...annForm, title: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" />
               <div className="grid grid-cols-2 gap-4">
-                <select value={annForm.type} onChange={e=>setAnnForm({...annForm, type: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm"><option value="App">App 推荐</option><option value="Activity">活动通告</option></select>
-                <input type="url" placeholder="附加链接 https:// (选填)" value={annForm.link} onChange={e=>setAnnForm({...annForm, link: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" />
+                <select value={annForm.type} onChange={e=>setAnnForm({...annForm, type: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm"><option value="App">Syor App (App 推荐)</option><option value="Activity">Aktiviti (活动通告)</option></select>
+                <input type="url" placeholder="Link https:// (附加链接 - 选填)" value={annForm.link} onChange={e=>setAnnForm({...annForm, link: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" />
               </div>
-              <textarea rows="4" placeholder="内容描述 (选填)..." value={annForm.content} onChange={e=>setAnnForm({...annForm, content: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm"></textarea>
+              <textarea rows="4" placeholder="Butiran (内容描述 - 选填)..." value={annForm.content} onChange={e=>setAnnForm({...annForm, content: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm"></textarea>
               <div>
-                <label className="flex items-center justify-center gap-2 p-2.5 border border-dashed rounded-lg bg-gray-50 cursor-pointer text-sm text-gray-600"><ImageIcon size={18} /> 附加宣传照片<input type="file" id="announcement-image-upload" accept="image/*" onChange={handleAnnImage} className="hidden" /></label>
-                {annForm.image && <div className="relative mt-2"><img src={annForm.image} alt="预览" className="h-20 w-auto rounded border" /><button type="button" onClick={() => {setAnnForm({...annForm, image: ''}); document.getElementById('announcement-image-upload').value='';}} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"><Trash2 size={12}/></button></div>}
+                <label className="flex items-center justify-center gap-2 p-2.5 border border-dashed rounded-lg bg-gray-50 cursor-pointer text-sm text-gray-600"><ImageIcon size={18} /> Muat Naik Gambar (附加照片)<input type="file" id="announcement-image-upload" accept="image/*" onChange={handleAnnImage} className="hidden" /></label>
+                {annForm.image && <div className="relative mt-2"><img src={annForm.image} alt="Preview" className="h-20 w-auto rounded border" /><button type="button" onClick={() => {setAnnForm({...annForm, image: ''}); document.getElementById('announcement-image-upload').value='';}} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"><Trash2 size={12}/></button></div>}
               </div>
-              <button type="submit" className="w-full bg-purple-600 text-white font-bold py-3 rounded-lg">发布通告</button>
+              <button type="submit" className="w-full bg-amber-500 text-white font-bold py-3 rounded-lg">Terbit (发布通告)</button>
             </form>
           </div>
           <div className="bg-gray-50 border border-gray-200 p-6 rounded-2xl h-[480px] overflow-y-auto">
-            <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-5">已发布通告</h3>
+            <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-5">Hebahan Terbitan (已发布通告)</h3>
             <div className="space-y-3">
               {announcements.map(a => (
                 <div key={a.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex items-center gap-4">
                   {a.image && <img src={a.image} alt="" className="w-12 h-12 object-cover rounded" />}
-                  <div className="flex-1"><span className="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded">{a.type}</span><h4 className="font-bold mt-1 text-sm">{a.title || '无标题照片'}</h4></div>
+                  <div className="flex-1"><span className="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded">{a.type}</span><h4 className="font-bold mt-1 text-sm">{a.title || 'Tiada Tajuk'}</h4></div>
                   <div className="flex gap-2">
                     <button onClick={() => setEditAnn({...a})} className="text-blue-500 p-2 hover:bg-blue-50 rounded"><Edit size={18} /></button>
                     <button onClick={() => promptDeleteAnnouncement(a.id)} className="text-red-500 p-2 hover:bg-red-50 rounded"><Trash2 size={18} /></button>
                   </div>
                 </div>
               ))}
-              {announcements.length === 0 && <p className="text-center text-gray-400 mt-10">暂无发布的公告。</p>}
+              {announcements.length === 0 && <p className="text-center text-gray-400 mt-10">Tiada rekod (暂无发布的公告).</p>}
             </div>
           </div>
         </div>
       )}
 
-      {}
       {adminMainTab === 'sys_logs' && (
         <div className="space-y-8 animate-slide-up">
           <div className="bg-white border border-gray-200 p-6 md:p-8 rounded-2xl shadow-sm">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 border-b border-gray-200 pb-4">
               <div>
                 <h3 className="text-lg md:text-2xl font-bold text-gray-800 mb-2 flex items-center gap-2">
-                  <ClipboardList size={28}/> 系统访客与操作记录 (Log Sistem)
+                  <ClipboardList size={28}/> Log Sistem (系统访客与操作记录)
                 </h3>
                 <p className="text-sm text-gray-600">
-                  记录系统内所有的登入、资料修改、人员调动以及家长/学生的查询记录（共 {logs.length} 条记录）。
+                  Merekodkan log masuk, carian, dan kemaskini data. (共 {logs.length} 条记录).
                 </p>
               </div>
               <button 
                 onClick={exportLogsToExcel}
                 className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-bold text-sm shadow-md transition-all whitespace-nowrap"
               >
-                <Download size={20} /> 导出日志为 Excel
+                <Download size={20} /> Eksport Excel (导出日志)
               </button>
             </div>
             
             <div className="max-h-[600px] overflow-y-auto pr-2 space-y-3">
               {logs.map(log => {
-                let isFail = log.action.includes('失败') || log.details.includes('失败') || log.details.includes('错误');
-                let isSuccess = log.action.includes('成功') || log.details.includes('成功');
+                let isFail = log.action.includes('Gagal') || log.action.includes('失败') || log.details.includes('失败') || log.details.includes('错误');
+                let isSuccess = log.action.includes('Berjaya') || log.action.includes('成功') || log.details.includes('成功');
                 let rowColorClass = "bg-gray-50 hover:bg-gray-100 border-gray-200 text-gray-700";
                 
                 if (isFail) {
@@ -1911,7 +2012,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
                       log.role === 'teacher' ? 'bg-amber-100 text-amber-700' : 
                       'bg-blue-100 text-blue-700'
                     }`}>
-                      {log.role === 'admin' ? '管理员' : log.role === 'teacher' ? '教师' : '访客/家长'}
+                      {log.role === 'admin' ? 'Admin (管理员)' : log.role === 'teacher' ? 'Guru (教师)' : 'Pelawat (访客)'}
                     </span>
                     <span className="font-bold text-sm md:w-32">{log.action}</span>
                     <span className="text-sm flex-1 leading-relaxed opacity-90">{log.details}</span>
@@ -1920,7 +2021,7 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
               })}
               {logs.length === 0 && (
                 <div className="p-8 text-center text-gray-500 text-sm border-2 border-dashed border-gray-300 rounded-2xl">
-                  当前系统还没有任何操作记录。
+                  Tiada log sistem (当前系统没有操作记录).
                 </div>
               )}
             </div>
@@ -1928,33 +2029,32 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
         </div>
       )}
 
-      {}
       {adminMainTab === 'school_reports' && (
         <div className="space-y-8 animate-slide-up">
           <div className="bg-blue-50/50 p-6 md:p-8 rounded-2xl border border-blue-200 grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div>
-              <h3 className="text-xl md:text-2xl font-bold text-blue-900 mb-2 flex items-center gap-2"><FileText size={24} /> 记录官方报告与使用率</h3>
-              <p className="text-sm text-gray-600 mb-6">这里填写的报告和使用率会自动展示在家长首页的横幅区域，供全校及教育局视察查阅。</p>
+              <h3 className="text-xl md:text-2xl font-bold text-blue-900 mb-2 flex items-center gap-2"><FileText size={24} /> Laporan & Penggunaan (发布学校报告)</h3>
+              <p className="text-sm text-gray-600 mb-6">Laporan ini akan terpapar di halaman utama. (将会展示在家长首页)</p>
               
               <form onSubmit={handleAddReport} className="space-y-4">
-                <input required type="text" placeholder="报告标题 (如: Laporan Penggunaan DELIMA Bulan Ini)" value={reportForm.title} onChange={e=>setReportForm({...reportForm, title: e.target.value})} className="w-full p-3 border border-blue-200 rounded-xl text-sm outline-none focus:border-blue-500" />
-                <textarea required rows="4" placeholder="详细报告内容说明..." value={reportForm.content} onChange={e=>setReportForm({...reportForm, content: e.target.value})} className="w-full p-3 border border-blue-200 rounded-xl text-sm outline-none focus:border-blue-500"></textarea>
+                <input required type="text" placeholder="Tajuk Laporan (报告标题)" value={reportForm.title} onChange={e=>setReportForm({...reportForm, title: e.target.value})} className="w-full p-3 border border-blue-200 rounded-xl text-sm outline-none focus:border-blue-500" />
+                <textarea required rows="4" placeholder="Butiran Laporan (详细报告内容)..." value={reportForm.content} onChange={e=>setReportForm({...reportForm, content: e.target.value})} className="w-full p-3 border border-blue-200 rounded-xl text-sm outline-none focus:border-blue-500"></textarea>
                 
                 <div className="grid grid-cols-2 gap-4">
-                  <div><label className="text-xs font-bold text-gray-500 mb-1 block">学生使用率 (%)</label><input type="number" min="0" max="100" placeholder="例如: 85" value={reportForm.studentUsage} onChange={e=>setReportForm({...reportForm, studentUsage: e.target.value})} className="w-full p-3 border border-blue-200 rounded-xl text-sm" /></div>
-                  <div><label className="text-xs font-bold text-gray-500 mb-1 block">老师使用率 (%)</label><input type="number" min="0" max="100" placeholder="例如: 90" value={reportForm.teacherUsage} onChange={e=>setReportForm({...reportForm, teacherUsage: e.target.value})} className="w-full p-3 border border-blue-200 rounded-xl text-sm" /></div>
+                  <div><label className="text-xs font-bold text-gray-500 mb-1 block">% Penggunaan Murid (学生使用率)</label><input type="number" min="0" max="100" placeholder="Contoh: 85" value={reportForm.studentUsage} onChange={e=>setReportForm({...reportForm, studentUsage: e.target.value})} className="w-full p-3 border border-blue-200 rounded-xl text-sm" /></div>
+                  <div><label className="text-xs font-bold text-gray-500 mb-1 block">% Penggunaan Guru (老师使用率)</label><input type="number" min="0" max="100" placeholder="Contoh: 90" value={reportForm.teacherUsage} onChange={e=>setReportForm({...reportForm, teacherUsage: e.target.value})} className="w-full p-3 border border-blue-200 rounded-xl text-sm" /></div>
                 </div>
 
                 <div>
-                  <label className="flex items-center justify-center gap-2 p-3 border-2 border-blue-200 border-dashed rounded-xl bg-white cursor-pointer text-sm text-blue-600 hover:bg-blue-50 transition-colors font-bold"><ImageIcon size={18} /> 附带报告照片证据<input type="file" id="report-image-upload" accept="image/*" onChange={handleReportImage} className="hidden" /></label>
-                  {reportForm.image && <div className="relative mt-3"><img src={reportForm.image} alt="预览" className="h-32 w-auto object-contain rounded-lg border border-blue-100 bg-white" /><button type="button" onClick={() => {setReportForm({...reportForm, image: ''}); document.getElementById('report-image-upload').value='';}} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5"><Trash2 size={14}/></button></div>}
+                  <label className="flex items-center justify-center gap-2 p-3 border-2 border-blue-200 border-dashed rounded-xl bg-white cursor-pointer text-sm text-blue-600 hover:bg-blue-50 transition-colors font-bold"><ImageIcon size={18} /> Muat Naik Gambar Bukti (附带证据照片)<input type="file" id="report-image-upload" accept="image/*" onChange={handleReportImage} className="hidden" /></label>
+                  {reportForm.image && <div className="relative mt-3"><img src={reportForm.image} alt="Preview" className="h-32 w-auto object-contain rounded-lg border border-blue-100 bg-white" /><button type="button" onClick={() => {setReportForm({...reportForm, image: ''}); document.getElementById('report-image-upload').value='';}} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5"><Trash2 size={14}/></button></div>}
                 </div>
-                <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl text-lg mt-4 transition-colors shadow-md">发布学校官方报告</button>
+                <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl text-lg mt-4 transition-colors shadow-md">Terbit Laporan (发布学校官方报告)</button>
               </form>
             </div>
 
             <div className="bg-white border border-blue-100 p-6 rounded-2xl shadow-sm h-[550px] overflow-y-auto">
-              <h3 className="text-lg font-bold text-blue-900 mb-5">已发布的学校报告</h3>
+              <h3 className="text-lg font-bold text-blue-900 mb-5">Laporan Terbitan (已发布报告)</h3>
               <div className="space-y-4">
                 {schoolReports.map(rep => (
                   <div key={rep.id} className="p-4 rounded-xl border border-gray-100 bg-gray-50 shadow-sm relative overflow-hidden group">
@@ -1962,47 +2062,46 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
                     <h4 className="font-bold text-gray-800 text-base mb-2 pr-8">{rep.title}</h4>
                     {rep.image && <img src={rep.image} alt="report" className="w-full h-24 object-cover rounded-md mb-2" />}
                     <div className="flex gap-4 text-xs font-bold text-gray-600 mt-2">
-                      {rep.studentUsage && <span>学生: <span className="text-blue-600">{rep.studentUsage}%</span></span>}
-                      {rep.teacherUsage && <span>老师: <span className="text-green-600">{rep.teacherUsage}%</span></span>}
+                      {rep.studentUsage && <span>Murid: <span className="text-blue-600">{rep.studentUsage}%</span></span>}
+                      {rep.teacherUsage && <span>Guru: <span className="text-green-600">{rep.teacherUsage}%</span></span>}
                     </div>
                     
                     <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-200">
-                      <button onClick={() => setEditReport({ ...rep })} className="flex items-center gap-1 text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-100 transition-colors"><Edit size={14} /> 编辑</button>
-                      <button onClick={() => promptDeleteReport(rep.id, rep.title)} className="flex items-center gap-1 text-red-600 bg-red-50 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-100 transition-colors"><Trash2 size={14} /> 删除</button>
+                      <button onClick={() => setEditReport({ ...rep })} className="flex items-center gap-1 text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-100 transition-colors"><Edit size={14} /> Edit</button>
+                      <button onClick={() => promptDeleteReport(rep.id, rep.title)} className="flex items-center gap-1 text-red-600 bg-red-50 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-100 transition-colors"><Trash2 size={14} /> Padam</button>
                     </div>
                   </div>
                 ))}
-                {schoolReports.length === 0 && <p className="text-center text-gray-400 mt-10">暂无学校报告记录。</p>}
+                {schoolReports.length === 0 && <p className="text-center text-gray-400 mt-10">Tiada rekod (暂无学校报告记录).</p>}
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {}
       {adminMainTab === 'admin_notes' && (
         <div className="space-y-8 animate-slide-up">
           <div className="bg-red-50/30 p-6 md:p-8 rounded-2xl border border-red-100 grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div>
-              <h3 className="text-xl md:text-2xl font-bold text-red-800 mb-2 flex items-center gap-2"><ClipboardList size={24} /> Admin 专属私密备注 (Nota Peribadi)</h3>
-              <p className="text-sm text-gray-600 mb-6">这里的内容绝对不会显示在首页。仅供管理员个人记录重要事项、网址或存底照片。</p>
+              <h3 className="text-xl md:text-2xl font-bold text-red-800 mb-2 flex items-center gap-2"><ClipboardList size={24} /> Nota Peribadi Admin (私密备注)</h3>
+              <p className="text-sm text-gray-600 mb-6">Untuk kegunaan peribadi Admin sahaja. (这里的内容绝对不会显示在首页。仅供管理员存底备忘)</p>
               
               <form onSubmit={handleAddNote} className="space-y-4">
-                <input required type="text" placeholder="备注标题..." value={noteForm.title} onChange={e=>setNoteForm({...noteForm, title: e.target.value})} className="w-full p-3 border border-red-200 rounded-xl text-sm outline-none focus:border-red-400" />
-                <textarea required rows="5" placeholder="写下重要记录或备忘录..." value={noteForm.content} onChange={e=>setNoteForm({...noteForm, content: e.target.value})} className="w-full p-3 border border-red-200 rounded-xl text-sm outline-none focus:border-red-400"></textarea>
-                <input type="url" placeholder="保存重要网址 (可选)..." value={noteForm.link} onChange={e=>setNoteForm({...noteForm, link: e.target.value})} className="w-full p-3 border border-red-200 rounded-xl text-sm outline-none focus:border-red-400" />
+                <input required type="text" placeholder="Tajuk Nota (备注标题)..." value={noteForm.title} onChange={e=>setNoteForm({...noteForm, title: e.target.value})} className="w-full p-3 border border-red-200 rounded-xl text-sm outline-none focus:border-red-400" />
+                <textarea required rows="5" placeholder="Butiran... (写下重要记录或备忘录...)" value={noteForm.content} onChange={e=>setNoteForm({...noteForm, content: e.target.value})} className="w-full p-3 border border-red-200 rounded-xl text-sm outline-none focus:border-red-400"></textarea>
+                <input type="url" placeholder="Pautan penting (保存重要网址 - 可选)..." value={noteForm.link} onChange={e=>setNoteForm({...noteForm, link: e.target.value})} className="w-full p-3 border border-red-200 rounded-xl text-sm outline-none focus:border-red-400" />
                 
                 <div>
-                  <label className="flex items-center justify-center gap-2 p-3 border-2 border-red-200 border-dashed rounded-xl bg-white cursor-pointer text-sm text-red-500 hover:bg-red-50 transition-colors font-bold"><ImageIcon size={18} /> 存底照片<input type="file" id="note-image-upload" accept="image/*" onChange={handleNoteImage} className="hidden" /></label>
-                  {noteForm.image && <div className="relative mt-3"><img src={noteForm.image} alt="预览" className="h-32 w-auto object-contain rounded-lg border border-red-100 bg-white" /><button type="button" onClick={() => {setNoteForm({...noteForm, image: ''}); document.getElementById('note-image-upload').value='';}} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5"><Trash2 size={14}/></button></div>}
+                  <label className="flex items-center justify-center gap-2 p-3 border-2 border-red-200 border-dashed rounded-xl bg-white cursor-pointer text-sm text-red-500 hover:bg-red-50 transition-colors font-bold"><ImageIcon size={18} /> Gambar Bukti (存底照片)<input type="file" id="note-image-upload" accept="image/*" onChange={handleNoteImage} className="hidden" /></label>
+                  {noteForm.image && <div className="relative mt-3"><img src={noteForm.image} alt="Preview" className="h-32 w-auto object-contain rounded-lg border border-red-100 bg-white" /><button type="button" onClick={() => {setNoteForm({...noteForm, image: ''}); document.getElementById('note-image-upload').value='';}} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5"><Trash2 size={14}/></button></div>}
                 </div>
                 
-                <button type="submit" className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3.5 rounded-xl text-lg mt-4 transition-colors shadow-md">保存私密备注</button>
+                <button type="submit" className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3.5 rounded-xl text-lg mt-4 transition-colors shadow-md">Simpan Nota (保存私密备注)</button>
               </form>
             </div>
 
             <div className="bg-white border border-red-100 p-6 rounded-2xl shadow-sm h-[550px] overflow-y-auto">
-              <h3 className="text-lg font-bold text-red-800 mb-5">我的备忘录档案</h3>
+              <h3 className="text-lg font-bold text-red-800 mb-5">Arkib Nota (我的备忘录档案)</h3>
               <div className="space-y-4">
                 {adminNotes.map(note => (
                   <div key={note.id} className="p-5 rounded-xl border border-red-100 bg-red-50/50 shadow-sm relative overflow-hidden group">
@@ -2016,34 +2115,93 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
                     </div>
                   </div>
                 ))}
-                {adminNotes.length === 0 && <p className="text-center text-gray-400 mt-10">暂无任何私密备注。</p>}
+                {adminNotes.length === 0 && <p className="text-center text-gray-400 mt-10">Tiada nota. (暂无任何私密备注。)</p>}
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {}
+      {/* MODALS */}
+      {addStudentModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[105]">
+          <div className="bg-white rounded-3xl p-8 w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl animate-slide-up">
+            <h3 className="text-2xl font-bold text-purple-800 mb-6 flex items-center gap-2"><UserCheck size={24} /> Tambah Murid (新增单名学生)</h3>
+            <form onSubmit={handleAddSingleStudent}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">Nama (姓名) *</label><input required type="text" value={newStudent.name} onChange={(e) => setNewStudent({...newStudent, name: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">No. IC (IC 号码) *</label><input required type="text" value={newStudent.ic} onChange={(e) => setNewStudent({...newStudent, ic: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">Tahun (年级编号 1~6/19/20) *</label><input required type="text" value={newStudent.classYear} onChange={(e) => setNewStudent({...newStudent, classYear: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">Kelas (班级如 H/M) *</label><input required type="text" value={newStudent.classColor} onChange={(e) => setNewStudent({...newStudent, classColor: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">ID DELIMA</label><input type="text" value={newStudent.delimaId} onChange={(e) => setNewStudent({...newStudent, delimaId: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">Kata Laluan (密码)</label><input type="text" value={newStudent.password} onChange={(e) => setNewStudent({...newStudent, password: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">Jantina (性别)</label><input type="text" value={newStudent.gender} onChange={(e) => setNewStudent({...newStudent, gender: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">No. Ruj. Sek (学号)</label><input type="text" value={newStudent.studentId} onChange={(e) => setNewStudent({...newStudent, studentId: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">No. IDME</label><input type="text" value={newStudent.idme} onChange={(e) => setNewStudent({...newStudent, idme: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">Surat Beranak (报生纸)</label><input type="text" value={newStudent.birthCert} onChange={(e) => setNewStudent({...newStudent, birthCert: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">Tarikh Lahir (出生日期)</label><input type="text" value={newStudent.dob} onChange={(e) => setNewStudent({...newStudent, dob: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">Rumah Sukan (运动队伍)</label><input type="text" value={newStudent.sportsHouse} onChange={(e) => setNewStudent({...newStudent, sportsHouse: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+              </div>
+              <div className="flex gap-4 mt-8"><button type="button" onClick={() => setAddStudentModal(false)} className="flex-1 bg-gray-100 font-bold py-3 rounded-xl">Batal (取消)</button><button type="submit" className="flex-1 bg-purple-600 text-white font-bold py-3 rounded-xl">Simpan (确认新增)</button></div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {addTeacherModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[105]">
+          <div className="bg-white rounded-3xl p-8 w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl animate-slide-up">
+            <h3 className="text-2xl font-bold text-pink-800 mb-6 flex items-center gap-2"><Users size={24} /> Tambah Guru (新增教师)</h3>
+            <form onSubmit={handleAddSingleTeacher}>
+              <div className="space-y-4">
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">Nama (姓名) *</label><input required type="text" value={newTeacher.name} onChange={(e) => setNewTeacher({...newTeacher, name: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">No. IC (IC 号码) *</label><input required type="text" value={newTeacher.ic} onChange={(e) => setNewTeacher({...newTeacher, ic: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">ID DELIMA</label><input type="text" value={newTeacher.delimaId} onChange={(e) => setNewTeacher({...newTeacher, delimaId: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">Kata Laluan (密码)</label><input type="text" value={newTeacher.password} onChange={(e) => setNewTeacher({...newTeacher, password: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+              </div>
+              <div className="flex gap-4 mt-8"><button type="button" onClick={() => setAddTeacherModal(false)} className="flex-1 bg-gray-100 font-bold py-3 rounded-xl">Batal (取消)</button><button type="submit" className="flex-1 bg-pink-600 text-white font-bold py-3 rounded-xl">Simpan (确认新增)</button></div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {editStudent && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[105]">
           <div className="bg-white rounded-3xl p-8 w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl animate-slide-up">
-            <h3 className="text-2xl font-bold text-purple-800 mb-6 flex items-center gap-2"><Edit size={24} /> 编辑学生资料</h3>
+            <h3 className="text-2xl font-bold text-purple-800 mb-6 flex items-center gap-2"><Edit size={24} /> Edit Murid (编辑学生资料)</h3>
             <form onSubmit={handleUpdateStudent}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div><label className="block text-sm font-bold text-gray-700 mb-1">姓名 (NAMA MURID)</label><input required type="text" value={editStudent.name} onChange={(e) => setEditStudent({...editStudent, name: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
-                <div><label className="block text-sm font-bold text-gray-700 mb-1">IC 号码 <span className="text-red-500 text-xs">不可改</span></label><input disabled type="text" value={editStudent.ic} className="w-full p-2.5 border bg-gray-100 text-gray-500 rounded-lg text-sm" /></div>
-                <div><label className="block text-sm font-bold text-gray-700 mb-1">年级编号 (1~6 或 19, 20)</label><input required type="text" value={editStudent.classYear} onChange={(e) => setEditStudent({...editStudent, classYear: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
-                <div><label className="block text-sm font-bold text-gray-700 mb-1">班级 (如 H, M)</label><input type="text" value={editStudent.classColor} onChange={(e) => setEditStudent({...editStudent, classColor: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
-                <div><label className="block text-sm font-bold text-gray-700 mb-1">DELIMA ID</label><input type="text" value={editStudent.delimaId} onChange={(e) => setEditStudent({...editStudent, delimaId: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
-                <div><label className="block text-sm font-bold text-gray-700 mb-1">密码</label><input type="text" value={editStudent.password} onChange={(e) => setEditStudent({...editStudent, password: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
-                <div><label className="block text-sm font-bold text-gray-700 mb-1">性别</label><input type="text" value={editStudent.gender} onChange={(e) => setEditStudent({...editStudent, gender: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
-                <div><label className="block text-sm font-bold text-gray-700 mb-1">学号 (NO RUJ SEK)</label><input type="text" value={editStudent.studentId} onChange={(e) => setEditStudent({...editStudent, studentId: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
-                <div><label className="block text-sm font-bold text-gray-700 mb-1">IDME</label><input type="text" value={editStudent.idme} onChange={(e) => setEditStudent({...editStudent, idme: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
-                <div><label className="block text-sm font-bold text-gray-700 mb-1">报生纸 (SURAT BERANAK)</label><input type="text" value={editStudent.birthCert} onChange={(e) => setEditStudent({...editStudent, birthCert: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
-                <div><label className="block text-sm font-bold text-gray-700 mb-1">出生日期</label><input type="text" value={editStudent.dob} onChange={(e) => setEditStudent({...editStudent, dob: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
-                <div><label className="block text-sm font-bold text-gray-700 mb-1">运动队伍 (RUMAH SUKAN)</label><input type="text" value={editStudent.sportsHouse} onChange={(e) => setEditStudent({...editStudent, sportsHouse: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">Nama (姓名)</label><input required type="text" value={editStudent.name} onChange={(e) => setEditStudent({...editStudent, name: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">No. IC (IC 号码) <span className="text-red-500 text-xs">Tetap (不可改)</span></label><input disabled type="text" value={editStudent.ic} className="w-full p-2.5 border bg-gray-100 text-gray-500 rounded-lg text-sm" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">Tahun (年级编号 1~6/19/20)</label><input required type="text" value={editStudent.classYear} onChange={(e) => setEditStudent({...editStudent, classYear: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">Kelas (班级)</label><input type="text" value={editStudent.classColor} onChange={(e) => setEditStudent({...editStudent, classColor: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">ID DELIMA</label><input type="text" value={editStudent.delimaId} onChange={(e) => setEditStudent({...editStudent, delimaId: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">Kata Laluan (密码)</label><input type="text" value={editStudent.password} onChange={(e) => setEditStudent({...editStudent, password: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">Jantina (性别)</label><input type="text" value={editStudent.gender} onChange={(e) => setEditStudent({...editStudent, gender: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">No. Ruj. Sek (学号)</label><input type="text" value={editStudent.studentId} onChange={(e) => setEditStudent({...editStudent, studentId: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">No. IDME</label><input type="text" value={editStudent.idme} onChange={(e) => setEditStudent({...editStudent, idme: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">Surat Beranak (报生纸)</label><input type="text" value={editStudent.birthCert} onChange={(e) => setEditStudent({...editStudent, birthCert: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">Tarikh Lahir (出生日期)</label><input type="text" value={editStudent.dob} onChange={(e) => setEditStudent({...editStudent, dob: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">Rumah Sukan (运动队伍)</label><input type="text" value={editStudent.sportsHouse} onChange={(e) => setEditStudent({...editStudent, sportsHouse: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
               </div>
-              <div className="flex gap-4 mt-8"><button type="button" onClick={() => setEditStudent(null)} className="flex-1 bg-gray-100 font-bold py-3 rounded-xl">取消</button><button type="submit" className="flex-1 bg-purple-600 text-white font-bold py-3 rounded-xl">保存修改</button></div>
+              <div className="flex gap-4 mt-8"><button type="button" onClick={() => setEditStudent(null)} className="flex-1 bg-gray-100 font-bold py-3 rounded-xl">Batal (取消)</button><button type="submit" className="flex-1 bg-purple-600 text-white font-bold py-3 rounded-xl">Simpan (保存修改)</button></div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {editTeacher && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[105]">
+          <div className="bg-white rounded-3xl p-8 w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl animate-slide-up">
+            <h3 className="text-2xl font-bold text-pink-800 mb-6 flex items-center gap-2"><Edit size={24} /> Edit Guru (编辑教师资料)</h3>
+            <form onSubmit={handleUpdateTeacher}>
+              <div className="space-y-4">
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">Nama (姓名)</label><input required type="text" value={editTeacher.name} onChange={(e) => setEditTeacher({...editTeacher, name: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">No. IC (IC 号码) <span className="text-red-500 text-xs">Tetap (不可改)</span></label><input disabled type="text" value={editTeacher.ic} className="w-full p-2.5 border bg-gray-100 text-gray-500 rounded-lg text-sm" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">ID DELIMA</label><input type="text" value={editTeacher.delimaId} onChange={(e) => setEditTeacher({...editTeacher, delimaId: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+                <div><label className="block text-sm font-bold text-gray-700 mb-1">Kata Laluan (密码)</label><input type="text" value={editTeacher.password} onChange={(e) => setEditTeacher({...editTeacher, password: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm" /></div>
+              </div>
+              <div className="flex gap-4 mt-8"><button type="button" onClick={() => setEditTeacher(null)} className="flex-1 bg-gray-100 font-bold py-3 rounded-xl">Batal (取消)</button><button type="submit" className="flex-1 bg-pink-600 text-white font-bold py-3 rounded-xl">Simpan (保存修改)</button></div>
             </form>
           </div>
         </div>
@@ -2052,39 +2210,39 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
       {editAnn && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[105]">
           <div className="bg-white rounded-3xl p-8 w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl animate-slide-up">
-            <h3 className="text-2xl font-bold text-purple-900 mb-6 flex items-center gap-2"><Edit size={24} /> 编辑通告内容</h3>
+            <h3 className="text-2xl font-bold text-purple-900 mb-6 flex items-center gap-2"><Edit size={24} /> Edit Hebahan (编辑通告内容)</h3>
             <form onSubmit={handleUpdateAnnouncement} className="space-y-4">
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">标题 (选填)</label>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Tajuk (标题 - 选填)</label>
                 <input type="text" value={editAnn.title} onChange={e=>setEditAnn({...editAnn, title: e.target.value})} className="w-full p-2.5 border border-purple-200 rounded-lg text-sm outline-none focus:border-purple-500" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">类型</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Jenis (类型)</label>
                   <select value={editAnn.type} onChange={e=>setEditAnn({...editAnn, type: e.target.value})} className="w-full p-2.5 border border-purple-200 rounded-lg text-sm outline-none focus:border-purple-500">
-                    <option value="App">App 推荐</option><option value="Activity">活动通告</option>
+                    <option value="App">Syor App (App 推荐)</option><option value="Activity">Aktiviti (活动通告)</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">附加链接 (可选)</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Pautan (附加链接 - 可选)</label>
                   <input type="url" value={editAnn.link} onChange={e=>setEditAnn({...editAnn, link: e.target.value})} className="w-full p-2.5 border border-purple-200 rounded-lg text-sm outline-none focus:border-purple-500" />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">内容描述 (选填)</label>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Butiran (内容描述 - 选填)</label>
                 <textarea rows="4" value={editAnn.content} onChange={e=>setEditAnn({...editAnn, content: e.target.value})} className="w-full p-2.5 border border-purple-200 rounded-lg text-sm outline-none focus:border-purple-500"></textarea>
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">更换宣传照片</label>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Tukar Gambar (更换宣传照片)</label>
                 <div className="flex items-center gap-4">
                   <label className="flex-1 flex items-center justify-center gap-2 p-2.5 border border-purple-200 border-dashed rounded-lg bg-purple-50 hover:bg-purple-100 cursor-pointer transition-colors text-sm text-purple-700 font-bold">
-                    <ImageIcon size={18} /> 上传新照片
+                    <ImageIcon size={18} /> Muat Naik Baru (上传新照片)
                     <input type="file" accept="image/*" onChange={handleEditAnnImage} className="hidden" />
                   </label>
                 </div>
                 {editAnn.image && (
                   <div className="relative inline-block mt-3">
-                    <img src={editAnn.image} alt="预览" className="h-32 w-auto object-contain rounded-lg border border-purple-100 bg-white" />
+                    <img src={editAnn.image} alt="Preview" className="h-32 w-auto object-contain rounded-lg border border-purple-100 bg-white" />
                     <button 
                       type="button" 
                       onClick={() => setEditAnn({...editAnn, image: ''})} 
@@ -2096,8 +2254,8 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
                 )}
               </div>
               <div className="flex gap-4 mt-8">
-                <button type="button" onClick={() => setEditAnn(null)} className="flex-1 bg-gray-100 font-bold py-3 rounded-xl">取消</button>
-                <button type="submit" className="flex-1 bg-purple-600 text-white font-bold py-3 rounded-xl">保存修改</button>
+                <button type="button" onClick={() => setEditAnn(null)} className="flex-1 bg-gray-100 font-bold py-3 rounded-xl">Batal (取消)</button>
+                <button type="submit" className="flex-1 bg-purple-600 text-white font-bold py-3 rounded-xl">Simpan (保存修改)</button>
               </div>
             </form>
           </div>
@@ -2107,42 +2265,41 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
       {editReport && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[105]">
           <div className="bg-white rounded-3xl p-8 w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl animate-slide-up">
-            <h3 className="text-2xl font-bold text-blue-900 mb-6 flex items-center gap-2"><Edit size={24} /> 编辑官方报告</h3>
+            <h3 className="text-2xl font-bold text-blue-900 mb-6 flex items-center gap-2"><Edit size={24} /> Edit Laporan (编辑官方报告)</h3>
             <form onSubmit={handleUpdateReport} className="space-y-4">
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">报告标题</label>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Tajuk (报告标题)</label>
                 <input required type="text" value={editReport.title} onChange={(e) => setEditReport({...editReport, title: e.target.value})} className="w-full p-2.5 border border-blue-200 rounded-lg text-sm outline-none focus:border-blue-500" />
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">详细说明</label>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Butiran (详细说明)</label>
                 <textarea required rows="4" value={editReport.content} onChange={(e) => setEditReport({...editReport, content: e.target.value})} className="w-full p-2.5 border border-blue-200 rounded-lg text-sm outline-none focus:border-blue-500"></textarea>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">学生使用率 (%)</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">% Murid (学生使用率)</label>
                   <input type="number" min="0" max="100" value={editReport.studentUsage || ''} onChange={(e) => setEditReport({...editReport, studentUsage: e.target.value})} className="w-full p-2.5 border border-blue-200 rounded-lg text-sm" />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">老师使用率 (%)</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">% Guru (老师使用率)</label>
                   <input type="number" min="0" max="100" value={editReport.teacherUsage || ''} onChange={(e) => setEditReport({...editReport, teacherUsage: e.target.value})} className="w-full p-2.5 border border-blue-200 rounded-lg text-sm" />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">更换照片证据</label>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Tukar Gambar (更换照片证据)</label>
                 <div className="flex items-center gap-4">
                   <label className="flex-1 flex items-center justify-center gap-2 p-2.5 border border-blue-200 border-dashed rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors text-sm text-blue-600">
-                    <ImageIcon size={18} /> 上传新照片
+                    <ImageIcon size={18} /> Muat Naik Baru (上传新照片)
                     <input type="file" accept="image/*" onChange={handleEditReportImage} className="hidden" />
                   </label>
                 </div>
                 {editReport.image && (
                   <div className="relative inline-block mt-3">
-                    <img src={editReport.image} alt="预览" className="h-32 w-auto object-contain rounded-lg border border-blue-100 bg-white" />
+                    <img src={editReport.image} alt="Preview" className="h-32 w-auto object-contain rounded-lg border border-blue-100 bg-white" />
                     <button 
                       type="button" 
                       onClick={() => setEditReport({...editReport, image: ''})} 
                       className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 shadow-md hover:bg-red-600 transition-colors"
-                      title="移除照片"
                     >
                        <Trash2 size={14} />
                     </button>
@@ -2150,8 +2307,8 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
                 )}
               </div>
               <div className="flex gap-4 mt-8">
-                <button type="button" onClick={() => setEditReport(null)} className="flex-1 bg-gray-100 font-bold py-3 rounded-xl">取消</button>
-                <button type="submit" className="flex-1 bg-blue-600 text-white font-bold py-3 rounded-xl">保存修改</button>
+                <button type="button" onClick={() => setEditReport(null)} className="flex-1 bg-gray-100 font-bold py-3 rounded-xl">Batal (取消)</button>
+                <button type="submit" className="flex-1 bg-blue-600 text-white font-bold py-3 rounded-xl">Simpan (保存修改)</button>
               </div>
             </form>
           </div>
@@ -2159,11 +2316,21 @@ function AdminPortal({ students, announcements, logs, schoolReports, adminNotes,
       )}
 
       {confirmModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[110]"><div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center"><AlertCircle size={48} className="text-amber-500 mx-auto mb-4" /><h3 className="text-xl font-bold mb-2">确认操作</h3><p className="text-sm text-gray-600 mb-6">{confirmModal.message}</p><div className="flex gap-4"><button onClick={() => setConfirmModal(null)} className="flex-1 bg-gray-100 font-bold py-2 rounded-lg">取消</button><button onClick={confirmModal.onConfirm} className="flex-1 bg-amber-500 text-white font-bold py-2 rounded-lg">确认</button></div></div></div>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[160]">
+          <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center">
+            <AlertCircle size={48} className="text-amber-500 mx-auto mb-4" />
+            <h3 className="text-xl font-bold mb-2">Pengesahan (确认操作)</h3>
+            <p className="text-sm text-gray-600 mb-6">{confirmModal.message}</p>
+            <div className="flex gap-4">
+              <button onClick={() => setConfirmModal(null)} className="flex-1 bg-gray-100 font-bold py-2 rounded-lg">Batal (取消)</button>
+              <button onClick={confirmModal.onConfirm} className="flex-1 bg-amber-500 text-white font-bold py-2 rounded-lg">Sahkan (确认)</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
 }
 
-function formatSimpleClassName(year, color) { if (year === '19') return '19 (转校)'; if (year === '20') return '20 (毕业)'; return `${year}${color}`; }
-function formatClassName(year, color) { if (year === '19') return '第19班 (转校)'; if (year === '20') return '第20班 (毕业)'; return `${year} 年级 ${color} 班`; }
+function formatSimpleClassName(year, color) { if (year === '19') return '19 (Pindah/转校)'; if (year === '20') return '20 (Tamat/毕业)'; return `${year}${color}`; }
+function formatClassName(year, color) { if (year === '19') return 'Kelas 19 (Pindah/转校)'; if (year === '20') return 'Kelas 20 (Tamat/毕业)'; return `Tahun ${year} Kelas ${color}`; }
