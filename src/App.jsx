@@ -861,7 +861,11 @@ function LoginView({ roleTarget, setAuthRole, showMessage }) {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    if (pin === '6027') {
+    
+    // 验证逻辑：如果身份是 admin 则密码需要是 XCC6027，如果是 teacher 则保持为 6027
+    const isCorrectPin = roleTarget === 'admin' ? pin === 'XCC6027' : pin === '6027';
+
+    if (isCorrectPin) {
       setAuthRole(roleTarget);
       showMessage("Berjaya (登录成功)", `Selamat datang. (欢迎进入${roleTarget === 'admin' ? '系统后台' : '教师控制台'}。)`);
       if (window.logSystemAction) window.logSystemAction(roleTarget, 'Sistem Log Masuk (系统登录)', `${roleTarget === 'admin' ? 'Admin' : 'Guru'} berjaya log masuk.`);
